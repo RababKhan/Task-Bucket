@@ -1,0 +1,2010 @@
+:root {
+  /* Dark = default. Deep slate with proper elevation layers. */
+  --bg: #0a0c10;
+  --surface: #14161c;
+  --surface-2: #1b1e26;
+  --border: #262a33;
+  --text: #e9ebf1;
+  --text-dim: #98a1b2;
+  --accent: #52525b;
+  --accent-hover: #63636d;
+  --danger: #e5484d;
+  --radius: 12px;
+  --radius-control: 10px;
+  --card-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 12px 40px -12px rgba(0, 0, 0, 0.65), 0 4px 12px -6px rgba(0, 0, 0, 0.5);
+
+  --todo: #6b7280;
+  --in_progress: #d9a441;
+  --done: #16A34A;
+  --prio-low: #16A34A;
+  --prio-medium: #d9a441;
+  --prio-high: #e5484d;
+
+  /* focus ring */
+  --ring: rgba(130, 130, 140, 0.3);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-geist-sans), "Inter", ui-sans-serif, system-ui,
+    -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:root {
+  --glow-1: rgba(130, 130, 140, 0.1);
+  --glow-2: rgba(130, 130, 140, 0.05);
+}
+[data-theme="light"] {
+  --glow-1: rgba(63, 63, 70, 0.06);
+  --glow-2: rgba(63, 63, 70, 0.04);
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: inherit;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  width: 100%;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  transition: background 0.12s, border-color 0.12s;
+  white-space: nowrap;
+}
+.btn:hover {
+  background: var(--surface);
+  border-color: var(--accent);
+}
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.btn-danger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.btn-sm {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+/* Layout */
+.app {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  height: 100vh;
+}
+
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.sidebar-header {
+  padding: 18px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sidebar-header-main {
+  min-width: 0;
+}
+.brand {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.brand span {
+  color: var(--accent);
+}
+.sidebar-section {
+  padding: 14px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sidebar-section h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  margin: 0;
+}
+.project-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 8px;
+  overflow-y: auto;
+  flex: 1;
+}
+.project-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 10px;
+  border-radius: 8px;
+  margin-bottom: 2px;
+  color: var(--text-dim);
+}
+.project-item:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.project-item.active {
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 600;
+}
+.project-item .name {
+  flex: 1;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-item .count {
+  font-size: 11px;
+  color: var(--text-dim);
+  background: var(--bg);
+  padding: 1px 7px;
+  border-radius: 10px;
+}
+
+/* Main */
+.main {
+  overflow-y: auto;
+  padding: 24px 28px;
+}
+.main-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.main-header h1 {
+  margin: 0 0 4px;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+}
+.main-header p {
+  margin: 0;
+  color: var(--text-dim);
+  max-width: 60ch;
+}
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Board */
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.column {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  min-height: 120px;
+}
+.column-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+.column-header .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+.column-header h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.column-header .count {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 11px 12px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: border-color 0.12s, transform 0.06s;
+}
+.card:hover {
+  border-color: var(--accent);
+}
+.card:active {
+  transform: scale(0.995);
+}
+.card-title {
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.badge {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  text-transform: capitalize;
+}
+.due {
+  font-size: 11px;
+  color: var(--text-dim);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.due.overdue {
+  color: var(--danger);
+}
+
+.card-move {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+.card-move button {
+  flex: 1;
+  font-size: 11px;
+  padding: 4px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.card-move button:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--accent);
+}
+.card-move button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.add-task {
+  width: 100%;
+  padding: 8px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--text-dim);
+  background: transparent;
+  margin-top: 2px;
+}
+.add-task:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.empty {
+  color: var(--text-dim);
+  text-align: center;
+  padding: 60px 20px;
+}
+.empty h2 {
+  color: var(--text);
+}
+
+/* Modal */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 20px;
+}
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 460px;
+  padding: 22px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.modal h2 {
+  margin: 0 0 18px;
+  font-size: 18px;
+}
+.field {
+  margin-bottom: 14px;
+}
+.field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 22px;
+}
+.modal-actions .right {
+  display: flex;
+  gap: 10px;
+}
+
+/* ---------- Auth pages ---------- */
+.auth-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 30px 28px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+.auth-brand {
+  text-align: center;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.auth-brand span {
+  color: var(--accent);
+}
+.auth-title {
+  text-align: center;
+  font-size: 16px;
+  color: var(--text-dim);
+  margin: 0 0 22px;
+}
+.auth-form .field {
+  margin-bottom: 14px;
+}
+.auth-form button[type="submit"],
+.auth-submit {
+  width: 100%;
+  justify-content: center;
+  margin-top: 4px;
+}
+.oauth-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.oauth-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 7px 14px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-weight: 500;
+}
+.oauth-btn:hover {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+.oauth-btn svg {
+  width: 16px;
+  height: 16px;
+}
+.oauth-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-dim);
+  font-size: 12px;
+  margin: 6px 0 18px;
+}
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.auth-alt {
+  text-align: center;
+  margin-top: 18px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+.auth-alt a,
+.auth-link {
+  color: var(--accent);
+  text-decoration: none;
+}
+.auth-link:hover {
+  text-decoration: underline;
+}
+/* auth-alt links/buttons (Sign in, Back to sign in, Use a different email,
+   reset links) get the same sliding-underline hover as "Sign up". */
+.auth-alt a,
+.auth-alt button {
+  position: relative;
+}
+.auth-alt a::after,
+.auth-alt button::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.auth-alt a:hover,
+.auth-alt button:hover {
+  text-decoration: none;
+}
+.auth-alt a:hover::after,
+.auth-alt button:hover::after,
+.auth-alt a:focus-visible::after,
+.auth-alt button:focus-visible::after {
+  transform: scaleX(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-alt a::after,
+  .auth-alt button::after {
+    transition: none;
+  }
+}
+.form-error,
+.form-success {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 11px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.35;
+  margin-bottom: 14px;
+}
+.form-error {
+  background: rgba(229, 72, 77, 0.12);
+  border: 1px solid rgba(229, 72, 77, 0.4);
+  color: #ff9ea1;
+}
+.form-success {
+  background: rgba(22, 163, 74, 0.12);
+  border: 1px solid rgba(22, 163, 74, 0.4);
+  color: #8ce39a;
+}
+/* ---------- Animated status icons ---------- */
+.status-ic {
+  width: 1.1em;
+  height: 1.1em;
+  flex-shrink: 0;
+  transform-origin: center;
+  animation: icPop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.status-ic-check {
+  color: var(--done);
+}
+.status-ic-cross {
+  color: var(--danger);
+}
+/* Error-message cross pops in, then shakes for emphasis. */
+.form-error .status-ic-cross {
+  animation: icPop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+    crossShake 0.4s ease 0.26s;
+}
+@keyframes crossShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-2px); }
+  40% { transform: translateX(2px); }
+  60% { transform: translateX(-1.5px); }
+  80% { transform: translateX(1.5px); }
+}
+.status-ic .ic-ring {
+  opacity: 0.35;
+}
+.status-ic .ic-stroke {
+  stroke-dasharray: 26;
+  stroke-dashoffset: 26;
+  animation: icDraw 0.32s ease forwards 0.08s;
+}
+.status-ic .ic-stroke-2 {
+  animation-delay: 0.2s;
+}
+@keyframes icPop {
+  from {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes icDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .status-ic,
+  .form-error .status-ic-cross {
+    animation: none;
+  }
+  .status-ic .ic-stroke {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
+.field-hint {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 6px;
+}
+.forgot-link {
+  position: relative;
+  display: block;
+  width: fit-content;
+  margin: 14px auto 0;
+  font-size: 13px;
+}
+.forgot-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.forgot-link:hover {
+  color: var(--accent-hover);
+  text-decoration: none;
+}
+.forgot-link:hover::after,
+.forgot-link:focus-visible::after {
+  transform: scaleX(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .forgot-link::after {
+    transition: none;
+  }
+}
+
+/* User chip in sidebar */
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+}
+.user-chip .avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 13px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.user-chip .avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.user-chip .info {
+  flex: 1;
+  min-width: 0;
+}
+.user-chip .info .nm {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.user-chip .info .em {
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Signup: workspace + password UX ---------- */
+.ws-name {
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-domain {
+  font-size: 12px;
+  color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Subdomain input with suffix */
+.subdomain-input {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.subdomain-input:focus-within {
+  border-color: var(--accent);
+}
+.subdomain-input.invalid {
+  border-color: var(--danger);
+}
+.subdomain-input input {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  flex: 1;
+  min-width: 0;
+}
+.subdomain-input input:focus {
+  border: none;
+}
+.subdomain-suffix {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  color: var(--text-dim);
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.subdomain-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  margin-top: 6px;
+  color: var(--text-dim);
+  min-height: 16px;
+}
+.subdomain-status.available {
+  color: var(--done);
+}
+.subdomain-status.error {
+  color: var(--danger);
+}
+.subdomain-status.checking {
+  color: var(--in_progress);
+}
+
+/* Password strength meter */
+.pw-strength {
+  margin-top: 10px;
+}
+.pw-meter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pw-shield {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  color: var(--border);
+  transition: color 0.25s ease, transform 0.25s ease, filter 0.25s ease;
+}
+.pw-shield svg {
+  width: 20px;
+  height: 20px;
+}
+/* Locked + glowing once the password is strong. */
+.pw-shield.secure {
+  animation: shieldPulse 1.6s ease-in-out infinite;
+}
+@keyframes shieldPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 2px rgba(22, 163, 74, 0.5));
+  }
+  50% {
+    transform: scale(1.14);
+    filter: drop-shadow(0 0 7px rgba(22, 163, 74, 0.95));
+  }
+}
+.pw-bars {
+  display: flex;
+  gap: 5px;
+  flex: 1;
+}
+.pw-bar {
+  position: relative;
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+.pw-bar-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), background 0.25s ease;
+}
+.pw-bar-fill.active {
+  transform: scaleX(1);
+}
+/* A light sweeps across active segments — a subtle "scanning" feel. */
+.pw-bar-fill.active::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.5),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: pwShimmer 1.5s ease-in-out infinite;
+}
+@keyframes pwShimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+.pw-label {
+  flex-shrink: 0;
+  min-width: 68px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 600;
+  transition: color 0.25s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pw-shield.secure {
+    animation: none;
+    filter: drop-shadow(0 0 5px rgba(22, 163, 74, 0.8));
+  }
+  .pw-bar-fill.active::after {
+    animation: none;
+    display: none;
+  }
+}
+.pw-rules {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 12px;
+}
+.pw-rules li {
+  font-size: 12px;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pw-rules li.ok {
+  color: var(--done);
+}
+.pw-rules .rule-ic {
+  width: 13px;
+  height: 13px;
+}
+.pw-rules .rule-dot {
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.match-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  margin-top: 6px;
+}
+.match-hint.ok {
+  color: var(--done);
+}
+.match-hint.bad {
+  color: var(--danger);
+}
+
+/* Password show/hide toggle */
+.password-input {
+  position: relative;
+}
+.password-input input {
+  padding-right: 42px;
+}
+.pw-toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  color: var(--text-dim);
+}
+.pw-toggle:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+.pw-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Shield checkmark draws itself in when the password becomes strong. */
+.pw-shield .pw-check {
+  stroke-dasharray: 14;
+  stroke-dashoffset: 14;
+  transition: stroke-dashoffset 0.45s ease 0.08s;
+}
+.pw-shield.secure .pw-check {
+  stroke-dashoffset: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pw-shield .pw-check {
+    transition: none;
+  }
+}
+
+/* ---------- OTP verification ---------- */
+.otp-sent {
+  font-size: 13px;
+  color: var(--text-dim);
+  text-align: center;
+  margin: 0 0 18px;
+}
+.otp-input {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.otp-box {
+  width: 46px;
+  height: 54px;
+  padding: 0;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 600;
+  border-radius: 10px;
+  transition: border-color 0.12s, box-shadow 0.12s, transform 0.06s;
+}
+.otp-box:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.otp-box:not(:placeholder-shown),
+.otp-box[value]:not([value=""]) {
+  border-color: var(--accent);
+}
+.otp-timer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 18px;
+}
+.otp-clock {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text);
+}
+.otp-clock.low {
+  color: var(--danger);
+  animation: otpPulse 1s ease-in-out infinite;
+}
+@keyframes otpPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.otp-expired {
+  color: var(--danger);
+  font-weight: 600;
+}
+.otp-resend:disabled {
+  opacity: 0.45;
+  cursor: default;
+  text-decoration: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .otp-clock.low {
+    animation: none;
+  }
+}
+
+/* Back-to-sign-in link with arrow */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1;
+}
+.back-link svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+  flex-shrink: 0;
+  /* sub-pixel raise to sit on the text's optical center */
+  transform: translateY(-0.5px);
+  transition: transform 0.15s ease;
+}
+.back-link:hover svg {
+  transform: translate(-3px, -0.5px);
+}
+
+/* Animated running clock in the OTP "Expires in" timer */
+.otp-expires-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.clock-ic {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+.clock-ic.low {
+  color: var(--danger);
+}
+.clock-hand {
+  transform-box: view-box;
+  transform-origin: 12px 12px;
+  animation: clockSweep 2s linear infinite;
+}
+.clock-ic.low .clock-hand {
+  animation-duration: 1s;
+}
+@keyframes clockSweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .clock-hand {
+    animation: none;
+  }
+}
+
+/* Resend code button — refresh icon (same 14px size as the clock icon) */
+.otp-resend {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.resend-ic {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.resend-ic .chev {
+  fill: none;
+}
+/* Wave only while the button is enabled; light travels bottom -> top. */
+.otp-resend:not(:disabled) .resend-ic .chev {
+  animation: chevWave 1.4s ease-in-out infinite;
+}
+.otp-resend:not(:disabled) .resend-ic .chev-3 {
+  animation-delay: 0s;
+}
+.otp-resend:not(:disabled) .resend-ic .chev-2 {
+  animation-delay: 0.18s;
+}
+.otp-resend:not(:disabled) .resend-ic .chev-1 {
+  animation-delay: 0.36s;
+}
+@keyframes chevWave {
+  0%, 65%, 100% {
+    opacity: 0.3;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .otp-resend:not(:disabled) .resend-ic .chev {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* Inline error/success messages animate in */
+@keyframes formMsgIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.form-error,
+.form-success {
+  animation: formMsgIn 0.25s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .form-error,
+  .form-success {
+    animation: none;
+  }
+}
+
+/* ============ Light theme ============ */
+[data-theme="light"] {
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --surface-2: #eef1f5;
+  --border: #d7dce3;
+  --text: #1a1d24;
+  --text-dim: #5b6573;
+  --accent: #3f3f46;
+  --accent-hover: #52525b;
+  --danger: #d6353b;
+  --todo: #8a93a3;
+  --in_progress: #c8901f;
+  --done: #16A34A;
+  --prio-low: #16A34A;
+  --prio-medium: #c8901f;
+  --prio-high: #d6353b;
+  --ring: rgba(63, 63, 70, 0.22);
+}
+[data-theme="light"] .form-error {
+  color: #b3242a;
+}
+[data-theme="light"] .form-success {
+  color: #1c7a32;
+}
+
+/* Smooth transition when switching themes */
+body,
+.sidebar,
+.main,
+.auth-card,
+.column,
+.modal,
+.theme-toggle,
+input,
+textarea,
+select,
+.otp-box {
+  transition: background-color 0.2s ease, border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+/* ============ Theme toggle button ============ */
+.theme-toggle {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.theme-toggle:hover {
+  border-color: var(--accent);
+}
+.theme-toggle:active {
+  transform: scale(0.92);
+}
+.theme-toggle svg {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  transition: opacity 0.3s ease,
+    transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.theme-toggle .ic-sun {
+  color: #f0a92b;
+  opacity: 1;
+  transform: rotate(0) scale(1);
+}
+.theme-toggle .ic-moon {
+  color: var(--text);
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.4);
+}
+[data-theme="light"] .theme-toggle .ic-sun {
+  opacity: 0;
+  transform: rotate(90deg) scale(0.4);
+}
+[data-theme="light"] .theme-toggle .ic-moon {
+  opacity: 1;
+  transform: rotate(0) scale(1);
+}
+.theme-toggle-fixed {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 40;
+}
+@media (prefers-reduced-motion: reduce) {
+  .theme-toggle svg {
+    transition: opacity 0.15s ease;
+  }
+}
+
+/* "Code expired" alarm clock — rings (wobbles) for attention */
+.otp-expired {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.expired-ic {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  transform-origin: center;
+  animation: expiredRing 1.8s ease-in-out infinite;
+}
+@keyframes expiredRing {
+  0%, 55%, 100% { transform: rotate(0deg); }
+  8% { transform: rotate(-13deg); }
+  18% { transform: rotate(11deg); }
+  28% { transform: rotate(-8deg); }
+  38% { transform: rotate(5deg); }
+  48% { transform: rotate(-2deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .expired-ic {
+    animation: none;
+  }
+}
+
+/* Resend Code button draws attention once the code has expired */
+.otp-resend.attention {
+  border-radius: 6px;
+  animation: resendAttention 1.3s ease-in-out infinite;
+}
+@keyframes resendAttention {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .otp-resend.attention {
+    animation: none;
+    text-decoration: underline;
+  }
+}
+
+/* OTP boxes look inactive when disabled (e.g. code expired) */
+.otp-box:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Red border on OTP boxes when validation fails */
+.otp-box.invalid {
+  border-color: var(--danger);
+}
+.otp-box.invalid:focus {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(229, 72, 77, 0.2);
+}
+
+/* ---------- Send Code button: paper plane ---------- */
+.send-code-btn {
+  justify-content: center;
+  gap: 8px;
+}
+.send-plane {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+/* nudge on hover (idle) */
+.send-code-btn:hover:not(:disabled) .send-plane {
+  transform: translate(2px, -2px);
+}
+/* fly right + fade on click/loading */
+.send-plane.flying {
+  animation: planeTakeoff 0.55s ease forwards;
+}
+@keyframes planeTakeoff {
+  0% { transform: translate(0, 0); opacity: 1; }
+  100% { transform: translate(16px, -3px); opacity: 0; }
+}
+
+/* ---------- Step transition (fade + slide in) ---------- */
+.auth-step {
+  animation: stepIn 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes stepIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .send-plane,
+  .send-plane.flying,
+  .auth-step {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* ---------- Field validation errors ---------- */
+.field-error {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--danger);
+  animation: fieldErrIn 0.22s ease;
+}
+@keyframes fieldErrIn {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.warn-ic {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  animation: icPop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Invalid inputs: red border + a brief shake (OTP boxes keep their own style) */
+input.invalid:not(.otp-box) {
+  border-color: var(--danger);
+  animation: fieldShake 0.4s ease;
+}
+input.invalid:not(.otp-box):focus {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(229, 72, 77, 0.18);
+}
+.subdomain-input.invalid {
+  animation: fieldShake 0.4s ease;
+}
+@keyframes fieldShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .field-error,
+  .warn-ic,
+  input.invalid:not(.otp-box),
+  .subdomain-input.invalid {
+    animation: none;
+  }
+}
+
+/* ===================================================================
+   Global UI/UX polish
+   =================================================================== */
+
+/* --- Consistent input transitions (incl. focus ring) --- */
+input,
+textarea,
+select {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+
+/* --- Keyboard focus rings for controls (accessibility) --- */
+.btn:focus-visible,
+.btn-sm:focus-visible,
+a:focus-visible,
+.auth-link:focus-visible,
+.theme-toggle:focus-visible,
+.pw-toggle:focus-visible,
+.card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+/* --- Align custom inputs to the same focus ring --- */
+.otp-box:focus {
+  box-shadow: 0 0 0 3px var(--ring);
+}
+.subdomain-input:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+/* --- Three-dot loading indicator --- */
+.loading-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.loading-dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  display: inline-block;
+  animation: dotBounce 1s ease-in-out infinite;
+}
+.loading-dots span:nth-child(2) {
+  animation-delay: 0.16s;
+}
+.loading-dots span:nth-child(3) {
+  animation-delay: 0.32s;
+}
+@keyframes dotBounce {
+  0%, 80%, 100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  40% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+@keyframes dotPulse {
+  0%, 100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-dots span {
+    animation-name: dotPulse;
+  }
+}
+.btn:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+/* --- Tightened, consistent spacing --- */
+.auth-card {
+  padding: 26px 26px;
+}
+.auth-title {
+  margin: 0 0 18px;
+}
+.field {
+  margin-bottom: 13px;
+}
+.modal {
+  padding: 20px;
+}
+.modal h2 {
+  margin: 0 0 16px;
+}
+.modal-actions {
+  margin-top: 18px;
+}
+.main-header {
+  margin-bottom: 20px;
+}
+
+/* --- Responsive: tablet & mobile --- */
+@media (max-width: 1024px) {
+  .board {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 760px) {
+  .app {
+    grid-template-columns: 200px 1fr;
+  }
+  .main {
+    padding: 16px;
+  }
+  .board {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 560px) {
+  .auth-card {
+    padding: 22px 18px;
+  }
+  .auth-wrap {
+    padding: 16px;
+  }
+  .field-row {
+    grid-template-columns: 1fr;
+  }
+  .theme-toggle-fixed {
+    top: 12px;
+    right: 12px;
+  }
+}
+
+/* ---------- Login CTA section ---------- */
+.signup-cta {
+  text-align: center;
+  font-size: 13px;
+  margin-top: 16px;
+}
+.signup-cta-prompt {
+  color: var(--text-dim);
+}
+.signup-cta-link {
+  position: relative;
+  font-weight: 700;
+  color: var(--accent);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.signup-cta-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.signup-cta-link:hover {
+  color: var(--accent-hover);
+}
+.signup-cta-link:hover::after,
+.signup-cta-link:focus-visible::after {
+  transform: scaleX(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .signup-cta-link::after {
+    transition: none;
+  }
+}
+
+/* ===================================================================
+   Consistent premium focus states (Linear / Stripe / Vercel style)
+   - accent border + crisp 1px accent edge (reads as a slightly thicker
+     border) + a soft low-opacity outer glow
+   - box-shadow based, so there is NO layout shift / size change
+   - 200ms transition on focus & blur, applied to every control type
+   =================================================================== */
+input:focus,
+textarea:focus,
+select:focus,
+.otp-box:focus,
+.subdomain-input:focus-within {
+  outline: none;
+  border-color: var(--accent);
+  /* clean, slightly-thicker accent border — no glow */
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* The subdomain pill renders the border on the wrapper; its inner input
+   must not draw a second one. */
+.subdomain-input input:focus {
+  border: none;
+  box-shadow: none;
+}
+
+/* Invalid fields keep the same clean border, in the danger color. */
+input.invalid:not(.otp-box):focus,
+.otp-box.invalid:focus {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 1px var(--danger);
+}
+
+/* Smooth, consistent 200ms transition for focus/blur on all controls. */
+input,
+textarea,
+select,
+.otp-box,
+.subdomain-input {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+
+/* ===================================================================
+   Premium auth redesign — Geist / Linear / Vercel / Raycast feel
+   =================================================================== */
+
+[data-theme="light"] {
+  --card-shadow: 0 1px 2px rgba(16, 24, 40, 0.06),
+    0 10px 30px -10px rgba(16, 24, 40, 0.14);
+}
+
+/* Premium backdrop scoped to auth pages: soft radial glow + subtle noise. */
+.auth-wrap::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(900px 520px at 50% -8%, var(--glow-1), transparent 60%),
+    radial-gradient(680px 480px at 100% 110%, var(--glow-2), transparent 55%);
+}
+.auth-wrap::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Card: slightly narrower, denser, bordered, layered depth. */
+.auth-card {
+  max-width: 384px;
+  padding: 28px 26px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--card-shadow);
+}
+
+/* Typography hierarchy */
+.auth-brand {
+  font-size: 16px;
+  margin-bottom: 14px;
+  letter-spacing: -0.01em;
+}
+.auth-title {
+  font-size: 21px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  margin: 0 0 20px;
+}
+.field label {
+  font-size: 13px;
+  font-weight: 500;
+}
+.field-hint {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+/* Consistent control radius (10px). */
+input,
+textarea,
+select,
+.otp-box,
+.subdomain-input,
+.btn {
+  border-radius: var(--radius-control);
+}
+
+/* Buttons: consistent height, hover elevation, press feedback. */
+.btn {
+  min-height: 38px;
+  transition: background 0.16s ease, border-color 0.16s ease,
+    box-shadow 0.16s ease, transform 0.1s ease;
+}
+.btn-primary {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+}
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 6px 18px -6px var(--ring), 0 1px 2px rgba(0, 0, 0, 0.28);
+}
+.btn:active:not(:disabled) {
+  transform: scale(0.985);
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* Keep small buttons compact (the 38px min-height is for full-size buttons). */
+.btn-sm {
+  min-height: 30px;
+}
+
+/* Remove the browser autofill background (Chrome/Edge/Safari) so autofilled
+   fields keep the normal surface color + clean focus border in both themes. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: var(--text);
+  -webkit-box-shadow: 0 0 0 1000px var(--input-bg) inset;
+  box-shadow: 0 0 0 1000px var(--input-bg) inset;
+  caret-color: var(--text);
+  border-color: var(--border);
+}
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1px var(--accent), 0 0 0 1000px var(--input-bg) inset;
+  box-shadow: 0 0 0 1px var(--accent), 0 0 0 1000px var(--input-bg) inset;
+  border-color: var(--accent);
+}
+
+/* Plain field background — white in light mode, deep slate in dark mode. */
+:root {
+  --input-bg: var(--surface-2);
+}
+[data-theme="light"] {
+  --input-bg: #ffffff;
+}
+input,
+textarea,
+select,
+.otp-box,
+.subdomain-input {
+  background: var(--input-bg);
+}
+
+/* Task Bucket wordmark logo */
+.tb-logo {
+  width: 160px;
+  height: auto;
+  display: inline-block;
+  vertical-align: middle;
+  color: var(--text);
+}
+.tb-logo text {
+  font-family: var(--font-geist-sans), system-ui, -apple-system, "Segoe UI",
+    Roboto, sans-serif;
+}
+
+/* Bold cross-link (e.g. signup → "Sign in"), matching login's "Sign up". */
+.auth-strong {
+  font-weight: 700;
+}
+
+/* ===================================================================
+   Two-column signup wizard
+   =================================================================== */
+.signup-card {
+  display: flex;
+  width: 100%;
+  max-width: 880px;
+  min-height: 580px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+
+/* Left brand panel */
+.signup-brand-panel {
+  flex: 1 1 300px;
+  background: var(--surface-2);
+  border-right: 1px solid var(--border);
+  padding: 30px 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+}
+.signup-brand-logo {
+  width: 150px;
+}
+.signup-brand-h {
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.18;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin: 0 0 12px;
+}
+.signup-brand-p {
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  margin: 0 0 22px;
+}
+.signup-features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+.signup-features li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.signup-features svg {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  color: var(--text-dim);
+}
+.signup-brand-foot {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  opacity: 0.75;
+  margin: 0;
+}
+
+/* Right form panel */
+.signup-form-panel {
+  flex: 1.55 1 380px;
+  min-width: 0;
+  padding: 22px 30px 26px;
+  display: flex;
+  flex-direction: column;
+}
+.signup-topright {
+  text-align: right;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  margin: 0 0 6px;
+}
+.signup-form-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.signup-wizard {
+  width: 100%;
+  max-width: 360px;
+}
+
+/* Step progress */
+.signup-progress {
+  margin: 0 0 22px;
+}
+.signup-step-label {
+  display: block;
+  font-size: 11.5px;
+  color: var(--text-dim);
+  margin: 0 0 9px;
+}
+.signup-segs {
+  display: flex;
+  gap: 5px;
+}
+.signup-segs span {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+  transition: background 0.3s ease;
+}
+.signup-segs span.on {
+  background: var(--accent);
+}
+
+/* Wizard headings */
+.signup-h {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  margin: 0 0 5px;
+}
+.signup-sub {
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin: 0 0 20px;
+}
+.signup-resend {
+  margin-top: 16px;
+}
+.signup-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-dim);
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0 0 14px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.signup-back svg {
+  width: 14px;
+  height: 14px;
+}
+.signup-back:hover {
+  color: var(--text);
+}
+
+/* Responsive: stack the panels; trim marketing on small screens. */
+@media (max-width: 760px) {
+  .signup-card {
+    flex-direction: column;
+    max-width: 440px;
+    min-height: 0;
+  }
+  .signup-brand-panel {
+    flex: none;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 20px 22px;
+  }
+  .signup-brand-mid,
+  .signup-brand-foot {
+    display: none;
+  }
+  .signup-form-panel {
+    padding: 20px 22px 24px;
+  }
+}
+
+/* Signup wizard: align the OTP row to the panel edges (first box flush left,
+   last box flush right) so it lines up with the heading, button, and timer. */
+.signup-wizard .otp-input {
+  justify-content: space-between;
+}
+
+/* Resend Code: animated sliding underline on the text only (never the icon). */
+.otp-resend:hover {
+  text-decoration: none;
+}
+.otp-resend-text {
+  position: relative;
+}
+.otp-resend-text::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.otp-resend:not(:disabled):hover .otp-resend-text::after,
+.otp-resend:not(:disabled):focus-visible .otp-resend-text::after {
+  transform: scaleX(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .otp-resend-text::after {
+    transition: none;
+  }
+}
