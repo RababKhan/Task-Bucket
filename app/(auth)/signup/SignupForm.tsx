@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { passwordMeetsRules } from "@/lib/password";
@@ -38,12 +38,15 @@ const OTP_SECONDS = 60;
 export default function SignupForm({
   githubEnabled,
   googleEnabled,
+  step,
+  setStep,
 }: {
   githubEnabled: boolean;
   googleEnabled: boolean;
+  step: 1 | 2 | 3;
+  setStep: Dispatch<SetStateAction<1 | 2 | 3>>;
 }) {
   const router = useRouter();
-  const [step, setStep] = useState<1 | 2 | 3>(1);
 
   // Step 1 — email
   const [email, setEmail] = useState("");
@@ -418,26 +421,6 @@ export default function SignupForm({
 
         {step === 3 && (
           <form className="auth-form" onSubmit={createAccount} noValidate>
-            <button
-              type="button"
-              className="signup-back"
-              onClick={() => setStep(2)}
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-              >
-                <path d="M19 12H5" />
-                <path d="M12 19l-7-7 7-7" />
-              </svg>
-              Back
-            </button>
-
             <h1 className="signup-h">Set up your workspace</h1>
             <p className="signup-sub">Just a few details to finish.</p>
 
@@ -461,54 +444,54 @@ export default function SignupForm({
               <FieldError message={errors.name} />
             </div>
 
-            <div className="field-row">
-              <div className="field">
-                <label>Workspace Name</label>
+            <div className="field">
+              <label>Workspace Name</label>
+              <input
+                type="text"
+                value={workspaceName}
+                onChange={(e) => onWorkspaceName(e.target.value)}
+                placeholder="Acme Inc"
+                className={errors.workspaceName ? "invalid" : ""}
+                aria-invalid={!!errors.workspaceName || undefined}
+                required
+              />
+              <FieldError message={errors.workspaceName} />
+            </div>
+            <div className="field">
+              <label>Workspace URL</label>
+              <div
+                className={`subdomain-input ${
+                  sub.state === "error" ? "invalid" : ""
+                }`}
+              >
                 <input
                   type="text"
-                  value={workspaceName}
-                  onChange={(e) => onWorkspaceName(e.target.value)}
-                  placeholder="Acme Inc"
-                  className={errors.workspaceName ? "invalid" : ""}
-                  aria-invalid={!!errors.workspaceName || undefined}
+                  value={subdomain}
+                  onChange={(e) => onSubdomain(e.target.value)}
+                  placeholder="acme"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   required
                 />
-                <FieldError message={errors.workspaceName} />
+                <span className="subdomain-suffix">.{WORKSPACE_DOMAIN}</span>
               </div>
-              <div className="field">
-                <label>Workspace URL</label>
-                <div
-                  className={`subdomain-input ${
-                    sub.state === "error" ? "invalid" : ""
-                  }`}
-                >
-                  <input
-                    type="text"
-                    value={subdomain}
-                    onChange={(e) => onSubdomain(e.target.value)}
-                    placeholder="acme"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    required
-                  />
-                  <span className="subdomain-suffix">.{WORKSPACE_DOMAIN}</span>
+              {sub.state !== "idle" && (
+                <div className={`subdomain-status ${sub.state}`}>
+                  {sub.state === "checking" && "Checking availability…"}
+                  {sub.state === "available" && (
+                    <>
+                      <CheckIcon />
+                      {subdomain}.{WORKSPACE_DOMAIN} is available
+                    </>
+                  )}
+                  {sub.state === "error" && (
+                    <>
+                      <CrossIcon />
+                      {sub.message}
+                    </>
+                  )}
                 </div>
-              </div>
-            </div>
-            <div className={`subdomain-status ${sub.state}`}>
-              {sub.state === "checking" && "Checking availability…"}
-              {sub.state === "available" && (
-                <>
-                  <CheckIcon />
-                  {subdomain}.{WORKSPACE_DOMAIN} is available
-                </>
-              )}
-              {sub.state === "error" && (
-                <>
-                  <CrossIcon />
-                  {sub.message}
-                </>
               )}
             </div>
 

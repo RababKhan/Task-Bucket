@@ -79,7 +79,12 @@ export default function LoginForm() {
       </div>
 
       <div className="field">
-        <label>Password</label>
+        <div className="field-labelrow">
+          <label>Password</label>
+          <Link href="/forgot-password" className="auth-link forgot-inline">
+            Forgot password?
+          </Link>
+        </div>
         <PasswordInput
           autoComplete="current-password"
           value={password}
@@ -105,10 +110,6 @@ export default function LoginForm() {
           "Sign in"
         )}
       </button>
-
-      <Link href="/forgot-password" className="auth-link forgot-link">
-        Forgot Password?
-      </Link>
     </form>
   );
 }

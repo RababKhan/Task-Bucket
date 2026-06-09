@@ -34,7 +34,9 @@ const authConfig: NextAuthConfig = {
       : []),
   ],
   session: { strategy: "jwt" },
-  pages: { signIn: "/login" },
+  // New visitors land on sign-up first; the login page stays reachable via
+  // the "Sign in" link.
+  pages: { signIn: "/signup" },
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;

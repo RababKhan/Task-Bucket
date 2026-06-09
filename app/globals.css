@@ -8,6 +8,10 @@
   --text-dim: #98a1b2;
   --accent: #52525b;
   --accent-hover: #63636d;
+  /* Text links — the gray accent is too dark to read on the dark surface, so
+     links get their own readable tone. */
+  --link: #c4cad6;
+  --link-hover: #e9ebf1;
   --danger: #e5484d;
   --radius: 12px;
   --radius-control: 10px;
@@ -392,6 +396,19 @@ select:focus {
   color: var(--text);
   margin-bottom: 6px;
 }
+/* A label paired with a right-aligned link (e.g. Password … Forgot password?) */
+.field-labelrow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.field-labelrow label {
+  margin-bottom: 6px;
+}
+.forgot-inline {
+  font-size: 12px;
+}
 .field-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -503,7 +520,7 @@ select:focus {
 }
 .auth-alt a,
 .auth-link {
-  color: var(--accent);
+  color: var(--link);
   text-decoration: none;
 }
 .auth-link:hover {
@@ -842,6 +859,7 @@ select:focus {
 }
 .pw-bar-fill.active {
   transform: scaleX(1);
+  background: var(--done);
 }
 /* A light sweeps across active segments — a subtle "scanning" feel. */
 .pw-bar-fill.active::after {
@@ -884,9 +902,9 @@ select:focus {
   list-style: none;
   margin: 8px 0 0;
   padding: 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
 }
 .pw-rules li {
   font-size: 12px;
@@ -1164,6 +1182,8 @@ select:focus {
   --text-dim: #5b6573;
   --accent: #3f3f46;
   --accent-hover: #52525b;
+  --link: #3f3f46;
+  --link-hover: #18181b;
   --danger: #d6353b;
   --todo: #8a93a3;
   --in_progress: #c8901f;
@@ -1568,7 +1588,7 @@ a:focus-visible,
 .signup-cta-link {
   position: relative;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--link);
   text-decoration: none;
   transition: color 0.2s ease;
 }
@@ -1586,7 +1606,7 @@ a:focus-visible,
   transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .signup-cta-link:hover {
-  color: var(--accent-hover);
+  color: var(--link-hover);
 }
 .signup-cta-link:hover::after,
 .signup-cta-link:focus-visible::after {
@@ -1861,6 +1881,68 @@ select,
   color: var(--text-dim);
   opacity: 0.75;
   margin: 0;
+}
+
+/* Brand panel top bar: logo on the left, optional pill on the right. */
+.signup-brand-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+/* Live stat rows (login variant of the brand panel). */
+.brand-stats strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Numbered progress checklist (signup variant of the brand panel). */
+.brand-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.brand-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--text-dim);
+  transition: color 0.2s ease;
+}
+.brand-step-num {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+.brand-step-num svg {
+  width: 13px;
+  height: 13px;
+}
+.brand-step.active {
+  color: var(--text);
+  font-weight: 500;
+}
+.brand-step.active .brand-step-num,
+.brand-step.done .brand-step-num {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.brand-step.done {
+  color: var(--text);
 }
 
 /* Right form panel */
