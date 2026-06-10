@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   }
 
   // On signup it's helpful (and standard) to tell the user the email is taken.
-  if (getUserByEmail(email)) {
+  if (await getUserByEmail(email)) {
     return NextResponse.json(
       {
         error:
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const code = createSignupOtp(email);
+  const code = await createSignupOtp(email);
   try {
     const { subject, html, text } = signupCodeEmail(code);
     await sendEmail({ to: email, subject, html, text });

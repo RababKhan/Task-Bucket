@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
-import db, { type Project } from "@/lib/db";
+import { dbGet, dbRun, type Project } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 // Fetch a project only if it belongs to the given user.
-function ownedProject(id: string, userId: string): Project | undefined {
-  return db
-    .prepare("SELECT * FROM projects WHERE id = ? AND owner_id = ?")
-    .get(id, userId) as Project | undefined;
+function ownedProject(
+  id: string,
+  userId: string
+): Promise<Project | undefined> {
+  return dbGet<Project>(
+    "SELECT * FROM projects WHERE id = ? AND owner_id = ?",
+    [id, userId]
+  );
 }
 
 export async function PATCH(request: Request, { params }: Ctx) {
@@ -19,7 +23,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
   const { id } = await params;
   const body = await request.json().catch(() => ({}));
 
-  const existing = ownedProject(id, userId);
+  const existing = await ownedProject(id, userId);
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -35,15 +39,15 @@ export async function PATCH(request: Request, { params }: Ctx) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 });
   }
 
-  db.prepare("UPDATE projects SET name = ?, description = ? WHERE id = ?").run(
+  await dbRun("UPDATE projects SET name = ?, description = ? WHERE id = ?", [
     name,
     description,
-    id
-  );
+    id,
+  ]);
 
-  const updated = db
-    .prepare("SELECT * FROM projects WHERE id = ?")
-    .get(id) as Project;
+  const updated = await dbGet<Project>("SELECT * FROM projects WHERE id = ?", [
+    id,
+  ]);
   return NextResponse.json(updated);
 }
 
@@ -54,11 +58,16 @@ export async function DELETE(_request: Request, { params }: Ctx) {
   }
   const { id } = await params;
 
-  const info = db
-    .prepare("DELETE FROM projects WHERE id = ? AND owner_id = ?")
-    .run(id, userId);
-  if (info.changes === 0) {
+  const existing = await ownedProject(id, userId);
+  if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+
+  // Remove tasks explicitly (don't rely on FK cascade across drivers).
+  await dbRun("DELETE FROM tasks WHERE project_id = ?", [id]);
+  await dbRun("DELETE FROM projects WHERE id = ? AND owner_id = ?", [
+    id,
+    userId,
+  ]);
   return NextResponse.json({ ok: true });
 }

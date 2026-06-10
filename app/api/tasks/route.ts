@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
-import db, { type Task } from "@/lib/db";
+import { dbAll, dbGet, dbRun, type Task } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 
-function userOwnsProject(projectId: number | string, userId: string): boolean {
-  return !!db
-    .prepare("SELECT 1 FROM projects WHERE id = ? AND owner_id = ?")
-    .get(projectId, userId);
+async function userOwnsProject(
+  projectId: number | string,
+  userId: string
+): Promise<boolean> {
+  const row = await dbGet(
+    "SELECT 1 AS x FROM projects WHERE id = ? AND owner_id = ?",
+    [projectId, userId]
+  );
+  return !!row;
 }
 
 export async function GET(request: Request) {
@@ -19,15 +24,14 @@ export async function GET(request: Request) {
   if (!projectId) {
     return NextResponse.json({ error: "project_id is required" }, { status: 400 });
   }
-  if (!userOwnsProject(projectId, userId)) {
+  if (!(await userOwnsProject(projectId, userId))) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const tasks = db
-    .prepare(
-      "SELECT * FROM tasks WHERE project_id = ? ORDER BY position ASC, id ASC"
-    )
-    .all(projectId) as Task[];
+  const tasks = await dbAll<Task>(
+    "SELECT * FROM tasks WHERE project_id = ? ORDER BY position ASC, id ASC",
+    [projectId]
+  );
 
   return NextResponse.json(tasks);
 }
@@ -48,7 +52,7 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  if (!userOwnsProject(projectId, userId)) {
+  if (!(await userOwnsProject(projectId, userId))) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
@@ -61,22 +65,21 @@ export async function POST(request: Request) {
   const description = String(body.description ?? "").trim();
   const dueDate = body.due_date ? String(body.due_date) : null;
 
-  const { maxPos } = db
-    .prepare(
-      "SELECT COALESCE(MAX(position), -1) AS maxPos FROM tasks WHERE project_id = ? AND status = ?"
-    )
-    .get(projectId, status) as { maxPos: number };
+  const posRow = await dbGet<{ maxPos: number }>(
+    "SELECT COALESCE(MAX(position), -1) AS maxPos FROM tasks WHERE project_id = ? AND status = ?",
+    [projectId, status]
+  );
+  const maxPos = posRow?.maxPos ?? -1;
 
-  const info = db
-    .prepare(
-      `INSERT INTO tasks (project_id, title, description, status, priority, due_date, position)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
-    )
-    .run(projectId, title, description, status, priority, dueDate, maxPos + 1);
+  const info = await dbRun(
+    `INSERT INTO tasks (project_id, title, description, status, priority, due_date, position)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [projectId, title, description, status, priority, dueDate, maxPos + 1]
+  );
 
-  const task = db
-    .prepare("SELECT * FROM tasks WHERE id = ?")
-    .get(info.lastInsertRowid) as Task;
+  const task = await dbGet<Task>("SELECT * FROM tasks WHERE id = ?", [
+    info.lastInsertRowid,
+  ]);
 
   return NextResponse.json(task, { status: 201 });
 }

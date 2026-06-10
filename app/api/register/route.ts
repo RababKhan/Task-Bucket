@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import db from "@/lib/db";
 import { createCredentialsUser, getUserByEmail } from "@/lib/auth-db";
 import { passwordMeetsRules, passwordRuleFailures } from "@/lib/password";
 import {
@@ -28,7 +27,7 @@ export async function POST(request: Request) {
     );
   }
   // Email must have been verified earlier in the signup wizard.
-  if (!isSignupVerified(email, verifyToken)) {
+  if (!(await isSignupVerified(email, verifyToken))) {
     return NextResponse.json(
       { error: "Your email verification has expired. Please start over." },
       { status: 400 }
@@ -58,7 +57,7 @@ export async function POST(request: Request) {
   }
 
   // ---- Uniqueness ----
-  if (getUserByEmail(email)) {
+  if (await getUserByEmail(email)) {
     return NextResponse.json(
       {
         error:
@@ -68,23 +67,22 @@ export async function POST(request: Request) {
       { status: 409 }
     );
   }
-  if (!isSubdomainAvailable(subdomain)) {
+  if (!(await isSubdomainAvailable(subdomain))) {
     return NextResponse.json(
       { error: "That subdomain is already taken.", field: "subdomain" },
       { status: 409 }
     );
   }
 
-  // ---- Create user + workspace atomically ----
-  db.exec("BEGIN");
+  // ---- Create user + workspace ----
+  // If the workspace insert fails, the user still gets one auto-provisioned on
+  // their first sign-in (see ensureWorkspaceForUser), so this is safe to do
+  // sequentially without a wrapping transaction.
   try {
-    const user = createCredentialsUser(email, password, name);
-    createWorkspace(user.id, workspaceName, subdomain);
-    db.exec("COMMIT");
-    clearSignupOtp(email);
+    const user = await createCredentialsUser(email, password, name);
+    await createWorkspace(user.id, workspaceName, subdomain);
+    await clearSignupOtp(email);
   } catch (err) {
-    db.exec("ROLLBACK");
-    // Most likely a race on the unique email/subdomain constraint.
     console.error("[register] failed:", err);
     return NextResponse.json(
       { error: "Could not create account. Please try again." },

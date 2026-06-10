@@ -4,7 +4,7 @@ import {
   createHash,
   timingSafeEqual,
 } from "node:crypto";
-import db from "@/lib/db";
+import { dbGet, dbRun } from "@/lib/db";
 
 // Email verification for the signup wizard (no user row exists yet, so this is
 // keyed by email rather than user id — see lib/otp.ts for the reset flow).
@@ -35,13 +35,14 @@ type Row = {
   verify_expires_at: string | null;
 };
 
-export function createSignupOtp(email: string): string {
+export async function createSignupOtp(email: string): Promise<string> {
   const e = norm(email);
   const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
-  db.prepare("DELETE FROM signup_otps WHERE email = ? COLLATE NOCASE").run(e);
-  db.prepare(
-    "INSERT INTO signup_otps (email, otp_hash, expires_at) VALUES (?, ?, ?)"
-  ).run(e, sha256(code), isoPlus(OTP_TTL_MS));
+  await dbRun("DELETE FROM signup_otps WHERE email = ? COLLATE NOCASE", [e]);
+  await dbRun(
+    "INSERT INTO signup_otps (email, otp_hash, expires_at) VALUES (?, ?, ?)",
+    [e, sha256(code), isoPlus(OTP_TTL_MS)]
+  );
   return code;
 }
 
@@ -49,11 +50,15 @@ export type VerifyResult =
   | { ok: true; verifyToken: string }
   | { ok: false; error: string };
 
-export function verifySignupOtp(email: string, code: string): VerifyResult {
+export async function verifySignupOtp(
+  email: string,
+  code: string
+): Promise<VerifyResult> {
   const e = norm(email);
-  const row = db
-    .prepare("SELECT * FROM signup_otps WHERE email = ? COLLATE NOCASE")
-    .get(e) as Row | undefined;
+  const row = await dbGet<Row>(
+    "SELECT * FROM signup_otps WHERE email = ? COLLATE NOCASE",
+    [e]
+  );
 
   if (!row || !row.otp_hash || !row.expires_at) {
     return { ok: false, error: "Invalid or expired code. Please request a new one." };
@@ -71,9 +76,10 @@ export function verifySignupOtp(email: string, code: string): VerifyResult {
     provided.length === stored.length && timingSafeEqual(provided, stored);
 
   if (!matches) {
-    db.prepare(
-      "UPDATE signup_otps SET attempts = attempts + 1 WHERE email = ? COLLATE NOCASE"
-    ).run(e);
+    await dbRun(
+      "UPDATE signup_otps SET attempts = attempts + 1 WHERE email = ? COLLATE NOCASE",
+      [e]
+    );
     const left = MAX_ATTEMPTS - (row.attempts + 1);
     return {
       ok: false,
@@ -85,26 +91,30 @@ export function verifySignupOtp(email: string, code: string): VerifyResult {
   }
 
   const verifyToken = randomBytes(32).toString("hex");
-  db.prepare(
+  await dbRun(
     `UPDATE signup_otps
      SET otp_hash = NULL, expires_at = NULL, attempts = 0,
          verify_token_hash = ?, verify_expires_at = ?
-     WHERE email = ? COLLATE NOCASE`
-  ).run(sha256(verifyToken), isoPlus(VERIFY_TTL_MS), e);
+     WHERE email = ? COLLATE NOCASE`,
+    [sha256(verifyToken), isoPlus(VERIFY_TTL_MS), e]
+  );
 
   return { ok: true, verifyToken };
 }
 
 // Used by /api/register to confirm the email was verified in this signup.
-export function isSignupVerified(email: string, token: string): boolean {
+export async function isSignupVerified(
+  email: string,
+  token: string
+): Promise<boolean> {
   if (!token) return false;
-  const row = db
-    .prepare(
-      "SELECT verify_token_hash, verify_expires_at FROM signup_otps WHERE email = ? COLLATE NOCASE"
-    )
-    .get(norm(email)) as
-    | { verify_token_hash: string | null; verify_expires_at: string | null }
-    | undefined;
+  const row = await dbGet<{
+    verify_token_hash: string | null;
+    verify_expires_at: string | null;
+  }>(
+    "SELECT verify_token_hash, verify_expires_at FROM signup_otps WHERE email = ? COLLATE NOCASE",
+    [norm(email)]
+  );
   if (!row || !row.verify_token_hash) return false;
   if (isExpired(row.verify_expires_at)) return false;
   const a = Buffer.from(sha256(token), "hex");
@@ -112,8 +122,8 @@ export function isSignupVerified(email: string, token: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-export function clearSignupOtp(email: string): void {
-  db.prepare("DELETE FROM signup_otps WHERE email = ? COLLATE NOCASE").run(
-    norm(email)
-  );
+export async function clearSignupOtp(email: string): Promise<void> {
+  await dbRun("DELETE FROM signup_otps WHERE email = ? COLLATE NOCASE", [
+    norm(email),
+  ]);
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import db, { type Task } from "@/lib/db";
+import { dbGet, dbRun, type Task } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -8,14 +8,13 @@ const STATUSES = ["todo", "in_progress", "done"];
 const PRIORITIES = ["low", "medium", "high"];
 
 // Fetch a task only if its project belongs to the given user.
-function ownedTask(id: string, userId: string): Task | undefined {
-  return db
-    .prepare(
-      `SELECT t.* FROM tasks t
-       JOIN projects p ON p.id = t.project_id
-       WHERE t.id = ? AND p.owner_id = ?`
-    )
-    .get(id, userId) as Task | undefined;
+function ownedTask(id: string, userId: string): Promise<Task | undefined> {
+  return dbGet<Task>(
+    `SELECT t.* FROM tasks t
+     JOIN projects p ON p.id = t.project_id
+     WHERE t.id = ? AND p.owner_id = ?`,
+    [id, userId]
+  );
 }
 
 export async function PATCH(request: Request, { params }: Ctx) {
@@ -26,7 +25,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
   const { id } = await params;
   const body = await request.json().catch(() => ({}));
 
-  const existing = ownedTask(id, userId);
+  const existing = await ownedTask(id, userId);
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -56,11 +55,12 @@ export async function PATCH(request: Request, { params }: Ctx) {
         : null
       : existing.due_date;
 
-  db.prepare(
-    `UPDATE tasks SET title = ?, description = ?, status = ?, priority = ?, due_date = ? WHERE id = ?`
-  ).run(title, description, status, priority, dueDate, id);
+  await dbRun(
+    `UPDATE tasks SET title = ?, description = ?, status = ?, priority = ?, due_date = ? WHERE id = ?`,
+    [title, description, status, priority, dueDate, id]
+  );
 
-  const updated = db.prepare("SELECT * FROM tasks WHERE id = ?").get(id) as Task;
+  const updated = await dbGet<Task>("SELECT * FROM tasks WHERE id = ?", [id]);
   return NextResponse.json(updated);
 }
 
@@ -71,11 +71,11 @@ export async function DELETE(_request: Request, { params }: Ctx) {
   }
   const { id } = await params;
 
-  const existing = ownedTask(id, userId);
+  const existing = await ownedTask(id, userId);
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  db.prepare("DELETE FROM tasks WHERE id = ?").run(id);
+  await dbRun("DELETE FROM tasks WHERE id = ?", [id]);
   return NextResponse.json({ ok: true });
 }

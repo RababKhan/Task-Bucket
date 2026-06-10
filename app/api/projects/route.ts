@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import db, { type Project } from "@/lib/db";
+import { dbAll, dbGet, dbRun, type Project } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 
 export async function GET() {
@@ -8,16 +8,15 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const projects = db
-    .prepare(
-      `SELECT p.*, COUNT(t.id) AS task_count
-       FROM projects p
-       LEFT JOIN tasks t ON t.project_id = p.id
-       WHERE p.owner_id = ?
-       GROUP BY p.id
-       ORDER BY p.created_at DESC, p.id DESC`
-    )
-    .all(userId) as (Project & { task_count: number })[];
+  const projects = await dbAll<Project & { task_count: number }>(
+    `SELECT p.*, COUNT(t.id) AS task_count
+     FROM projects p
+     LEFT JOIN tasks t ON t.project_id = p.id
+     WHERE p.owner_id = ?
+     GROUP BY p.id
+     ORDER BY p.created_at DESC, p.id DESC`,
+    [userId]
+  );
   return NextResponse.json(projects);
 }
 
@@ -35,15 +34,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 });
   }
 
-  const info = db
-    .prepare(
-      "INSERT INTO projects (owner_id, name, description) VALUES (?, ?, ?)"
-    )
-    .run(userId, name, description);
+  const info = await dbRun(
+    "INSERT INTO projects (owner_id, name, description) VALUES (?, ?, ?)",
+    [userId, name, description]
+  );
 
-  const project = db
-    .prepare("SELECT * FROM projects WHERE id = ?")
-    .get(info.lastInsertRowid) as Project;
+  const project = await dbGet<Project>("SELECT * FROM projects WHERE id = ?", [
+    info.lastInsertRowid,
+  ]);
 
   return NextResponse.json(project, { status: 201 });
 }

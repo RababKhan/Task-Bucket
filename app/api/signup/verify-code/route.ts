@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = verifySignupOtp(email, otp);
+  const result = await verifySignupOtp(email, otp);
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }

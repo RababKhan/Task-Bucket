@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { githubEnabled, googleEnabled } from "@/auth.config";
 import OAuthButtons from "../OAuthButtons";
@@ -32,7 +33,9 @@ export default function LoginPage() {
                 />
               )}
 
-              <LoginForm />
+              <Suspense fallback={null}>
+                <LoginForm />
+              </Suspense>
             </div>
           </div>
         </div>

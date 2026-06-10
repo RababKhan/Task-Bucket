@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { validateSubdomain, isSubdomainAvailable } from "@/lib/workspace";
 
 // Public endpoint used during signup to validate a subdomain live.
-export function GET(request: Request) {
+export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const subdomain = (searchParams.get("subdomain") ?? "").trim().toLowerCase();
 
@@ -11,7 +11,7 @@ export function GET(request: Request) {
     return NextResponse.json({ available: false, error: formatError });
   }
 
-  if (!isSubdomainAvailable(subdomain)) {
+  if (!(await isSubdomainAvailable(subdomain))) {
     return NextResponse.json({
       available: false,
       error: "That subdomain is already taken.",

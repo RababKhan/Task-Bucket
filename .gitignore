@@ -8,7 +8,8 @@
 # production
 /build
 
-# database
+# database (local dev libSQL file + backups)
+/data/
 *.db
 *.db-shm
 *.db-wal

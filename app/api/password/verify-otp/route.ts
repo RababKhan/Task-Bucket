@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const user = getUserByEmail(email);
+  const user = await getUserByEmail(email);
   // Same generic error whether the user exists or the code is wrong.
   if (!user) {
     return NextResponse.json(
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = verifyOtp(user.id, otp);
+  const result = await verifyOtp(user.id, otp);
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }

@@ -11,10 +11,10 @@ export async function POST(request: Request) {
   const generic = NextResponse.json({ ok: true });
   if (!email) return generic;
 
-  const user = getUserByEmail(email);
+  const user = await getUserByEmail(email);
   if (!user || !user.email) return generic;
 
-  const code = createOtp(user.id);
+  const code = await createOtp(user.id);
 
   try {
     const { subject, html, text } = otpEmail(code);

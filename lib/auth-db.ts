@@ -4,7 +4,7 @@ import {
   randomUUID,
   timingSafeEqual,
 } from "node:crypto";
-import db from "@/lib/db";
+import { dbGet, dbRun } from "@/lib/db";
 
 export type DbUser = {
   id: string;
@@ -32,98 +32,96 @@ export function verifyPassword(password: string, stored: string): boolean {
 }
 
 // ---- User lookups ----
-export function getUserByEmail(email: string): DbUser | undefined {
-  return db
-    .prepare("SELECT * FROM users WHERE email = ? COLLATE NOCASE")
-    .get(email.trim()) as DbUser | undefined;
+export function getUserByEmail(email: string): Promise<DbUser | undefined> {
+  return dbGet<DbUser>("SELECT * FROM users WHERE email = ? COLLATE NOCASE", [
+    email.trim(),
+  ]);
 }
 
-export function getUserById(id: string): DbUser | undefined {
-  return db.prepare("SELECT * FROM users WHERE id = ?").get(id) as
-    | DbUser
-    | undefined;
+export function getUserById(id: string): Promise<DbUser | undefined> {
+  return dbGet<DbUser>("SELECT * FROM users WHERE id = ?", [id]);
 }
 
 // If this is the very first user, claim the seeded (unowned) sample project(s).
-function claimOrphanProjectsIfFirstUser(userId: string) {
-  const { n } = db.prepare("SELECT COUNT(*) AS n FROM users").get() as {
-    n: number;
-  };
-  if (n === 1) {
-    db.prepare(
-      "UPDATE projects SET owner_id = ? WHERE owner_id IS NULL"
-    ).run(userId);
+async function claimOrphanProjectsIfFirstUser(userId: string) {
+  const row = await dbGet<{ n: number }>("SELECT COUNT(*) AS n FROM users");
+  if (row && row.n === 1) {
+    await dbRun("UPDATE projects SET owner_id = ? WHERE owner_id IS NULL", [
+      userId,
+    ]);
   }
 }
 
 // ---- Credentials signup ----
-export function createCredentialsUser(
+export async function createCredentialsUser(
   email: string,
   password: string,
   name: string
-): DbUser {
+): Promise<DbUser> {
   const id = randomUUID();
-  db.prepare(
-    "INSERT INTO users (id, name, email, password_hash) VALUES (?, ?, ?, ?)"
-  ).run(id, name.trim() || null, email.trim(), hashPassword(password));
-  claimOrphanProjectsIfFirstUser(id);
-  return getUserById(id)!;
+  await dbRun(
+    "INSERT INTO users (id, name, email, password_hash) VALUES (?, ?, ?, ?)",
+    [id, name.trim() || null, email.trim(), hashPassword(password)]
+  );
+  await claimOrphanProjectsIfFirstUser(id);
+  return (await getUserById(id))!;
 }
 
 // ---- OAuth sign-in: find-or-create + link by email ----
-export function upsertOAuthUser(params: {
+export async function upsertOAuthUser(params: {
   provider: string;
   providerAccountId: string;
   email?: string | null;
   name?: string | null;
   image?: string | null;
-}): DbUser {
+}): Promise<DbUser> {
   const { provider, providerAccountId } = params;
   const email = params.email?.trim() || null;
 
   // 1. Already linked?
-  const link = db
-    .prepare(
-      "SELECT user_id FROM oauth_accounts WHERE provider = ? AND provider_account_id = ?"
-    )
-    .get(provider, providerAccountId) as { user_id: string } | undefined;
+  const link = await dbGet<{ user_id: string }>(
+    "SELECT user_id FROM oauth_accounts WHERE provider = ? AND provider_account_id = ?",
+    [provider, providerAccountId]
+  );
   if (link) {
-    return getUserById(link.user_id)!;
+    return (await getUserById(link.user_id))!;
   }
 
   // 2. Existing user with same (verified) email? Link this provider to them.
-  let user = email ? getUserByEmail(email) : undefined;
+  let user = email ? await getUserByEmail(email) : undefined;
 
   if (!user) {
     // 3. Brand new user.
     const id = randomUUID();
-    db.prepare(
-      "INSERT INTO users (id, name, email, image, email_verified) VALUES (?, ?, ?, ?, datetime('now'))"
-    ).run(id, params.name ?? null, email, params.image ?? null);
-    user = getUserById(id)!;
-    claimOrphanProjectsIfFirstUser(id);
-  } else if (!user.image && params.image) {
-    db.prepare("UPDATE users SET image = ? WHERE id = ?").run(
-      params.image,
-      user.id
+    await dbRun(
+      "INSERT INTO users (id, name, email, image, email_verified) VALUES (?, ?, ?, ?, datetime('now'))",
+      [id, params.name ?? null, email, params.image ?? null]
     );
+    user = (await getUserById(id))!;
+    await claimOrphanProjectsIfFirstUser(id);
+  } else if (!user.image && params.image) {
+    await dbRun("UPDATE users SET image = ? WHERE id = ?", [
+      params.image,
+      user.id,
+    ]);
   }
 
-  db.prepare(
-    "INSERT INTO oauth_accounts (user_id, provider, provider_account_id) VALUES (?, ?, ?)"
-  ).run(user.id, provider, providerAccountId);
+  await dbRun(
+    "INSERT INTO oauth_accounts (user_id, provider, provider_account_id) VALUES (?, ?, ?)",
+    [user.id, provider, providerAccountId]
+  );
 
-  return getUserById(user.id)!;
+  return (await getUserById(user.id))!;
 }
 
 // ---- Set a new password (used by the OTP reset flow) ----
 // OTP generation / verification lives in lib/otp.ts.
-export function setUserPassword(userId: string, password: string) {
-  db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(
+export async function setUserPassword(userId: string, password: string) {
+  await dbRun("UPDATE users SET password_hash = ? WHERE id = ?", [
     hashPassword(password),
-    userId
-  );
+    userId,
+  ]);
   // Invalidate any outstanding reset state for this user.
-  db.prepare("DELETE FROM password_reset_tokens WHERE user_id = ?").run(userId);
-  db.prepare("DELETE FROM password_otps WHERE user_id = ?").run(userId);
+  await dbRun("DELETE FROM password_reset_tokens WHERE user_id = ?", [userId]);
+  await dbRun("DELETE FROM password_otps WHERE user_id = ?", [userId]);
 }

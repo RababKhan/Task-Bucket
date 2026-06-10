@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const user = consumeResetToken(token);
+  const user = await consumeResetToken(token);
   if (!user) {
     return NextResponse.json(
       { error: "Your reset session has expired. Please start over." },
@@ -28,6 +28,6 @@ export async function POST(request: Request) {
     );
   }
 
-  setUserPassword(user.id, password);
+  await setUserPassword(user.id, password);
   return NextResponse.json({ ok: true });
 }

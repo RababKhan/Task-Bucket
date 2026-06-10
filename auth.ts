@@ -22,7 +22,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const password = String(credentials?.password ?? "");
         if (!email || !password) return null;
 
-        const user = getUserByEmail(email);
+        const user = await getUserByEmail(email);
         if (!user || !user.password_hash) return null;
         if (!verifyPassword(password, user.password_hash)) return null;
 
@@ -40,7 +40,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user, account, profile }) {
       // OAuth sign-in: upsert into our DB and use our internal user id.
       if (account && account.type === "oauth" && profile) {
-        const dbUser = upsertOAuthUser({
+        const dbUser = await upsertOAuthUser({
           provider: account.provider,
           providerAccountId: account.providerAccountId,
           email: (profile.email as string) ?? null,
@@ -66,7 +66,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // it on the token. OAuth sign-ups get one auto-provisioned here.
       if ((account || user) && token.uid) {
         const emailLocal = ((token.email as string | null) ?? "").split("@")[0];
-        const ws = ensureWorkspaceForUser(
+        const ws = await ensureWorkspaceForUser(
           token.uid as string,
           (token.name as string | null) ?? null,
           emailLocal || null
