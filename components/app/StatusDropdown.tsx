@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ProjectStatus } from "@/lib/types";
 import { PROJECT_STATUS_ORDER, PROJECT_STATUS_LABELS } from "@/lib/types";
 import StatusIcon from "@/components/app/StatusIcon";
@@ -13,13 +13,30 @@ export default function StatusDropdown({
   onChange: (s: ProjectStatus) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [dropUp, setDropUp] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // ~7 rows * 36px + padding, capped at the menu max-height.
+  const MENU_H = 264;
+
+  function toggle() {
+    if (!open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      const box = triggerRef.current.closest(".modal");
+      const bottomBound =
+        (box ? box.getBoundingClientRect().bottom : window.innerHeight) - 8;
+      setDropUp(rect.bottom + MENU_H > bottomBound);
+    }
+    setOpen((o) => !o);
+  }
 
   return (
     <div className="status-dd">
       <button
+        ref={triggerRef}
         type="button"
         className="status-dd-btn"
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
       >
         <StatusIcon status={value} />
         <span className="status-dd-current">{PROJECT_STATUS_LABELS[value]}</span>
@@ -31,7 +48,7 @@ export default function StatusDropdown({
       {open && (
         <>
           <div className="status-dd-backdrop" onClick={() => setOpen(false)} />
-          <div className="status-dd-menu" role="listbox">
+          <div className={`status-dd-menu${dropUp ? " up" : ""}`} role="listbox">
             {PROJECT_STATUS_ORDER.map((s) => (
               <button
                 type="button"

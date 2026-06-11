@@ -945,6 +945,10 @@ select,
   overflow-y: auto;
   scrollbar-width: none; /* Firefox */
 }
+.status-dd-menu.up {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
 .status-dd-menu::-webkit-scrollbar {
   width: 0;
   height: 0;
