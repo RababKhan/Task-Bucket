@@ -1161,3 +1161,11 @@ select,
 .char-count.full {
   color: var(--danger);
 }
+
+/* Standing rule: every button uses an 8px radius. */
+.btn,
+.btn-sm,
+.btn-outline,
+.empty-create-btn {
+  border-radius: 8px;
+}
