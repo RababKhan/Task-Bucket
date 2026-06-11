@@ -99,6 +99,7 @@ CREATE TABLE IF NOT EXISTS projects (
 CREATE TABLE IF NOT EXISTS tasks (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   project_id  INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  parent_id   INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
   title       TEXT NOT NULL,
   description TEXT NOT NULL DEFAULT '',
   status      TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo','in_progress','done')),
@@ -120,6 +121,16 @@ async function migrate(): Promise<void> {
   }
   await client.execute(
     "CREATE INDEX IF NOT EXISTS idx_projects_owner ON projects(owner_id)"
+  );
+
+  // Subtasks: tasks.parent_id (added after the initial tasks table).
+  const taskInfo = await client.execute("PRAGMA table_info(tasks)");
+  const hasParent = taskInfo.rows.some((r) => (r as Row).name === "parent_id");
+  if (!hasParent) {
+    await client.execute("ALTER TABLE tasks ADD COLUMN parent_id INTEGER");
+  }
+  await client.execute(
+    "CREATE INDEX IF NOT EXISTS idx_tasks_parent ON tasks(parent_id)"
   );
 }
 

@@ -13,6 +13,7 @@ export type TaskPriority = "low" | "medium" | "high";
 export type Task = {
   id: number;
   project_id: number;
+  parent_id: number | null;
   title: string;
   description: string;
   status: TaskStatus;

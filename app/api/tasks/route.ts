@@ -28,8 +28,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const tasks = await dbAll<Task>(
-    "SELECT * FROM tasks WHERE project_id = ? ORDER BY position ASC, id ASC",
+  // Top-level tasks only (subtasks live on the task detail page), with a
+  // rolled-up count of their subtasks.
+  const tasks = await dbAll<Task & { subtask_total: number; subtask_done: number }>(
+    `SELECT t.*,
+       (SELECT COUNT(*) FROM tasks s WHERE s.parent_id = t.id) AS subtask_total,
+       (SELECT COUNT(*) FROM tasks s WHERE s.parent_id = t.id AND s.status = 'done') AS subtask_done
+     FROM tasks t
+     WHERE t.project_id = ? AND t.parent_id IS NULL
+     ORDER BY t.position ASC, t.id ASC`,
     [projectId]
   );
 
@@ -45,6 +52,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const projectId = Number(body.project_id);
   const title = String(body.title ?? "").trim();
+  const parentId = body.parent_id != null ? Number(body.parent_id) : null;
 
   if (!projectId || !title) {
     return NextResponse.json(
@@ -56,6 +64,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
+  // A subtask must hang off a top-level task in the same project (one level deep).
+  if (parentId) {
+    const parent = await dbGet(
+      "SELECT 1 AS x FROM tasks WHERE id = ? AND project_id = ? AND parent_id IS NULL",
+      [parentId, projectId]
+    );
+    if (!parent) {
+      return NextResponse.json({ error: "Parent task not found" }, { status: 404 });
+    }
+  }
+
   const status = ["todo", "in_progress", "done"].includes(body.status)
     ? body.status
     : "todo";
@@ -65,16 +84,19 @@ export async function POST(request: Request) {
   const description = String(body.description ?? "").trim();
   const dueDate = body.due_date ? String(body.due_date) : null;
 
+  // Position among siblings (same parent + status).
   const posRow = await dbGet<{ maxPos: number }>(
-    "SELECT COALESCE(MAX(position), -1) AS maxPos FROM tasks WHERE project_id = ? AND status = ?",
-    [projectId, status]
+    parentId
+      ? "SELECT COALESCE(MAX(position), -1) AS maxPos FROM tasks WHERE parent_id = ? AND status = ?"
+      : "SELECT COALESCE(MAX(position), -1) AS maxPos FROM tasks WHERE project_id = ? AND parent_id IS NULL AND status = ?",
+    [parentId ?? projectId, status]
   );
   const maxPos = posRow?.maxPos ?? -1;
 
   const info = await dbRun(
-    `INSERT INTO tasks (project_id, title, description, status, priority, due_date, position)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [projectId, title, description, status, priority, dueDate, maxPos + 1]
+    `INSERT INTO tasks (project_id, parent_id, title, description, status, priority, due_date, position)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [projectId, parentId, title, description, status, priority, dueDate, maxPos + 1]
   );
 
   const task = await dbGet<Task>("SELECT * FROM tasks WHERE id = ?", [
