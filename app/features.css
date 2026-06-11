@@ -972,3 +972,14 @@ select,
 [data-theme="light"] .status-dd-check {
   color: var(--text);
 }
+
+/* Selection / dropdown option rows — consistent layout (Figma spec:
+   36px tall, 4px radius, 8px padding, 10px gap). */
+.status-dd-item,
+.menu-item,
+.proj-menu-item {
+  height: 36px;
+  padding: 8px;
+  border-radius: 4px;
+  gap: 10px;
+}
