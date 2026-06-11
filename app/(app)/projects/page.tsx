@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Project } from "@/lib/types";
 import Spinner from "@/components/Spinner";
+import EmptyProjects from "@/components/app/EmptyProjects";
 
 type ProjectWithCount = Project & { task_count: number };
 
@@ -53,35 +54,7 @@ export default function ProjectsPage() {
           <Spinner />
         </div>
       ) : projects.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-card">
-            <span className="empty-card-ic">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M12 3 2 8l10 5 10-5-10-5Z" />
-                <path d="M2 13l10 5 10-5" />
-                <path d="M2 18l10 5 10-5" />
-              </svg>
-            </span>
-            <h2>Projects</h2>
-            <p>
-              Projects are containers for related work. Group your tasks into a
-              board and track them from To&nbsp;Do to Done.
-            </p>
-            <div className="empty-card-actions">
-              <button className="btn btn-primary" onClick={createProject}>
-                Create new project
-              </button>
-              <a
-                className="btn"
-                href="https://github.com/RababKhan/Task-Bucket"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Documentation
-              </a>
-            </div>
-          </div>
-        </div>
+        <EmptyProjects onCreate={createProject} />
       ) : (
         <div className="project-grid">
           {projects.map((p) => (
