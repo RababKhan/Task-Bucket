@@ -1722,12 +1722,14 @@ select,
   line-height: 1.45;
 }
 
-/* Consistent control radius (10px). */
+/* Input fields use an 8px radius; buttons/OTP keep the control radius. */
 input,
 textarea,
 select,
+.subdomain-input {
+  border-radius: 8px;
+}
 .otp-box,
-.subdomain-input,
 .btn {
   border-radius: var(--radius-control);
 }
