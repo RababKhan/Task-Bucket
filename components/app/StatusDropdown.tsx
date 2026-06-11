@@ -13,19 +13,17 @@ export default function StatusDropdown({
   onChange: (s: ProjectStatus) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [dropUp, setDropUp] = useState(false);
+  const [maxH, setMaxH] = useState(260);
   const triggerRef = useRef<HTMLButtonElement>(null);
-
-  // ~7 rows * 36px + padding, capped at the menu max-height.
-  const MENU_H = 264;
 
   function toggle() {
     if (!open && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
       const box = triggerRef.current.closest(".modal");
+      // Fit the menu in the space below the field, within the modal.
       const bottomBound =
-        (box ? box.getBoundingClientRect().bottom : window.innerHeight) - 8;
-      setDropUp(rect.bottom + MENU_H > bottomBound);
+        (box ? box.getBoundingClientRect().bottom : window.innerHeight) - 12;
+      setMaxH(Math.max(140, Math.min(280, bottomBound - rect.bottom - 6)));
     }
     setOpen((o) => !o);
   }
@@ -48,7 +46,7 @@ export default function StatusDropdown({
       {open && (
         <>
           <div className="status-dd-backdrop" onClick={() => setOpen(false)} />
-          <div className={`status-dd-menu${dropUp ? " up" : ""}`} role="listbox">
+          <div className="status-dd-menu" role="listbox" style={{ maxHeight: maxH }}>
             {PROJECT_STATUS_ORDER.map((s) => (
               <button
                 type="button"
