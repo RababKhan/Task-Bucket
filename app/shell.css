@@ -879,3 +879,31 @@
   max-width: 360px;
   margin: 0 0 22px;
 }
+
+/* Empty-state create button — exact spec (Primary/600 #6938EF). */
+.empty-create-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: none;
+  background: #6938ef;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.06s ease;
+}
+.empty-create-btn:hover {
+  background: #5a2fd8;
+}
+.empty-create-btn:active {
+  transform: scale(0.98);
+}
+.empty-create-btn svg {
+  width: 18px;
+  height: 18px;
+}

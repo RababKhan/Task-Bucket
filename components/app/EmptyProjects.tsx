@@ -18,8 +18,11 @@ export default function EmptyProjects({ onCreate }: { onCreate: () => void }) {
         Before you can add tasks, you&apos;ll need a project for your workspace.
         Create one to get started.
       </p>
-      <button className="btn btn-primary" onClick={onCreate}>
-        + Create New Project
+      <button className="empty-create-btn" onClick={onCreate}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+        Create New Project
       </button>
     </div>
   );
