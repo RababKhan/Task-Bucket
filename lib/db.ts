@@ -122,6 +122,22 @@ CREATE TABLE IF NOT EXISTS tasks (
 );
 
 CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);
+
+CREATE TABLE IF NOT EXISTS custom_fields (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name       TEXT NOT NULL,
+  type       TEXT NOT NULL DEFAULT 'text' CHECK (type IN ('text','number','date','select')),
+  options    TEXT NOT NULL DEFAULT '[]',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS custom_field_values (
+  field_id INTEGER NOT NULL REFERENCES custom_fields(id) ON DELETE CASCADE,
+  task_id  INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  value    TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY (field_id, task_id)
+);
 `;
 
 // Lightweight migration for databases created before auth was added.
@@ -227,4 +243,7 @@ export type {
   TaskPriority,
   Sprint,
   SprintStatus,
+  CustomField,
+  CustomFieldType,
+  CustomFieldWithValue,
 } from "@/lib/types";

@@ -43,6 +43,20 @@ export const SPRINT_STATUS_LABELS: Record<SprintStatus, string> = {
   completed: "Completed",
 };
 
+export type CustomFieldType = "text" | "number" | "date" | "select";
+
+export type CustomField = {
+  id: number;
+  project_id: number;
+  name: string;
+  type: CustomFieldType;
+  options: string[]; // for select; empty otherwise
+  created_at: string;
+};
+
+// A field plus the current value for a particular task.
+export type CustomFieldWithValue = CustomField & { value: string };
+
 export const STATUS_LABELS: Record<TaskStatus, string> = {
   todo: "To Do",
   in_progress: "In Progress",

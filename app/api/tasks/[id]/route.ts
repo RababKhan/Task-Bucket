@@ -41,7 +41,33 @@ export async function GET(_request: Request, { params }: Ctx) {
     [id]
   );
 
-  return NextResponse.json({ ...task, subtasks });
+  // Project's custom fields with this task's values (if any).
+  const fieldRows = await dbAll<{
+    id: number;
+    project_id: number;
+    name: string;
+    type: string;
+    options: string;
+    value: string;
+  }>(
+    `SELECT f.id, f.project_id, f.name, f.type, f.options,
+       COALESCE(v.value, '') AS value
+     FROM custom_fields f
+     LEFT JOIN custom_field_values v ON v.field_id = f.id AND v.task_id = ?
+     WHERE f.project_id = ?
+     ORDER BY f.id ASC`,
+    [id, task.project_id]
+  );
+  const custom_fields = fieldRows.map((r) => {
+    let options: string[] = [];
+    try {
+      const v = JSON.parse(r.options);
+      if (Array.isArray(v)) options = v.map(String);
+    } catch {}
+    return { ...r, options };
+  });
+
+  return NextResponse.json({ ...task, subtasks, custom_fields });
 }
 
 export async function PATCH(request: Request, { params }: Ctx) {

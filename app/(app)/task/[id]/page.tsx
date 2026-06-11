@@ -3,11 +3,21 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import type { Task, TaskStatus, TaskPriority, Sprint } from "@/lib/types";
+import type {
+  Task,
+  TaskStatus,
+  TaskPriority,
+  Sprint,
+  CustomFieldWithValue,
+} from "@/lib/types";
 import { STATUS_LABELS, STATUS_ORDER } from "@/lib/types";
 import Spinner from "@/components/Spinner";
 
-type Detail = Task & { project_name: string; subtasks: Task[] };
+type Detail = Task & {
+  project_name: string;
+  subtasks: Task[];
+  custom_fields: CustomFieldWithValue[];
+};
 
 const PRIORITIES: TaskPriority[] = ["low", "medium", "high"];
 const PRIO_COLOR: Record<string, string> = {
@@ -23,6 +33,7 @@ export default function TaskDetailPage() {
 
   const [detail, setDetail] = useState<Detail | null>(null);
   const [sprints, setSprints] = useState<Sprint[]>([]);
+  const [fieldVals, setFieldVals] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -42,7 +53,19 @@ export default function TaskDetailPage() {
     setDetail(data);
     setTitle(data.title);
     setDesc(data.description);
+    setFieldVals(
+      Object.fromEntries((data.custom_fields ?? []).map((f) => [f.id, f.value]))
+    );
   }, [id]);
+
+  async function saveFieldValue(fieldId: number, value: string) {
+    setFieldVals((v) => ({ ...v, [fieldId]: value }));
+    await fetch("/api/custom-fields/value", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ task_id: id, field_id: fieldId, value }),
+    });
+  }
 
   useEffect(() => {
     load().finally(() => setLoading(false));
@@ -184,6 +207,40 @@ export default function TaskDetailPage() {
             placeholder="Add a description…"
             rows={5}
           />
+
+          {detail.custom_fields.length > 0 && (
+            <div className="td-fields">
+              {detail.custom_fields.map((f) => (
+                <div className="td-field-row" key={f.id}>
+                  <span className="td-field-name">{f.name}</span>
+                  {f.type === "select" ? (
+                    <select
+                      className="td-field-input"
+                      value={fieldVals[f.id] ?? ""}
+                      onChange={(e) => saveFieldValue(f.id, e.target.value)}
+                    >
+                      <option value="">—</option>
+                      {f.options.map((o) => (
+                        <option key={o} value={o}>
+                          {o}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      className="td-field-input"
+                      type={f.type === "number" ? "number" : f.type === "date" ? "date" : "text"}
+                      value={fieldVals[f.id] ?? ""}
+                      onChange={(e) =>
+                        setFieldVals((v) => ({ ...v, [f.id]: e.target.value }))
+                      }
+                      onBlur={(e) => saveFieldValue(f.id, e.target.value)}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="td-subhead">
             <h3>Subtasks</h3>

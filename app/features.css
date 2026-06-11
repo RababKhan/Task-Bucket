@@ -561,3 +561,148 @@
 [data-theme="light"] .sprint-picker-close {
   color: var(--text);
 }
+
+/* ---- Custom fields (settings tab) ---- */
+.cf-empty {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin: 4px 0 14px;
+}
+.cf-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cf-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.cf-item-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cf-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+.cf-type {
+  font-size: 11px;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+.cf-del {
+  margin-left: auto;
+  color: var(--text-dim);
+  padding: 2px;
+}
+.cf-del:hover {
+  color: var(--danger);
+}
+.cf-del svg {
+  width: 15px;
+  height: 15px;
+}
+.cf-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.cf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 6px 3px 10px;
+  color: var(--text);
+}
+.cf-chip button {
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1;
+}
+.cf-chip button:hover {
+  color: var(--danger);
+}
+.cf-add-opt input {
+  width: 110px;
+  height: 26px;
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  padding: 0 10px;
+}
+.cf-add-opt input:focus {
+  outline: none;
+  border-color: var(--accent);
+  border-style: solid;
+}
+.cf-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+.cf-input {
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13.5px;
+  padding: 0 11px;
+}
+.cf-add .cf-input:first-child {
+  flex: 1;
+  min-width: 160px;
+}
+.cf-type-select {
+  width: 110px;
+}
+
+/* ---- Custom fields on task detail ---- */
+.td-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+.td-field-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.td-field-name {
+  flex: 0 0 130px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+.td-field-input {
+  flex: 1;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13.5px;
+  padding: 0 10px;
+}
+.td-field-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
