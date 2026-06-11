@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sat", "Su"];
 const MONTHS = [
@@ -30,9 +30,20 @@ export default function DatePicker({
   const today = new Date();
   const sel = parse(value);
   const [open, setOpen] = useState(false);
+  const [dropUp, setDropUp] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const [view, setView] = useState(() =>
     sel ? { y: sel.y, m: sel.m } : { y: today.getFullYear(), m: today.getMonth() }
   );
+
+  function toggle() {
+    if (!open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      // Flip the calendar above the field if there isn't room below it.
+      setDropUp(window.innerHeight - rect.bottom < 360);
+    }
+    setOpen((o) => !o);
+  }
 
   const label = sel
     ? new Date(sel.y, sel.m, sel.d).toLocaleDateString(undefined, {
@@ -65,7 +76,7 @@ export default function DatePicker({
 
   return (
     <div className="datepicker">
-      <button type="button" className="dp-trigger" onClick={() => setOpen((o) => !o)}>
+      <button ref={triggerRef} type="button" className="dp-trigger" onClick={toggle}>
         <span className={label ? "" : "dp-placeholder"}>{label ?? placeholder}</span>
         <svg className="dp-cal-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <rect x="3" y="4" width="18" height="17" rx="2" />
@@ -76,7 +87,7 @@ export default function DatePicker({
       {open && (
         <>
           <div className="dp-backdrop" onClick={() => setOpen(false)} />
-          <div className="dp-cal">
+          <div className={`dp-cal${dropUp ? " up" : ""}`}>
             <div className="dp-head">
               <button type="button" className="dp-nav" onClick={() => shift(-1)} aria-label="Previous month">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

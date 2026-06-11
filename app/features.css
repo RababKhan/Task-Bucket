@@ -1036,6 +1036,10 @@ select,
   box-shadow: var(--card-shadow);
   padding: 14px;
 }
+.dp-cal.up {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
 .dp-head {
   display: flex;
   align-items: center;
