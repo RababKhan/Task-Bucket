@@ -60,6 +60,13 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
+  const exists = await dbGet("SELECT 1 AS x FROM users WHERE id = ?", [userId]);
+  if (!exists) {
+    return NextResponse.json(
+      { error: "Your session has expired. Please sign in again." },
+      { status: 401 }
+    );
+  }
   if (!(await userOwnsProject(projectId, userId))) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
