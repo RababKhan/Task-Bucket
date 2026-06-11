@@ -880,7 +880,7 @@
   margin: 0 0 22px;
 }
 
-/* Empty-state create button — exact spec (Primary/600 #6938EF). */
+/* Empty-state create button — Figma spec sizing, app-native color. */
 .empty-create-btn {
   display: inline-flex;
   align-items: center;
@@ -889,7 +889,7 @@
   padding: 10px 16px;
   border-radius: 8px;
   border: none;
-  background: #6938ef;
+  background: var(--accent);
   color: #fff;
   font-size: 14px;
   font-weight: 600;
@@ -898,7 +898,7 @@
   transition: background 0.15s ease, transform 0.06s ease;
 }
 .empty-create-btn:hover {
-  background: #5a2fd8;
+  background: var(--accent-hover);
 }
 .empty-create-btn:active {
   transform: scale(0.98);
