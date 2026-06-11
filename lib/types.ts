@@ -21,12 +21,12 @@ export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
 
 export const PROJECT_STATUS_COLORS: Record<ProjectStatus, string> = {
   draft: "#9ca3af", // grey
-  on_track: "#16a34a", // green
+  on_track: "#3b82f6", // blue
   at_risk: "#e0a30b", // amber
-  off_track: "#e5484d", // red
-  on_hold: "#3b82f6", // blue
-  completed: "#166534", // dark green
-  cancelled: "#4b5563", // dark grey
+  off_track: "#f97316", // orange
+  on_hold: "#eab308", // yellow
+  completed: "#16a34a", // green
+  cancelled: "#e5484d", // red
 };
 
 export const PROJECT_STATUS_ORDER: ProjectStatus[] = [

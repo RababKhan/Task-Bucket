@@ -2,11 +2,8 @@
 
 import { useState } from "react";
 import type { ProjectStatus } from "@/lib/types";
-import {
-  PROJECT_STATUS_ORDER,
-  PROJECT_STATUS_LABELS,
-  PROJECT_STATUS_COLORS,
-} from "@/lib/types";
+import { PROJECT_STATUS_ORDER, PROJECT_STATUS_LABELS } from "@/lib/types";
+import StatusIcon from "@/components/app/StatusIcon";
 
 export default function StatusDropdown({
   value,
@@ -24,10 +21,7 @@ export default function StatusDropdown({
         className="status-dd-btn"
         onClick={() => setOpen((o) => !o)}
       >
-        <span
-          className="status-dot"
-          style={{ background: PROJECT_STATUS_COLORS[value] }}
-        />
+        <StatusIcon status={value} />
         <span className="status-dd-current">{PROJECT_STATUS_LABELS[value]}</span>
         <svg className="status-dd-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <path d="m6 9 6 6 6-6" />
@@ -50,10 +44,7 @@ export default function StatusDropdown({
                   setOpen(false);
                 }}
               >
-                <span
-                  className="status-dot"
-                  style={{ background: PROJECT_STATUS_COLORS[s] }}
-                />
+                <StatusIcon status={s} />
                 <span className="status-dd-label">{PROJECT_STATUS_LABELS[s]}</span>
                 {s === value && (
                   <svg className="status-dd-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

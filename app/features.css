@@ -912,6 +912,10 @@ select,
   border-radius: 50%;
   flex-shrink: 0;
 }
+.status-icon {
+  flex-shrink: 0;
+  display: block;
+}
 .status-dd-current {
   flex: 1;
   text-align: left;
