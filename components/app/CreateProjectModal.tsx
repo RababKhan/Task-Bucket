@@ -102,9 +102,7 @@ export default function CreateProjectModal({
                 <label>
                   Project name <span className="req">*</span>
                 </label>
-                <span className={`char-count${name.length >= 32 ? " full" : ""}`}>
-                  {name.length}/32
-                </span>
+                <span className="char-count">{name.length}/32</span>
               </div>
               <input
                 autoFocus
@@ -118,9 +116,7 @@ export default function CreateProjectModal({
             <div className="field">
               <div className="field-labelrow">
                 <label>Description</label>
-                <span className={`char-count${description.length >= 500 ? " full" : ""}`}>
-                  {description.length}/500
-                </span>
+                <span className="char-count">{description.length}/500</span>
               </div>
               <textarea
                 rows={3}
