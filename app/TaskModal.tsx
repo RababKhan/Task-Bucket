@@ -5,6 +5,7 @@ import type { Task, TaskPriority, TaskStatus } from "@/lib/types";
 import { STATUS_LABELS, STATUS_ORDER } from "@/lib/types";
 import Spinner from "@/components/Spinner";
 import { useAutoFocus } from "@/lib/useAutoFocus";
+import DatePicker from "@/components/app/DatePicker";
 
 export type TaskDraft = {
   title: string;
@@ -137,10 +138,10 @@ export default function TaskModal({
 
         <div className="field">
           <label>Due date</label>
-          <input
-            type="date"
+          <DatePicker
             value={draft.due_date}
-            onChange={(e) => setDraft({ ...draft, due_date: e.target.value })}
+            onChange={(v) => setDraft({ ...draft, due_date: v })}
+            placeholder="No due date"
           />
         </div>
 

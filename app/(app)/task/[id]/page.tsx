@@ -12,6 +12,7 @@ import type {
 } from "@/lib/types";
 import { STATUS_LABELS, STATUS_ORDER } from "@/lib/types";
 import Spinner from "@/components/Spinner";
+import DatePicker from "@/components/app/DatePicker";
 
 type Detail = Task & {
   project_name: string;
@@ -226,10 +227,18 @@ export default function TaskDetailPage() {
                         </option>
                       ))}
                     </select>
+                  ) : f.type === "date" ? (
+                    <div className="td-field-input-wrap">
+                      <DatePicker
+                        value={fieldVals[f.id] ?? ""}
+                        onChange={(v) => saveFieldValue(f.id, v)}
+                        placeholder="Select date"
+                      />
+                    </div>
                   ) : (
                     <input
                       className="td-field-input"
-                      type={f.type === "number" ? "number" : f.type === "date" ? "date" : "text"}
+                      type={f.type === "number" ? "number" : "text"}
                       value={fieldVals[f.id] ?? ""}
                       onChange={(e) =>
                         setFieldVals((v) => ({ ...v, [f.id]: e.target.value }))
@@ -324,11 +333,10 @@ export default function TaskDetailPage() {
           </select>
 
           <label className="td-label">Due date</label>
-          <input
-            type="date"
-            className="td-select"
+          <DatePicker
             value={detail.due_date ?? ""}
-            onChange={(e) => patch({ due_date: e.target.value || null })}
+            onChange={(v) => patch({ due_date: v || null })}
+            placeholder="No due date"
           />
 
           {sprints.length > 0 && (

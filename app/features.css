@@ -987,3 +987,136 @@ select,
   border-radius: 4px;
   gap: 10px;
 }
+
+/* ---- Date picker (calendar) ---- */
+.datepicker {
+  position: relative;
+}
+.dp-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13.5px;
+}
+.dp-trigger:hover {
+  border-color: var(--accent);
+}
+.dp-placeholder {
+  color: var(--text-dim);
+}
+.dp-cal-ic {
+  width: 16px;
+  height: 16px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+.dp-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+}
+.dp-cal {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 70;
+  width: 280px;
+  max-width: 88vw;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--card-shadow);
+  padding: 14px;
+}
+.dp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.dp-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.dp-nav {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  color: var(--text-dim);
+}
+.dp-nav:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.dp-nav svg {
+  width: 16px;
+  height: 16px;
+}
+.dp-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.dp-weekdays {
+  margin-bottom: 4px;
+}
+.dp-wd {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  padding: 4px 0;
+}
+.dp-day {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 13px;
+  color: var(--text);
+}
+.dp-day:hover {
+  background: var(--surface-2);
+}
+.dp-day.out {
+  color: var(--text-dim);
+  opacity: 0.55;
+}
+.dp-day.today {
+  font-weight: 700;
+}
+.dp-day.sel {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.dp-day.sel:hover {
+  background: var(--accent-hover);
+}
+.dp-clear {
+  display: block;
+  margin: 10px auto 0;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.dp-clear:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.td-field-input-wrap {
+  flex: 1;
+}

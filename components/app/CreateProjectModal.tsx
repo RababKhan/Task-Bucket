@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { Project, ProjectStatus, Member } from "@/lib/types";
 import Spinner from "@/components/Spinner";
 import StatusDropdown from "@/components/app/StatusDropdown";
+import DatePicker from "@/components/app/DatePicker";
 
 function initials(text: string) {
   const parts = text.trim().split(/\s+/).filter(Boolean);
@@ -126,18 +127,18 @@ export default function CreateProjectModal({
             <div className="field-row">
               <div className="field">
                 <label>Start date</label>
-                <input
-                  type="date"
+                <DatePicker
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={setStartDate}
+                  placeholder="Start date"
                 />
               </div>
               <div className="field">
                 <label>Estimated due date</label>
-                <input
-                  type="date"
+                <DatePicker
                   value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
+                  onChange={setDueDate}
+                  placeholder="Due date"
                 />
               </div>
             </div>
