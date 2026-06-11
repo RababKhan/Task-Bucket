@@ -42,14 +42,18 @@ export default function ProjectsPage() {
           <h1>Projects</h1>
           <p>All your projects in one place.</p>
         </div>
-        <div className="header-actions">
-          <button className="btn-outline" onClick={createProject}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            Create Project
-          </button>
-        </div>
+        {/* Header button only once at least one project exists; the empty
+            state has its own Create button. */}
+        {!loading && projects.length > 0 && (
+          <div className="header-actions">
+            <button className="btn-outline" onClick={createProject}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              Create Project
+            </button>
+          </div>
+        )}
       </div>
 
       {loading ? (
