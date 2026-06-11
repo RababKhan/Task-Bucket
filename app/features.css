@@ -1040,6 +1040,10 @@ select,
   top: auto;
   bottom: calc(100% + 6px);
 }
+.dp-cal.right {
+  left: auto;
+  right: 0;
+}
 .dp-head {
   display: flex;
   align-items: center;

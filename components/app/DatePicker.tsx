@@ -31,6 +31,7 @@ export default function DatePicker({
   const sel = parse(value);
   const [open, setOpen] = useState(false);
   const [dropUp, setDropUp] = useState(false);
+  const [alignRight, setAlignRight] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [view, setView] = useState(() =>
     sel ? { y: sel.y, m: sel.m } : { y: today.getFullYear(), m: today.getMonth() }
@@ -39,8 +40,14 @@ export default function DatePicker({
   function toggle() {
     if (!open && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
-      // Flip the calendar above the field if there isn't room below it.
+      // Flip above the field if there isn't room below it.
       setDropUp(window.innerHeight - rect.bottom < 360);
+      // Right-align if a left-aligned calendar would overflow its container
+      // (the modal, or the viewport when not in a modal).
+      const box = triggerRef.current.closest(".modal");
+      const rightBound =
+        (box ? box.getBoundingClientRect().right : window.innerWidth) - 10;
+      setAlignRight(rect.left + 280 > rightBound);
     }
     setOpen((o) => !o);
   }
@@ -87,7 +94,7 @@ export default function DatePicker({
       {open && (
         <>
           <div className="dp-backdrop" onClick={() => setOpen(false)} />
-          <div className={`dp-cal${dropUp ? " up" : ""}`}>
+          <div className={`dp-cal${dropUp ? " up" : ""}${alignRight ? " right" : ""}`}>
             <div className="dp-head">
               <button type="button" className="dp-nav" onClick={() => shift(-1)} aria-label="Previous month">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
