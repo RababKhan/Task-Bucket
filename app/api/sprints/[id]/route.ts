@@ -10,7 +10,8 @@ function ownedSprint(id: string, userId: string): Promise<Sprint | undefined> {
   return dbGet<Sprint>(
     `SELECT s.* FROM sprints s
      JOIN projects p ON p.id = s.project_id
-     WHERE s.id = ? AND p.owner_id = ?`,
+     JOIN workspace_members m ON m.workspace_id = p.workspace_id
+     WHERE s.id = ? AND m.user_id = ?`,
     [id, userId]
   );
 }

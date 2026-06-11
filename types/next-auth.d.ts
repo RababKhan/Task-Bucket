@@ -1,6 +1,10 @@
 import { DefaultSession } from "next-auth";
 
-type WorkspaceClaim = { name: string; subdomain: string };
+type WorkspaceClaim = {
+  name: string;
+  subdomain: string;
+  role: "admin" | "manager" | "assignee";
+};
 
 declare module "next-auth" {
   interface Session {

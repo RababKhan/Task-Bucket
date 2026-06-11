@@ -1,17 +1,7 @@
 import { NextResponse } from "next/server";
 import { dbAll, dbGet, dbRun, type Task } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
-
-async function userOwnsProject(
-  projectId: number | string,
-  userId: string
-): Promise<boolean> {
-  const row = await dbGet(
-    "SELECT 1 AS x FROM projects WHERE id = ? AND owner_id = ?",
-    [projectId, userId]
-  );
-  return !!row;
-}
+import { canAccessProject } from "@/lib/membership";
 
 export async function GET(request: Request) {
   const userId = await currentUserId();
@@ -24,12 +14,10 @@ export async function GET(request: Request) {
   if (!projectId) {
     return NextResponse.json({ error: "project_id is required" }, { status: 400 });
   }
-  if (!(await userOwnsProject(projectId, userId))) {
+  if (!(await canAccessProject(projectId, userId))) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Top-level tasks only (subtasks live on the task detail page), with a
-  // rolled-up count of their subtasks.
   const tasks = await dbAll<Task & { subtask_total: number; subtask_done: number }>(
     `SELECT t.*,
        (SELECT COUNT(*) FROM tasks s WHERE s.parent_id = t.id) AS subtask_total,
@@ -60,14 +48,8 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  const exists = await dbGet("SELECT 1 AS x FROM users WHERE id = ?", [userId]);
-  if (!exists) {
-    return NextResponse.json(
-      { error: "Your session has expired. Please sign in again." },
-      { status: 401 }
-    );
-  }
-  if (!(await userOwnsProject(projectId, userId))) {
+  // Any member (including assignees) can create tasks.
+  if (!(await canAccessProject(projectId, userId))) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
@@ -91,7 +73,6 @@ export async function POST(request: Request) {
   const description = String(body.description ?? "").trim();
   const dueDate = body.due_date ? String(body.due_date) : null;
 
-  // Position among siblings (same parent + status).
   const posRow = await dbGet<{ maxPos: number }>(
     parentId
       ? "SELECT COALESCE(MAX(position), -1) AS maxPos FROM tasks WHERE parent_id = ? AND status = ?"

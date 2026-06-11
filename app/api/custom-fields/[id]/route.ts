@@ -9,7 +9,8 @@ function ownedField(id: string, userId: string): Promise<FieldRow | undefined> {
   return dbGet<FieldRow>(
     `SELECT f.* FROM custom_fields f
      JOIN projects p ON p.id = f.project_id
-     WHERE f.id = ? AND p.owner_id = ?`,
+     JOIN workspace_members m ON m.workspace_id = p.workspace_id
+     WHERE f.id = ? AND m.user_id = ?`,
     [id, userId]
   );
 }

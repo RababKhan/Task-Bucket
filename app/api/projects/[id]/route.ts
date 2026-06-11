@@ -1,19 +1,9 @@
 import { NextResponse } from "next/server";
 import { dbGet, dbRun, type Project } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
+import { projectRole } from "@/lib/membership";
 
 type Ctx = { params: Promise<{ id: string }> };
-
-// Fetch a project only if it belongs to the given user.
-function ownedProject(
-  id: string,
-  userId: string
-): Promise<Project | undefined> {
-  return dbGet<Project>(
-    "SELECT * FROM projects WHERE id = ? AND owner_id = ?",
-    [id, userId]
-  );
-}
 
 export async function PATCH(request: Request, { params }: Ctx) {
   const userId = await currentUserId();
@@ -23,7 +13,20 @@ export async function PATCH(request: Request, { params }: Ctx) {
   const { id } = await params;
   const body = await request.json().catch(() => ({}));
 
-  const existing = await ownedProject(id, userId);
+  const role = await projectRole(id, userId);
+  if (!role) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  if (role === "assignee") {
+    return NextResponse.json(
+      { error: "You don't have permission to edit this project." },
+      { status: 403 }
+    );
+  }
+
+  const existing = await dbGet<Project>("SELECT * FROM projects WHERE id = ?", [
+    id,
+  ]);
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -58,16 +61,19 @@ export async function DELETE(_request: Request, { params }: Ctx) {
   }
   const { id } = await params;
 
-  const existing = await ownedProject(id, userId);
-  if (!existing) {
+  const role = await projectRole(id, userId);
+  if (!role) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  if (role !== "admin") {
+    return NextResponse.json(
+      { error: "Only admins can delete projects." },
+      { status: 403 }
+    );
   }
 
   // Remove tasks explicitly (don't rely on FK cascade across drivers).
   await dbRun("DELETE FROM tasks WHERE project_id = ?", [id]);
-  await dbRun("DELETE FROM projects WHERE id = ? AND owner_id = ?", [
-    id,
-    userId,
-  ]);
+  await dbRun("DELETE FROM projects WHERE id = ?", [id]);
   return NextResponse.json({ ok: true });
 }

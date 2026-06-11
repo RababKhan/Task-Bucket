@@ -26,7 +26,8 @@ export async function POST(request: Request) {
      FROM tasks t
      JOIN custom_fields f ON f.project_id = t.project_id
      JOIN projects p ON p.id = t.project_id
-     WHERE t.id = ? AND f.id = ? AND p.owner_id = ?`,
+     JOIN workspace_members m ON m.workspace_id = p.workspace_id
+     WHERE t.id = ? AND f.id = ? AND m.user_id = ?`,
     [taskId, fieldId, userId]
   );
   if (!ok) {

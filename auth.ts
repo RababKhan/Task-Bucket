@@ -7,6 +7,7 @@ import {
   upsertOAuthUser,
 } from "@/lib/auth-db";
 import { ensureWorkspaceForUser } from "@/lib/workspace";
+import { getMembership } from "@/lib/membership";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -71,7 +72,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           (token.name as string | null) ?? null,
           emailLocal || null
         );
-        token.ws = { name: ws.name, subdomain: ws.subdomain };
+        const m = await getMembership(token.uid as string);
+        token.ws = {
+          name: ws.name,
+          subdomain: ws.subdomain,
+          role: m?.role ?? "admin",
+        };
       }
       return token;
     },
@@ -80,7 +86,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.uid as string;
       }
       if (token.ws) {
-        session.workspace = token.ws as { name: string; subdomain: string };
+        session.workspace = token.ws as {
+          name: string;
+          subdomain: string;
+          role: "admin" | "manager" | "assignee";
+        };
       }
       return session;
     },

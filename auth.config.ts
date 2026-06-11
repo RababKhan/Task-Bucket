@@ -3,7 +3,13 @@ import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 
 // Public auth pages (no login required).
-const AUTH_PATHS = ["/login", "/signup", "/forgot-password", "/reset-password"];
+const AUTH_PATHS = [
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+  "/invite",
+];
 
 export const githubEnabled =
   !!process.env.AUTH_GITHUB_ID && !!process.env.AUTH_GITHUB_SECRET;

@@ -1,17 +1,7 @@
 import { NextResponse } from "next/server";
 import { dbAll, dbGet, dbRun, type Sprint } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
-
-async function userOwnsProject(
-  projectId: number | string,
-  userId: string
-): Promise<boolean> {
-  const row = await dbGet(
-    "SELECT 1 AS x FROM projects WHERE id = ? AND owner_id = ?",
-    [projectId, userId]
-  );
-  return !!row;
-}
+import { canAccessProject } from "@/lib/membership";
 
 export async function GET(request: Request) {
   const userId = await currentUserId();
@@ -23,7 +13,7 @@ export async function GET(request: Request) {
   if (!projectId) {
     return NextResponse.json({ error: "project_id is required" }, { status: 400 });
   }
-  if (!(await userOwnsProject(projectId, userId))) {
+  if (!(await canAccessProject(projectId, userId))) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -56,7 +46,7 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  if (!(await userOwnsProject(projectId, userId))) {
+  if (!(await canAccessProject(projectId, userId))) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 

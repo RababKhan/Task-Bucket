@@ -42,16 +42,6 @@ export function getUserById(id: string): Promise<DbUser | undefined> {
   return dbGet<DbUser>("SELECT * FROM users WHERE id = ?", [id]);
 }
 
-// If this is the very first user, claim the seeded (unowned) sample project(s).
-async function claimOrphanProjectsIfFirstUser(userId: string) {
-  const row = await dbGet<{ n: number }>("SELECT COUNT(*) AS n FROM users");
-  if (row && row.n === 1) {
-    await dbRun("UPDATE projects SET owner_id = ? WHERE owner_id IS NULL", [
-      userId,
-    ]);
-  }
-}
-
 // ---- Credentials signup ----
 export async function createCredentialsUser(
   email: string,
@@ -63,7 +53,6 @@ export async function createCredentialsUser(
     "INSERT INTO users (id, name, email, password_hash) VALUES (?, ?, ?, ?)",
     [id, name.trim() || null, email.trim(), hashPassword(password)]
   );
-  await claimOrphanProjectsIfFirstUser(id);
   return (await getUserById(id))!;
 }
 
@@ -98,7 +87,6 @@ export async function upsertOAuthUser(params: {
       [id, params.name ?? null, email, params.image ?? null]
     );
     user = (await getUserById(id))!;
-    await claimOrphanProjectsIfFirstUser(id);
   } else if (!user.image && params.image) {
     await dbRun("UPDATE users SET image = ? WHERE id = ?", [
       params.image,

@@ -88,12 +88,32 @@ CREATE TABLE IF NOT EXISTS workspaces (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS workspace_members (
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role         TEXT NOT NULL DEFAULT 'assignee' CHECK (role IN ('admin','manager','assignee')),
+  created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (workspace_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS workspace_invites (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  email        TEXT NOT NULL,
+  role         TEXT NOT NULL DEFAULT 'assignee' CHECK (role IN ('admin','manager','assignee')),
+  token_hash   TEXT NOT NULL,
+  invited_by   TEXT,
+  expires_at   TEXT NOT NULL,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS projects (
-  id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  owner_id    TEXT REFERENCES users(id) ON DELETE CASCADE,
-  name        TEXT NOT NULL,
-  description TEXT NOT NULL DEFAULT '',
-  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  owner_id     TEXT REFERENCES users(id) ON DELETE CASCADE,
+  workspace_id TEXT REFERENCES workspaces(id) ON DELETE CASCADE,
+  name         TEXT NOT NULL,
+  description  TEXT NOT NULL DEFAULT '',
+  created_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS sprints (
@@ -147,8 +167,29 @@ async function migrate(): Promise<void> {
   if (!hasOwner) {
     await client.execute("ALTER TABLE projects ADD COLUMN owner_id TEXT");
   }
+  if (!info.rows.some((r) => (r as Row).name === "workspace_id")) {
+    await client.execute("ALTER TABLE projects ADD COLUMN workspace_id TEXT");
+  }
   await client.execute(
     "CREATE INDEX IF NOT EXISTS idx_projects_owner ON projects(owner_id)"
+  );
+  await client.execute(
+    "CREATE INDEX IF NOT EXISTS idx_projects_workspace ON projects(workspace_id)"
+  );
+  await client.execute(
+    "CREATE INDEX IF NOT EXISTS idx_members_user ON workspace_members(user_id)"
+  );
+
+  // Backfill multi-user model: every workspace owner is an admin member, and
+  // each existing project belongs to its owner's workspace.
+  await client.execute(
+    `INSERT OR IGNORE INTO workspace_members (workspace_id, user_id, role)
+     SELECT id, owner_id, 'admin' FROM workspaces`
+  );
+  await client.execute(
+    `UPDATE projects
+     SET workspace_id = (SELECT w.id FROM workspaces w WHERE w.owner_id = projects.owner_id)
+     WHERE workspace_id IS NULL AND owner_id IS NOT NULL`
   );
 
   // Columns added to tasks after the initial table (subtasks, sprints).
@@ -246,4 +287,7 @@ export type {
   CustomField,
   CustomFieldType,
   CustomFieldWithValue,
+  Role,
+  Member,
+  PendingInvite,
 } from "@/lib/types";

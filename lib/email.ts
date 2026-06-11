@@ -80,6 +80,26 @@ export function otpEmail(code: string): {
   return { subject, html, text };
 }
 
+export function inviteEmail(
+  workspaceName: string,
+  role: string,
+  inviteUrl: string
+): { subject: string; html: string; text: string } {
+  const subject = `You're invited to ${workspaceName} on Task Bucket`;
+  const text = `You've been invited to join the "${workspaceName}" workspace as ${role} on Task Bucket.\n\nAccept your invite:\n${inviteUrl}\n\nThis link expires in 7 days.`;
+  const html = `
+    <div style="font-family:system-ui,sans-serif;max-width:480px;margin:auto;padding:24px;color:#1a1a1a">
+      <h2 style="margin:0 0 12px">You're invited 🎉</h2>
+      <p style="color:#555">You've been invited to join the <strong>${workspaceName}</strong> workspace as <strong>${role}</strong> on Task Bucket.</p>
+      <p style="margin:24px 0">
+        <a href="${inviteUrl}" style="background:#3f3f46;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;display:inline-block">Accept invite</a>
+      </p>
+      <p style="color:#888;font-size:13px">This link expires in 7 days. If you weren't expecting this, you can ignore it.</p>
+      <p style="color:#aaa;font-size:12px;word-break:break-all">${inviteUrl}</p>
+    </div>`;
+  return { subject, html, text };
+}
+
 export function passwordResetEmail(resetUrl: string): {
   subject: string;
   html: string;

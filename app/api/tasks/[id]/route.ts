@@ -12,7 +12,8 @@ function ownedTask(id: string, userId: string): Promise<Task | undefined> {
   return dbGet<Task>(
     `SELECT t.* FROM tasks t
      JOIN projects p ON p.id = t.project_id
-     WHERE t.id = ? AND p.owner_id = ?`,
+     JOIN workspace_members m ON m.workspace_id = p.workspace_id
+     WHERE t.id = ? AND m.user_id = ?`,
     [id, userId]
   );
 }
@@ -29,7 +30,8 @@ export async function GET(_request: Request, { params }: Ctx) {
     `SELECT t.*, p.name AS project_name
      FROM tasks t
      JOIN projects p ON p.id = t.project_id
-     WHERE t.id = ? AND p.owner_id = ?`,
+     JOIN workspace_members m ON m.workspace_id = p.workspace_id
+     WHERE t.id = ? AND m.user_id = ?`,
     [id, userId]
   );
   if (!task) {

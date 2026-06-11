@@ -1,19 +1,9 @@
 import { NextResponse } from "next/server";
 import { dbAll, dbGet, dbRun, type CustomField } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
+import { canAccessProject } from "@/lib/membership";
 
 const TYPES = ["text", "number", "date", "select"];
-
-async function userOwnsProject(
-  projectId: number | string,
-  userId: string
-): Promise<boolean> {
-  const row = await dbGet(
-    "SELECT 1 AS x FROM projects WHERE id = ? AND owner_id = ?",
-    [projectId, userId]
-  );
-  return !!row;
-}
 
 type FieldRow = Omit<CustomField, "options"> & { options: string };
 
@@ -36,7 +26,7 @@ export async function GET(request: Request) {
   if (!projectId) {
     return NextResponse.json({ error: "project_id is required" }, { status: 400 });
   }
-  if (!(await userOwnsProject(projectId, userId))) {
+  if (!(await canAccessProject(projectId, userId))) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -67,7 +57,7 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  if (!(await userOwnsProject(projectId, userId))) {
+  if (!(await canAccessProject(projectId, userId))) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 

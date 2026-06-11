@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { dbGet, dbRun } from "@/lib/db";
+import { getMembership } from "@/lib/membership";
 import {
   validateSubdomain,
   slugify,
@@ -48,18 +49,39 @@ export async function createWorkspace(
     "INSERT INTO workspaces (id, owner_id, name, subdomain) VALUES (?, ?, ?, ?)",
     [id, ownerId, name.trim(), subdomain.trim().toLowerCase()]
   );
+  // The creator is the workspace admin.
+  await dbRun(
+    "INSERT OR IGNORE INTO workspace_members (workspace_id, user_id, role) VALUES (?, ?, 'admin')",
+    [id, ownerId]
+  );
+  // The very first workspace claims the unowned seed project(s).
+  const count = await dbGet<{ n: number }>(
+    "SELECT COUNT(*) AS n FROM workspaces"
+  );
+  if (count && count.n === 1) {
+    await dbRun(
+      "UPDATE projects SET owner_id = ?, workspace_id = ? WHERE owner_id IS NULL",
+      [ownerId, id]
+    );
+  }
   return (await getWorkspaceByOwner(ownerId))!;
 }
 
-// Ensures a user has a workspace, auto-provisioning one for OAuth sign-ups
-// (who never see the signup form). Returns the existing or new workspace.
+// Ensures a user has a workspace. If they're already a member of one (e.g. they
+// joined via invite), returns that; otherwise auto-provisions one (OAuth
+// sign-ups never see the signup form). Returns the workspace.
 export async function ensureWorkspaceForUser(
   userId: string,
   displayName?: string | null,
   emailLocal?: string | null
 ): Promise<Workspace> {
-  const existing = await getWorkspaceByOwner(userId);
-  if (existing) return existing;
+  const membership = await getMembership(userId);
+  if (membership) {
+    const ws = await dbGet<Workspace>("SELECT * FROM workspaces WHERE id = ?", [
+      membership.workspace_id,
+    ]);
+    if (ws) return ws;
+  }
 
   const base =
     slugify(displayName || "") || slugify(emailLocal || "") || "workspace";

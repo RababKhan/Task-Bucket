@@ -7,6 +7,29 @@ export type Project = {
   created_at: string;
 };
 
+export type Role = "admin" | "manager" | "assignee";
+
+export const ROLE_LABELS: Record<Role, string> = {
+  admin: "Admin",
+  manager: "Manager",
+  assignee: "Assignee",
+};
+
+export type Member = {
+  user_id: string;
+  name: string | null;
+  email: string | null;
+  role: Role;
+  created_at: string;
+};
+
+export type PendingInvite = {
+  id: number;
+  email: string;
+  role: Role;
+  created_at: string;
+};
+
 export type TaskStatus = "todo" | "in_progress" | "done";
 export type TaskPriority = "low" | "medium" | "high";
 
