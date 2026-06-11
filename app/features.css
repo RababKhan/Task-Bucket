@@ -331,7 +331,7 @@
   padding: 0 10px;
   border: 1px solid var(--border);
   border-radius: 9px;
-  background: var(--surface-2);
+  background: var(--input-bg);
   color: var(--text);
   font-size: 13.5px;
 }
@@ -662,7 +662,7 @@
   height: 36px;
   border: 1px solid var(--border);
   border-radius: 9px;
-  background: var(--surface-2);
+  background: var(--input-bg);
   color: var(--text);
   font-size: 13.5px;
   padding: 0 11px;
@@ -899,7 +899,7 @@ select,
   padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--surface-2);
+  background: var(--input-bg);
   color: var(--text);
   font-size: 13.5px;
 }
@@ -1026,7 +1026,7 @@ select,
   padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--surface-2);
+  background: var(--input-bg);
   color: var(--text);
   font-size: 13.5px;
 }

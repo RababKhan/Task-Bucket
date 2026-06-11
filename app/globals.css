@@ -74,7 +74,7 @@ textarea,
 select {
   font-family: inherit;
   font-size: inherit;
-  background: var(--surface-2);
+  background: var(--input-bg);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 8px;
