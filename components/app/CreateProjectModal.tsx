@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { Project, ProjectStatus, Member } from "@/lib/types";
-import { PROJECT_STATUS_ORDER, PROJECT_STATUS_LABELS } from "@/lib/types";
 import Spinner from "@/components/Spinner";
+import StatusDropdown from "@/components/app/StatusDropdown";
 
 function initials(text: string) {
   const parts = text.trim().split(/\s+/).filter(Boolean);
@@ -26,7 +26,7 @@ export default function CreateProjectModal({
   // Page 1
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [status, setStatus] = useState<ProjectStatus>("backlog");
+  const [status, setStatus] = useState<ProjectStatus>("draft");
   const [startDate, setStartDate] = useState("");
   const [dueDate, setDueDate] = useState("");
 
@@ -120,16 +120,7 @@ export default function CreateProjectModal({
 
             <div className="field">
               <label>Status</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as ProjectStatus)}
-              >
-                {PROJECT_STATUS_ORDER.map((s) => (
-                  <option key={s} value={s}>
-                    {PROJECT_STATUS_LABELS[s]}
-                  </option>
-                ))}
-              </select>
+              <StatusDropdown value={status} onChange={setStatus} />
             </div>
 
             <div className="field-row">

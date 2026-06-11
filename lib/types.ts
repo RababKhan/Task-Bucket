@@ -1,26 +1,39 @@
 // Client-safe shared types (no server-only imports here).
 
 export type ProjectStatus =
-  | "backlog"
-  | "planning"
-  | "active"
+  | "draft"
+  | "on_track"
+  | "at_risk"
+  | "off_track"
   | "on_hold"
   | "completed"
   | "cancelled";
 
 export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
-  backlog: "Backlog",
-  planning: "Planning",
-  active: "Active",
-  on_hold: "On hold",
+  draft: "Draft",
+  on_track: "On Track",
+  at_risk: "At Risk",
+  off_track: "Off Track",
+  on_hold: "On Hold",
   completed: "Completed",
   cancelled: "Cancelled",
 };
 
+export const PROJECT_STATUS_COLORS: Record<ProjectStatus, string> = {
+  draft: "#9ca3af", // grey
+  on_track: "#16a34a", // green
+  at_risk: "#e0a30b", // amber
+  off_track: "#e5484d", // red
+  on_hold: "#3b82f6", // blue
+  completed: "#166534", // dark green
+  cancelled: "#4b5563", // dark grey
+};
+
 export const PROJECT_STATUS_ORDER: ProjectStatus[] = [
-  "backlog",
-  "planning",
-  "active",
+  "draft",
+  "on_track",
+  "at_risk",
+  "off_track",
   "on_hold",
   "completed",
   "cancelled",

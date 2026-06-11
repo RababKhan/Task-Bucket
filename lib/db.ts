@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS projects (
   manager_id   TEXT REFERENCES users(id) ON DELETE SET NULL,
   name         TEXT NOT NULL,
   description  TEXT NOT NULL DEFAULT '',
-  status       TEXT NOT NULL DEFAULT 'backlog',
+  status       TEXT NOT NULL DEFAULT 'draft',
   start_date   TEXT,
   due_date     TEXT,
   created_at   TEXT NOT NULL DEFAULT (datetime('now'))
@@ -186,9 +186,16 @@ async function migrate(): Promise<void> {
   }
   if (!projCols.includes("status")) {
     await client.execute(
-      "ALTER TABLE projects ADD COLUMN status TEXT NOT NULL DEFAULT 'backlog'"
+      "ALTER TABLE projects ADD COLUMN status TEXT NOT NULL DEFAULT 'draft'"
     );
   }
+  // Remap any legacy status values to the current set.
+  await client.execute(
+    "UPDATE projects SET status = 'draft' WHERE status IN ('backlog','planning')"
+  );
+  await client.execute(
+    "UPDATE projects SET status = 'on_track' WHERE status = 'active'"
+  );
   if (!projCols.includes("start_date")) {
     await client.execute("ALTER TABLE projects ADD COLUMN start_date TEXT");
   }

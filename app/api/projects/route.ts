@@ -61,14 +61,15 @@ export async function POST(request: Request) {
   const valid = new Set(memberRows.map((r) => r.user_id));
 
   const STATUSES = [
-    "backlog",
-    "planning",
-    "active",
+    "draft",
+    "on_track",
+    "at_risk",
+    "off_track",
     "on_hold",
     "completed",
     "cancelled",
   ];
-  const status = STATUSES.includes(body.status) ? body.status : "backlog";
+  const status = STATUSES.includes(body.status) ? body.status : "draft";
   const startDate = body.start_date ? String(body.start_date) : null;
   const dueDate = body.due_date ? String(body.due_date) : null;
   const ownerId =
