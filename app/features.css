@@ -806,3 +806,70 @@
 .member-role-select {
   height: 32px;
 }
+
+/* ---- Create project modal ---- */
+.cp-modal {
+  width: 480px;
+  max-width: 92vw;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+.cp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.cp-head h2 {
+  margin: 0;
+}
+.cp-step {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.req {
+  color: var(--danger);
+}
+.cp-members {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 6px;
+}
+.cp-member-check {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 13.5px;
+  color: var(--text);
+}
+.cp-member-check:hover {
+  background: var(--surface-2);
+}
+.cp-member-check input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+}
+.cp-member-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cp-members-empty {
+  font-size: 13px;
+  color: var(--text-dim);
+  padding: 6px 8px;
+}
+.member-avatar.sm {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+}

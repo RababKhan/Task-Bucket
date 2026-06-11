@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { randomBytes, createHash } from "node:crypto";
 import { dbAll, dbGet, dbRun, type Member, type PendingInvite } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
-import { projectRole } from "@/lib/membership";
+import { getMembership, projectRole } from "@/lib/membership";
 import { sendEmail, inviteEmail } from "@/lib/email";
 
 const ROLES = ["admin", "manager", "assignee"];
@@ -30,15 +30,30 @@ export async function GET(request: Request) {
   }
   const { searchParams } = new URL(request.url);
   const projectId = searchParams.get("project_id");
-  if (!projectId) {
-    return NextResponse.json({ error: "project_id is required" }, { status: 400 });
+
+  // With a project_id, scope to that project's workspace; without one (e.g. the
+  // create-project modal), use the acting user's own workspace.
+  let wsId: string | null;
+  let myRole: string | null;
+  if (projectId) {
+    myRole = await projectRole(projectId, userId);
+    if (!myRole) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    wsId = await workspaceOfProject(projectId);
+  } else {
+    const m = await getMembership(userId);
+    wsId = m?.workspace_id ?? null;
+    myRole = m?.role ?? null;
   }
-  const myRole = await projectRole(projectId, userId);
-  if (!myRole) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!wsId) {
+    return NextResponse.json({
+      members: [],
+      invites: [],
+      my_role: myRole,
+      my_id: userId,
+    });
   }
-  const wsId = await workspaceOfProject(projectId);
-  if (!wsId) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const members = await dbAll<Member>(
     `SELECT m.user_id, u.name, u.email, m.role, m.created_at

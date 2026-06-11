@@ -51,14 +51,50 @@ export async function POST(request: Request) {
       { status: 403 }
     );
   }
+  const wsId = membership.workspace_id;
+
+  // Only people in this workspace can be owner / manager / members.
+  const memberRows = await dbAll<{ user_id: string }>(
+    "SELECT user_id FROM workspace_members WHERE workspace_id = ?",
+    [wsId]
+  );
+  const valid = new Set(memberRows.map((r) => r.user_id));
+
+  const STATUSES = [
+    "backlog",
+    "planning",
+    "active",
+    "on_hold",
+    "completed",
+    "cancelled",
+  ];
+  const status = STATUSES.includes(body.status) ? body.status : "backlog";
+  const startDate = body.start_date ? String(body.start_date) : null;
+  const dueDate = body.due_date ? String(body.due_date) : null;
+  const ownerId =
+    body.owner_id && valid.has(body.owner_id) ? body.owner_id : userId;
+  const managerId =
+    body.manager_id && valid.has(body.manager_id) ? body.manager_id : null;
+  const memberIds: string[] = Array.isArray(body.member_ids)
+    ? body.member_ids.filter((id: unknown) => valid.has(String(id)))
+    : [];
 
   const info = await dbRun(
-    "INSERT INTO projects (owner_id, workspace_id, name, description) VALUES (?, ?, ?, ?)",
-    [userId, membership.workspace_id, name, description]
+    `INSERT INTO projects (owner_id, workspace_id, manager_id, name, description, status, start_date, due_date)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [ownerId, wsId, managerId, name, description, status, startDate, dueDate]
   );
+  const projectId = info.lastInsertRowid;
+
+  for (const uid of memberIds) {
+    await dbRun(
+      "INSERT OR IGNORE INTO project_members (project_id, user_id) VALUES (?, ?)",
+      [projectId, uid]
+    );
+  }
 
   const project = await dbGet<Project>("SELECT * FROM projects WHERE id = ?", [
-    info.lastInsertRowid,
+    projectId,
   ]);
 
   return NextResponse.json(project, { status: 201 });

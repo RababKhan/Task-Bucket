@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Project } from "@/lib/types";
 import Spinner from "@/components/Spinner";
 import EmptyProjects from "@/components/app/EmptyProjects";
+import CreateProjectModal from "@/components/app/CreateProjectModal";
 
 type ProjectWithCount = Project & { task_count: number };
 
@@ -12,6 +13,7 @@ export default function ProjectsPage() {
   const router = useRouter();
   const [projects, setProjects] = useState<ProjectWithCount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/projects");
@@ -22,18 +24,7 @@ export default function ProjectsPage() {
     load().finally(() => setLoading(false));
   }, [load]);
 
-  async function createProject() {
-    const name = window.prompt("Project name");
-    if (!name?.trim()) return;
-    const description = window.prompt("Description (optional)") ?? "";
-    const res = await fetch("/api/projects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, description }),
-    });
-    const created: Project = await res.json();
-    router.push(`/?project=${created.id}`);
-  }
+  const createProject = () => setModalOpen(true);
 
   return (
     <>
@@ -87,6 +78,16 @@ export default function ProjectsPage() {
             </button>
           ))}
         </div>
+      )}
+
+      {modalOpen && (
+        <CreateProjectModal
+          onClose={() => setModalOpen(false)}
+          onCreated={(p) => {
+            setModalOpen(false);
+            router.push(`/?project=${p.id}`);
+          }}
+        />
       )}
     </>
   );

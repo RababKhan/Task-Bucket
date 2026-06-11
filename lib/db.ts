@@ -111,9 +111,19 @@ CREATE TABLE IF NOT EXISTS projects (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   owner_id     TEXT REFERENCES users(id) ON DELETE CASCADE,
   workspace_id TEXT REFERENCES workspaces(id) ON DELETE CASCADE,
+  manager_id   TEXT REFERENCES users(id) ON DELETE SET NULL,
   name         TEXT NOT NULL,
   description  TEXT NOT NULL DEFAULT '',
+  status       TEXT NOT NULL DEFAULT 'backlog',
+  start_date   TEXT,
+  due_date     TEXT,
   created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS project_members (
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  PRIMARY KEY (project_id, user_id)
 );
 
 CREATE TABLE IF NOT EXISTS sprints (
@@ -169,6 +179,21 @@ async function migrate(): Promise<void> {
   }
   if (!info.rows.some((r) => (r as Row).name === "workspace_id")) {
     await client.execute("ALTER TABLE projects ADD COLUMN workspace_id TEXT");
+  }
+  const projCols = info.rows.map((r) => (r as Row).name);
+  if (!projCols.includes("manager_id")) {
+    await client.execute("ALTER TABLE projects ADD COLUMN manager_id TEXT");
+  }
+  if (!projCols.includes("status")) {
+    await client.execute(
+      "ALTER TABLE projects ADD COLUMN status TEXT NOT NULL DEFAULT 'backlog'"
+    );
+  }
+  if (!projCols.includes("start_date")) {
+    await client.execute("ALTER TABLE projects ADD COLUMN start_date TEXT");
+  }
+  if (!projCols.includes("due_date")) {
+    await client.execute("ALTER TABLE projects ADD COLUMN due_date TEXT");
   }
   await client.execute(
     "CREATE INDEX IF NOT EXISTS idx_projects_owner ON projects(owner_id)"
@@ -279,6 +304,7 @@ export async function dbRun(
 
 export type {
   Project,
+  ProjectStatus,
   Task,
   TaskStatus,
   TaskPriority,

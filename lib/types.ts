@@ -1,9 +1,40 @@
 // Client-safe shared types (no server-only imports here).
 
+export type ProjectStatus =
+  | "backlog"
+  | "planning"
+  | "active"
+  | "on_hold"
+  | "completed"
+  | "cancelled";
+
+export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
+  backlog: "Backlog",
+  planning: "Planning",
+  active: "Active",
+  on_hold: "On hold",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+
+export const PROJECT_STATUS_ORDER: ProjectStatus[] = [
+  "backlog",
+  "planning",
+  "active",
+  "on_hold",
+  "completed",
+  "cancelled",
+];
+
 export type Project = {
   id: number;
   name: string;
   description: string;
+  status: ProjectStatus;
+  start_date: string | null;
+  due_date: string | null;
+  owner_id: string | null;
+  manager_id: string | null;
   created_at: string;
 };
 

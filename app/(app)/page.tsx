@@ -14,6 +14,7 @@ import Spinner from "@/components/Spinner";
 import TaskModal, { type TaskDraft } from "@/app/TaskModal";
 import ProjectTabs from "@/components/app/ProjectTabs";
 import EmptyProjects from "@/components/app/EmptyProjects";
+import CreateProjectModal from "@/components/app/CreateProjectModal";
 
 type ProjectWithCount = Project & { task_count: number };
 type BoardTask = Task & { subtask_total?: number; subtask_done?: number };
@@ -39,6 +40,7 @@ function BoardPage() {
   const [loading, setLoading] = useState(true);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [view, setView] = useState<"board" | "list">("board");
+  const [createOpen, setCreateOpen] = useState(false);
 
   const [editing, setEditing] = useState<Task | null>(null);
   const [creatingStatus, setCreatingStatus] = useState<TaskStatus | null>(null);
@@ -83,18 +85,12 @@ function BoardPage() {
   }, [activeId, loadTasks]);
 
   // ---- Project actions ----
-  async function createProject() {
-    const name = window.prompt("Project name");
-    if (!name?.trim()) return;
-    const description = window.prompt("Description (optional)") ?? "";
-    const res = await fetch("/api/projects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, description }),
-    });
-    const created: Project = await res.json();
+  const createProject = () => setCreateOpen(true);
+
+  async function onProjectCreated(p: Project) {
+    setCreateOpen(false);
     await loadProjects();
-    setActiveId(created.id);
+    setActiveId(p.id);
   }
 
   async function renameProject() {
@@ -199,7 +195,17 @@ function BoardPage() {
   }
 
   if (!activeProject) {
-    return <EmptyProjects onCreate={createProject} />;
+    return (
+      <>
+        <EmptyProjects onCreate={createProject} />
+        {createOpen && (
+          <CreateProjectModal
+            onClose={() => setCreateOpen(false)}
+            onCreated={onProjectCreated}
+          />
+        )}
+      </>
+    );
   }
 
   return (
@@ -431,6 +437,13 @@ function BoardPage() {
             setEditing(null);
             setCreatingStatus(null);
           }}
+        />
+      )}
+
+      {createOpen && (
+        <CreateProjectModal
+          onClose={() => setCreateOpen(false)}
+          onCreated={onProjectCreated}
         />
       )}
     </>
