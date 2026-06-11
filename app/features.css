@@ -938,7 +938,7 @@ select,
   z-index: 70;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   box-shadow: var(--card-shadow);
   padding: 6px;
   max-height: 250px;

@@ -256,7 +256,7 @@
   right: 0;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   box-shadow: var(--card-shadow);
   padding: 6px;
   z-index: 50;
@@ -340,7 +340,7 @@
   min-width: 230px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 8px;
   box-shadow: var(--card-shadow);
   padding: 6px;
   z-index: 50;

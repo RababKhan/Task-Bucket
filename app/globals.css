@@ -376,7 +376,7 @@ select:focus {
 .modal {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 8px;
   width: 100%;
   max-width: 460px;
   padding: 22px;
