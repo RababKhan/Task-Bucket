@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import type { Task, TaskStatus, TaskPriority } from "@/lib/types";
+import type { Task, TaskStatus, TaskPriority, Sprint } from "@/lib/types";
 import { STATUS_LABELS, STATUS_ORDER } from "@/lib/types";
 import Spinner from "@/components/Spinner";
 
@@ -22,6 +22,7 @@ export default function TaskDetailPage() {
   const router = useRouter();
 
   const [detail, setDetail] = useState<Detail | null>(null);
+  const [sprints, setSprints] = useState<Sprint[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -46,6 +47,15 @@ export default function TaskDetailPage() {
   useEffect(() => {
     load().finally(() => setLoading(false));
   }, [load]);
+
+  // Load the project's sprints once we know which project the task is in.
+  useEffect(() => {
+    if (!detail?.project_id) return;
+    fetch(`/api/sprints?project_id=${detail.project_id}`)
+      .then((r) => r.json())
+      .then((d: Sprint[]) => setSprints(Array.isArray(d) ? d : []))
+      .catch(() => {});
+  }, [detail?.project_id]);
 
   // Patch the main task and merge the result back.
   async function patch(fields: Partial<Task>) {
@@ -263,6 +273,26 @@ export default function TaskDetailPage() {
             value={detail.due_date ?? ""}
             onChange={(e) => patch({ due_date: e.target.value || null })}
           />
+
+          {sprints.length > 0 && (
+            <>
+              <label className="td-label">Sprint</label>
+              <select
+                className="td-select"
+                value={detail.sprint_id ?? ""}
+                onChange={(e) =>
+                  patch({ sprint_id: e.target.value ? Number(e.target.value) : null })
+                }
+              >
+                <option value="">Backlog (no sprint)</option>
+                {sprints.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
 
           <button className="btn btn-danger btn-sm td-delete" onClick={deleteTask}>
             Delete task

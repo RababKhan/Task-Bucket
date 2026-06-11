@@ -96,10 +96,22 @@ CREATE TABLE IF NOT EXISTS projects (
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS sprints (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id  INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  goal        TEXT NOT NULL DEFAULT '',
+  status      TEXT NOT NULL DEFAULT 'planned' CHECK (status IN ('planned','active','completed')),
+  start_date  TEXT,
+  end_date    TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS tasks (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   project_id  INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   parent_id   INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
+  sprint_id   INTEGER REFERENCES sprints(id) ON DELETE SET NULL,
   title       TEXT NOT NULL,
   description TEXT NOT NULL DEFAULT '',
   status      TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo','in_progress','done')),
@@ -123,14 +135,20 @@ async function migrate(): Promise<void> {
     "CREATE INDEX IF NOT EXISTS idx_projects_owner ON projects(owner_id)"
   );
 
-  // Subtasks: tasks.parent_id (added after the initial tasks table).
+  // Columns added to tasks after the initial table (subtasks, sprints).
   const taskInfo = await client.execute("PRAGMA table_info(tasks)");
-  const hasParent = taskInfo.rows.some((r) => (r as Row).name === "parent_id");
-  if (!hasParent) {
+  const taskCols = taskInfo.rows.map((r) => (r as Row).name);
+  if (!taskCols.includes("parent_id")) {
     await client.execute("ALTER TABLE tasks ADD COLUMN parent_id INTEGER");
+  }
+  if (!taskCols.includes("sprint_id")) {
+    await client.execute("ALTER TABLE tasks ADD COLUMN sprint_id INTEGER");
   }
   await client.execute(
     "CREATE INDEX IF NOT EXISTS idx_tasks_parent ON tasks(parent_id)"
+  );
+  await client.execute(
+    "CREATE INDEX IF NOT EXISTS idx_tasks_sprint ON tasks(sprint_id)"
   );
 }
 
@@ -207,4 +225,6 @@ export type {
   Task,
   TaskStatus,
   TaskPriority,
+  Sprint,
+  SprintStatus,
 } from "@/lib/types";

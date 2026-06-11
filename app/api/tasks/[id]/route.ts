@@ -81,10 +81,16 @@ export async function PATCH(request: Request, { params }: Ctx) {
         ? String(body.due_date)
         : null
       : existing.due_date;
+  const sprintId =
+    body.sprint_id !== undefined
+      ? body.sprint_id != null
+        ? Number(body.sprint_id)
+        : null
+      : existing.sprint_id;
 
   await dbRun(
-    `UPDATE tasks SET title = ?, description = ?, status = ?, priority = ?, due_date = ? WHERE id = ?`,
-    [title, description, status, priority, dueDate, id]
+    `UPDATE tasks SET title = ?, description = ?, status = ?, priority = ?, due_date = ?, sprint_id = ? WHERE id = ?`,
+    [title, description, status, priority, dueDate, sprintId, id]
   );
 
   const updated = await dbGet<Task>("SELECT * FROM tasks WHERE id = ?", [id]);

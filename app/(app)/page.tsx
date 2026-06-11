@@ -12,6 +12,7 @@ import type { Project, Task, TaskStatus } from "@/lib/types";
 import { STATUS_LABELS, STATUS_ORDER } from "@/lib/types";
 import Spinner from "@/components/Spinner";
 import TaskModal, { type TaskDraft } from "@/app/TaskModal";
+import ProjectTabs from "@/components/app/ProjectTabs";
 
 type ProjectWithCount = Project & { task_count: number };
 type BoardTask = Task & { subtask_total?: number; subtask_done?: number };
@@ -320,6 +321,8 @@ function BoardPage() {
           </button>
         </div>
       </div>
+
+      <ProjectTabs projectId={activeProject.id} active="board" />
 
       {view === "board" ? (
         <div className="board">
