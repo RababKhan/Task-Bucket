@@ -10,7 +10,7 @@ export default function EmptyProjects({ onCreate }: { onCreate: () => void }) {
           </svg>
         </span>
       </div>
-      <h2>Create your first project</h2>
+      <h2>Create Your First Project</h2>
       <p>
         Before you can add tasks, you&apos;ll need a project for your workspace.
         Create one to get started.

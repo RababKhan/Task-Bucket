@@ -76,7 +76,7 @@ export default function ForgotPasswordPage() {
               <div className="signup-step auth-step" key={step} ref={stepRef}>
                 {step === "email" && (
                   <form className="auth-form" onSubmit={sendCode} noValidate>
-                    <h1 className="signup-h">Reset your password</h1>
+                    <h1 className="signup-h">Reset Your Password</h1>
                     <p className="signup-sub">
                       Enter your email and we&apos;ll send you a 6-digit code.
                     </p>

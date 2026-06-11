@@ -289,7 +289,7 @@ export default function SignupForm({
       <div className="signup-step auth-step" key={step} ref={stepRef}>
         {step === 1 && (
           <form className="auth-form" onSubmit={sendCode} noValidate>
-            <h1 className="signup-h">Create your account</h1>
+            <h1 className="signup-h">Create Your Account</h1>
             <p className="signup-sub">
               Enter your email and we&apos;ll send you a verification code.
             </p>
@@ -339,7 +339,7 @@ export default function SignupForm({
 
         {step === 2 && (
           <form className="auth-form" onSubmit={verifyCode} noValidate>
-            <h1 className="signup-h">Check your email</h1>
+            <h1 className="signup-h">Check Your Email</h1>
             <p className="signup-sub">
               We sent a 6-digit code to <strong>{email}</strong>.
             </p>
@@ -421,7 +421,7 @@ export default function SignupForm({
 
         {step === 3 && (
           <form className="auth-form" onSubmit={createAccount} noValidate>
-            <h1 className="signup-h">Set up your workspace</h1>
+            <h1 className="signup-h">Set Up Your Workspace</h1>
             <p className="signup-sub">Just a few details to finish.</p>
 
             {formError && <FormError>{formError}</FormError>}

@@ -9,7 +9,7 @@ export default function ResetPasswordPage() {
         <div className="auth-brand">
           <Logo />
         </div>
-        <p className="auth-title">Choose a new password</p>
+        <p className="auth-title">Choose a New Password</p>
         <Suspense fallback={null}>
           <ResetForm />
         </Suspense>

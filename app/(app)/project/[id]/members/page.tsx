@@ -99,7 +99,7 @@ export default function MembersPage() {
     <div className="members">
       {canManage && (
         <div className="settings-card">
-          <div className="settings-card-title">Invite a member</div>
+          <div className="settings-card-title">Invite a Member</div>
           <p className="settings-card-sub">
             They&apos;ll get an email link to join this workspace.
           </p>
@@ -176,7 +176,7 @@ export default function MembersPage() {
 
       {canManage && invites.length > 0 && (
         <div className="settings-card">
-          <div className="settings-card-title">Pending invites</div>
+          <div className="settings-card-title">Pending Invites</div>
           <ul className="member-list">
             {invites.map((inv) => (
               <li key={inv.id} className="member-row">

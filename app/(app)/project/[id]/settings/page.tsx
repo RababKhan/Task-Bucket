@@ -78,7 +78,7 @@ export default function ProjectSettingsPage() {
   return (
     <div className="settings-tab">
       <div className="settings-card">
-        <div className="settings-card-title">Custom fields</div>
+        <div className="settings-card-title">Custom Fields</div>
         <p className="settings-card-sub">
           Add fields that appear on every task in this project. Set their values
           on each task&apos;s detail page.

@@ -22,7 +22,7 @@ export default function LoginPage() {
           </p>
           <div className="signup-form-center">
             <div className="signup-wizard">
-              <h1 className="signup-h">Welcome back</h1>
+              <h1 className="signup-h">Welcome Back</h1>
               <p className="signup-sub">Sign in to your workspace.</p>
 
               {(githubEnabled || googleEnabled) && (

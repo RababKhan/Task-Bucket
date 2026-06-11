@@ -91,7 +91,7 @@ export default function CreateProjectModal({
     <div className="overlay" onMouseDown={onClose}>
       <div className="modal cp-modal" onMouseDown={(e) => e.stopPropagation()}>
         <div className="cp-head">
-          <h2>New project</h2>
+          <h2>Create Project</h2>
           <span className="cp-step">Step {page} of 2</span>
         </div>
 
@@ -100,7 +100,7 @@ export default function CreateProjectModal({
             <div className="field">
               <div className="field-labelrow">
                 <label>
-                  Project name <span className="req">*</span>
+                  Project Name <span className="req">*</span>
                 </label>
                 <span className="char-count">{name.length}/32</span>
               </div>
@@ -134,7 +134,7 @@ export default function CreateProjectModal({
 
             <div className="field-row">
               <div className="field">
-                <label>Start date</label>
+                <label>Start Date</label>
                 <DatePicker
                   value={startDate}
                   onChange={setStartDate}
@@ -142,7 +142,7 @@ export default function CreateProjectModal({
                 />
               </div>
               <div className="field">
-                <label>Estimated due date</label>
+                <label>Estimated Due Date</label>
                 <DatePicker
                   value={dueDate}
                   onChange={setDueDate}
@@ -154,7 +154,7 @@ export default function CreateProjectModal({
         ) : (
           <>
             <div className="field">
-              <label>Project owner</label>
+              <label>Project Owner</label>
               <select value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
                 {members.map((m) => (
                   <option key={m.user_id} value={m.user_id}>
@@ -165,7 +165,7 @@ export default function CreateProjectModal({
             </div>
 
             <div className="field">
-              <label>Project manager</label>
+              <label>Project Manager</label>
               <select value={managerId} onChange={(e) => setManagerId(e.target.value)}>
                 <option value="">None</option>
                 {members.map((m) => (
@@ -177,7 +177,7 @@ export default function CreateProjectModal({
             </div>
 
             <div className="field">
-              <label>Project members</label>
+              <label>Project Members</label>
               <div className="cp-members">
                 {members.length === 0 && (
                   <span className="cp-members-empty">No other members yet.</span>

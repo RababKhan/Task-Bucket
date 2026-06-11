@@ -44,11 +44,11 @@ export default function ProfilePage() {
 
         <div className="settings-grid">
           <div className="settings-field">
-            <label>Full name</label>
+            <label>Full Name</label>
             <div className="settings-value">{name || "—"}</div>
           </div>
           <div className="settings-field">
-            <label>Email address</label>
+            <label>Email Address</label>
             <div className="settings-value">{email || "—"}</div>
           </div>
           {ws && (

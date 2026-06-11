@@ -161,7 +161,7 @@ export default function TaskDetailPage() {
     return (
       <div className="empty-state">
         <div className="empty-card">
-          <h2>Task not found</h2>
+          <h2>Task Not Found</h2>
           <p>This task may have been deleted.</p>
           <div className="empty-card-actions">
             <Link className="btn btn-primary" href="/">
@@ -332,7 +332,7 @@ export default function TaskDetailPage() {
             ))}
           </select>
 
-          <label className="td-label">Due date</label>
+          <label className="td-label">Due Date</label>
           <DatePicker
             value={detail.due_date ?? ""}
             onChange={(v) => patch({ due_date: v || null })}

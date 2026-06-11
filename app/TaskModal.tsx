@@ -76,7 +76,7 @@ export default function TaskModal({
         ref={modalRef}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <h2>{task ? "Edit task" : "New task"}</h2>
+        <h2>{task ? "Edit Task" : "Create Task"}</h2>
 
         <div className="field">
           <label>Title</label>
@@ -137,7 +137,7 @@ export default function TaskModal({
         </div>
 
         <div className="field">
-          <label>Due date</label>
+          <label>Due Date</label>
           <DatePicker
             value={draft.due_date}
             onChange={(v) => setDraft({ ...draft, due_date: v })}
