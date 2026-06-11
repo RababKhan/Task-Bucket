@@ -3,17 +3,18 @@
    ====================================================================== */
 .app-shell {
   display: grid;
-  grid-template-columns: 256px 1fr;
+  grid-template-columns: 250px 1fr;
   height: 100vh;
+  background: var(--bg);
 }
 
-/* ---- Sidebar ---- */
+/* ---- Sidebar (transparent, floats on the app background) ---- */
 .app-sidebar {
-  background: var(--surface);
-  border-right: 1px solid var(--border);
+  background: transparent;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  padding: 12px;
 }
 .ws-switcher {
   display: flex;
@@ -61,7 +62,9 @@
 .app-nav {
   flex: 1;
   overflow-y: auto;
-  padding: 8px 8px;
+  margin: 6px 4px 0;
+  padding: 10px 4px 8px;
+  border-top: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -80,32 +83,46 @@
   padding: 6px 10px 4px;
 }
 .nav-link {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 9px 10px;
+  gap: 9px;
+  height: 28px;
+  padding: 0 10px;
   border-radius: 8px;
   color: var(--text-dim);
-  font-size: 13.5px;
+  font-size: 11.375px;
   font-weight: 500;
   text-decoration: none;
   transition: background 0.15s ease, color 0.15s ease;
 }
 .nav-link:hover {
-  background: var(--surface-2);
+  background: var(--nav-hover);
   color: var(--text);
 }
 .nav-link.active {
-  background: var(--surface-2);
+  background: var(--nav-active);
   color: var(--text);
+}
+/* Active indicator bar on the left edge */
+.nav-link.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 16px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
 }
 .nav-ic {
   display: inline-flex;
   flex-shrink: 0;
 }
 .nav-ic svg {
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
 }
 .nav-link.active .nav-ic {
   color: var(--accent);
@@ -163,27 +180,65 @@
   color: var(--text-dim);
 }
 
-/* ---- Body + topbar ---- */
+/* ---- Workspace canvas (floating container) + topbar ---- */
 .app-body {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  height: 100vh;
+  height: calc(100vh - 32px);
+  margin: 16px 16px 16px 0;
+  background: var(--canvas-bg);
+  border: 1px solid var(--canvas-border);
+  border-radius: 20px;
+  box-shadow: var(--canvas-shadow);
+  overflow: hidden;
 }
 .app-topbar {
   flex-shrink: 0;
-  height: 60px;
+  height: 56px;
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 0 24px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  padding: 0 20px;
+  background: transparent;
+  border-bottom: 1px solid var(--canvas-border);
+}
+.topbar-lead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.topbar-title {
+  margin: 0;
+  font-size: 11.375px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.topbar-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.topbar-add:hover {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+.topbar-add svg {
+  width: 16px;
+  height: 16px;
 }
 .app-main {
   flex: 1;
   overflow-y: auto;
-  padding: 24px 28px;
+  padding: 16px 32px 32px;
 }
 .page-loading {
   display: grid;
@@ -294,29 +349,29 @@
 }
 .icon-btn {
   position: relative;
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: 50%;
   border: 1px solid var(--border);
   background: var(--surface-2);
-  color: var(--text-dim);
+  color: var(--text);
 }
 .icon-btn:hover {
   border-color: var(--accent);
   color: var(--text);
 }
 .icon-btn svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 .notif-badge {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: 3px;
+  right: 3px;
   width: 7px;
   height: 7px;
   border-radius: 50%;
@@ -374,14 +429,14 @@
   border-radius: 50%;
 }
 .account-avatar {
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: var(--accent);
   color: #fff;
   display: grid;
   place-items: center;
-  font-size: 12.5px;
+  font-size: 11px;
   font-weight: 700;
   overflow: hidden;
 }
@@ -532,42 +587,45 @@
 }
 .empty-card {
   width: 100%;
-  max-width: 440px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 28px;
+  max-width: 420px;
+  text-align: center;
+  background: transparent;
+  border: none;
+  padding: 8px;
 }
 .empty-card-ic {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 54px;
-  height: 54px;
-  border-radius: 12px;
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
   background: var(--surface-2);
   color: var(--text-dim);
-  margin-bottom: 18px;
+  opacity: 0.85;
+  margin-bottom: 22px;
 }
 .empty-card-ic svg {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
 }
 .empty-card h2 {
-  margin: 0 0 8px;
-  font-size: 19px;
+  margin: 0 0 10px;
+  font-size: 30px;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   color: var(--text);
 }
 .empty-card p {
-  margin: 0 0 22px;
-  font-size: 13.5px;
+  margin: 0 auto 24px;
+  max-width: 36ch;
+  font-size: 15px;
   line-height: 1.6;
   color: var(--text-dim);
 }
 .empty-card-actions {
   display: flex;
+  justify-content: center;
   gap: 10px;
 }
 
@@ -580,16 +638,20 @@
 .project-card {
   text-align: left;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--canvas-border);
   border-radius: 12px;
   padding: 16px;
-  transition: border-color 0.15s ease, transform 0.06s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: box-shadow 0.15s ease, transform 0.15s ease,
+    border-color 0.15s ease;
 }
 .project-card:hover {
-  border-color: var(--accent);
+  border-color: var(--border);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 12px 24px rgba(0, 0, 0, 0.04);
+  transform: translateY(-1px);
 }
 .project-card:active {
-  transform: scale(0.995);
+  transform: translateY(0);
 }
 .project-card-top {
   display: flex;
@@ -745,6 +807,14 @@
   .app-sidebar {
     display: none;
   }
+  /* Keep the canvas off all four edges when the sidebar is hidden. */
+  .app-body {
+    margin: 12px;
+    height: calc(100vh - 24px);
+  }
+  .app-main {
+    padding: 12px 18px 24px;
+  }
   .settings-grid {
     grid-template-columns: 1fr;
   }
@@ -754,10 +824,33 @@
    Onethread-style shell: logo in sidebar, workspace switcher in topbar
    ==================================================================== */
 .sidebar-logo {
-  padding: 18px 18px 12px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 8px 8px 6px;
+  padding: 9px 11px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
 }
-.sidebar-logo-img {
-  width: 132px;
+.sidebar-logo-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.sidebar-logo-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.sidebar-logo-collapse {
+  width: 16px;
+  height: 16px;
+  color: var(--text-dim);
+  flex-shrink: 0;
 }
 .app-nav {
   gap: 2px;
@@ -802,7 +895,7 @@
   text-overflow: ellipsis;
 }
 .nav-proj:hover {
-  background: var(--surface-2);
+  background: var(--nav-hover);
   color: var(--text);
 }
 .nav-proj-dot {
@@ -818,8 +911,8 @@
   padding: 6px 12px;
 }
 .sidebar-bottom {
-  border-top: 1px solid var(--border);
-  padding: 8px;
+  padding: 8px 4px 4px;
+  margin-top: 4px;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -851,101 +944,117 @@
   height: 15px;
 }
 
-/* Friendly centered empty state */
+/* Linear-style empty state: a left-aligned block centered in the canvas. */
 .empty-hero {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  text-align: center;
-  padding-top: 7vh;
+  justify-content: center;
+  min-height: 72vh;
 }
-.empty-hero-art {
-  margin-bottom: 24px;
-  display: grid;
-  place-items: center;
+.empty-box {
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
 }
-.empty-art-badge {
+.empty-cubes {
+  color: var(--text-dim);
+  /* The cube has empty space inside its viewBox; negative margins pull it
+     left (to align with the text) and up closer to the heading. */
+  margin-bottom: -4px;
+  margin-left: -22px;
+}
+.empty-cubes svg {
   width: 104px;
   height: 104px;
-  border-radius: 26px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  display: grid;
-  place-items: center;
-  color: var(--text-dim);
-  animation: emptyFloat 3.2s ease-in-out infinite;
 }
-.empty-art-icon {
-  width: 50px;
-  height: 50px;
+.empty-cubes .cubes-grid {
+  opacity: 0.5;
+  stroke-dasharray: 22;
+  animation: cubeScramble 1.8s linear infinite;
 }
-.empty-art-icon .layer-1 {
-  animation: layerLift 3.2s ease-in-out infinite;
-}
-@keyframes emptyFloat {
-  0%,
-  100% {
-    transform: translateY(0);
+/* Inner cubelet lines march, reading as the cube scrambling */
+@keyframes cubeScramble {
+  from {
+    stroke-dashoffset: 0;
   }
-  50% {
-    transform: translateY(-8px);
-  }
-}
-@keyframes layerLift {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-2px);
+  to {
+    stroke-dashoffset: 44;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .empty-art-badge,
-  .empty-art-icon .layer-1 {
+  .empty-cubes svg,
+  .empty-cubes .cubes-grid {
     animation: none;
   }
 }
-.empty-hero h2 {
-  font-size: 20px;
+.empty-box h2 {
+  font-size: 13.125px;
   font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--text);
-  margin: 0 0 8px;
+  margin: 0 0 10px;
 }
-.empty-hero p {
-  font-size: 13.5px;
-  color: var(--text-dim);
+.empty-box p {
+  font-size: 11.375px;
   line-height: 1.6;
-  max-width: 360px;
+  color: var(--text-dim);
   margin: 0 0 22px;
+  max-width: 400px;
+}
+.empty-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-/* Empty-state create button — Figma spec sizing, app-native color. */
+/* Empty-state buttons — compact Linear-style pills. */
 .empty-create-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 10px 16px;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
   border-radius: 8px;
   border: none;
   background: var(--accent);
   color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 20px;
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1;
   cursor: pointer;
-  transition: background 0.15s ease, transform 0.06s ease;
+  transition: background 0.15s ease, transform 0.15s ease;
 }
 .empty-create-btn:hover {
   background: var(--accent-hover);
+  transform: translateY(-1px);
 }
 .empty-create-btn:active {
-  transform: scale(0.98);
+  transform: translateY(0);
 }
 .empty-create-btn svg {
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
+}
+.empty-doc-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 10.5px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.empty-doc-btn:hover {
+  background: var(--surface-2);
+  border-color: var(--accent);
 }
 
 /* Outlined create button (page header) — Figma spec, theme-aware color. */
@@ -954,7 +1063,7 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  height: 32px;
+  height: 28px;
   padding: 0 16px;
   border-radius: 6px;
   border: 1px solid var(--border);
@@ -972,4 +1081,25 @@
 .btn-outline svg {
   width: 15px;
   height: 15px;
+}
+
+/* Board entrance — a slow fade/slide-up when the board first appears
+   (e.g. right after a project is created or when navigating in). */
+.board-view {
+  animation: boardViewIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes boardViewIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .board-view {
+    animation: none;
+  }
 }

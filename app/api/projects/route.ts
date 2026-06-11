@@ -12,15 +12,54 @@ export async function GET() {
   const wsId = await userWorkspaceId(userId);
   if (!wsId) return NextResponse.json([]);
 
-  const projects = await dbAll<Project & { task_count: number }>(
-    `SELECT p.*, COUNT(t.id) AS task_count
+  const rows = await dbAll<
+    Project & {
+      task_count: number;
+      done_count: number;
+      owner_name: string | null;
+      owner_email: string | null;
+      manager_name: string | null;
+      manager_email: string | null;
+      members_raw: string | null;
+    }
+  >(
+    `SELECT p.*,
+       (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.id) AS task_count,
+       (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.id AND t.status = 'done') AS done_count,
+       ou.name AS owner_name,
+       ou.email AS owner_email,
+       mu.name AS manager_name,
+       mu.email AS manager_email,
+       (SELECT group_concat(u.id || '~~' || u.name || '~~' || u.email, '||')
+          FROM project_members pm JOIN users u ON u.id = pm.user_id
+          WHERE pm.project_id = p.id) AS members_raw
      FROM projects p
-     LEFT JOIN tasks t ON t.project_id = p.id
+     LEFT JOIN users ou ON ou.id = p.owner_id
+     LEFT JOIN users mu ON mu.id = p.manager_id
      WHERE p.workspace_id = ?
-     GROUP BY p.id
      ORDER BY p.created_at DESC, p.id DESC`,
     [wsId]
   );
+
+  const projects = rows.map(({ members_raw, ...p }) => ({
+    ...p,
+    progress:
+      p.task_count > 0 ? Math.round((p.done_count / p.task_count) * 100) : 0,
+    owner: p.owner_email
+      ? { name: p.owner_name ?? "", email: p.owner_email }
+      : null,
+    manager: p.manager_email
+      ? { name: p.manager_name ?? "", email: p.manager_email }
+      : null,
+    members: (members_raw ?? "")
+      .split("||")
+      .filter(Boolean)
+      .map((s) => {
+        const [user_id, name, email] = s.split("~~");
+        return { user_id, name, email };
+      }),
+  }));
+
   return NextResponse.json(projects);
 }
 

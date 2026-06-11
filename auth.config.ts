@@ -51,7 +51,7 @@ const authConfig: NextAuthConfig = {
       );
 
       if (isAuthRoute) {
-        if (isLoggedIn) return Response.redirect(new URL("/", nextUrl));
+        if (isLoggedIn) return Response.redirect(new URL("/projects", nextUrl));
         return true;
       }
       // Everything else the middleware matches is protected.

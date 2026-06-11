@@ -8,9 +8,11 @@ import StatusIcon from "@/components/app/StatusIcon";
 export default function StatusDropdown({
   value,
   onChange,
+  variant = "field",
 }: {
   value: ProjectStatus;
   onChange: (s: ProjectStatus) => void;
+  variant?: "field" | "inline";
 }) {
   const [open, setOpen] = useState(false);
   const [maxH, setMaxH] = useState(260);
@@ -23,10 +25,12 @@ export default function StatusDropdown({
     if (!open && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
       const box = triggerRef.current.closest(".modal");
-      // Fit the menu in the space below the field, within the modal.
+      // Open below; cap to the room left inside the modal so it scrolls
+      // internally rather than spilling past the modal edge.
       const bottomBound =
         (box ? box.getBoundingClientRect().bottom : window.innerHeight) - 12;
-      setMaxH(Math.max(140, Math.min(280, bottomBound - rect.bottom - 6)));
+      const spaceBelow = bottomBound - rect.bottom - 6;
+      setMaxH(Math.max(120, Math.min(280, spaceBelow)));
     }
     setOpen((o) => !o);
   }
@@ -54,14 +58,16 @@ export default function StatusDropdown({
       <button
         ref={triggerRef}
         type="button"
-        className="status-dd-btn"
+        className={variant === "inline" ? "status-dd-inline" : "status-dd-btn"}
         onClick={toggle}
       >
-        <StatusIcon status={value} />
+        <StatusIcon status={value} size={variant === "inline" ? 18 : 16} />
         <span className="status-dd-current">{PROJECT_STATUS_LABELS[value]}</span>
-        <svg className="status-dd-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="m6 9 6 6 6-6" />
-        </svg>
+        {variant === "field" && (
+          <svg className={`status-dd-chevron${open ? " open" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        )}
       </button>
 
       {open && (

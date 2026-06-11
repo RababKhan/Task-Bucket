@@ -5,37 +5,43 @@ import type { Project, ProjectStatus, Member } from "@/lib/types";
 import Spinner from "@/components/Spinner";
 import StatusDropdown from "@/components/app/StatusDropdown";
 import DatePicker from "@/components/app/DatePicker";
+import MemberPicker from "@/components/app/MemberPicker";
 
-function initials(text: string) {
-  const parts = text.trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return "?";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
+type EditProject = {
+  id: number;
+  name: string;
+  description: string;
+  status: ProjectStatus;
+  start_date: string | null;
+  due_date: string | null;
+  manager_id: string | null;
+  member_ids: string[];
+};
 
 export default function CreateProjectModal({
   onClose,
   onCreated,
+  project,
 }: {
   onClose: () => void;
   onCreated: (project: Project) => void;
+  project?: EditProject;
 }) {
-  const [page, setPage] = useState<1 | 2>(1);
+  const isEdit = !!project;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // Page 1
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [status, setStatus] = useState<ProjectStatus>("draft");
-  const [startDate, setStartDate] = useState("");
-  const [dueDate, setDueDate] = useState("");
+  const [name, setName] = useState(project?.name ?? "");
+  const [description, setDescription] = useState(project?.description ?? "");
+  const [status, setStatus] = useState<ProjectStatus>(project?.status ?? "draft");
+  const [startDate, setStartDate] = useState(project?.start_date ?? "");
+  const [dueDate, setDueDate] = useState(project?.due_date ?? "");
 
-  // Page 2
   const [members, setMembers] = useState<Member[]>([]);
+  // Owner defaults to the current user and is sent automatically (no field).
   const [ownerId, setOwnerId] = useState("");
-  const [managerId, setManagerId] = useState("");
-  const [memberIds, setMemberIds] = useState<string[]>([]);
+  const [managerId, setManagerId] = useState(project?.manager_id ?? "");
+  const [memberIds, setMemberIds] = useState<string[]>(project?.member_ids ?? []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -48,196 +54,150 @@ export default function CreateProjectModal({
       .then((r) => r.json())
       .then((d) => {
         setMembers(d.members ?? []);
-        if (d.my_id) setOwnerId(d.my_id); // default owner = me
+        if (d.my_id) setOwnerId(d.my_id); // owner = me
       })
       .catch(() => {});
   }, []);
-
-  function toggleMember(id: string) {
-    setMemberIds((cur) =>
-      cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]
-    );
-  }
 
   async function create() {
     if (!name.trim() || saving) return;
     setSaving(true);
     setError("");
-    const res = await fetch("/api/projects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        description,
-        status,
-        start_date: startDate || null,
-        due_date: dueDate || null,
-        owner_id: ownerId || null,
-        manager_id: managerId || null,
-        member_ids: memberIds,
-      }),
-    });
+    const res = await fetch(
+      isEdit ? `/api/projects/${project!.id}` : "/api/projects",
+      {
+        method: isEdit ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          description,
+          status,
+          start_date: startDate || null,
+          due_date: dueDate || null,
+          ...(isEdit ? {} : { owner_id: ownerId || null }),
+          manager_id: managerId || null,
+          member_ids: memberIds,
+        }),
+      }
+    );
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
-      setError(d.error || "Could not create project.");
+      setError(
+        d.error ||
+          (isEdit ? "Could not update project." : "Could not create project.")
+      );
       setSaving(false);
       return;
     }
-    const project: Project = await res.json();
-    onCreated(project);
+    const saved: Project = await res.json();
+    onCreated(saved);
   }
 
   return (
     <div className="overlay" onMouseDown={onClose}>
       <div className="modal cp-modal" onMouseDown={(e) => e.stopPropagation()}>
         <div className="cp-head">
-          <h2>Create Project</h2>
-          <span className="cp-step">Step {page} of 2</span>
+          <h2>{isEdit ? "Update Project" : "Create Project"}</h2>
         </div>
 
-        {page === 1 ? (
-          <>
-            <div className="field">
-              <div className="field-labelrow">
-                <label>
-                  Project Name <span className="req">*</span>
-                </label>
-                <span className="char-count">{name.length}/32</span>
-              </div>
-              <input
-                autoFocus
-                maxLength={32}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Website Redesign"
-              />
-            </div>
+        <div className="field">
+          <div className="field-labelrow">
+            <label>
+              Project Name <span className="req">*</span>
+            </label>
+            <span className="char-count">{name.length}/32</span>
+          </div>
+          <input
+            autoFocus
+            maxLength={32}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Manhattan Project"
+          />
+        </div>
 
-            <div className="field">
-              <div className="field-labelrow">
-                <label>Description</label>
-                <span className="char-count">{description.length}/500</span>
-              </div>
-              <textarea
-                rows={3}
-                maxLength={500}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="What is this project about? (optional)"
-              />
-            </div>
+        <div className="field">
+          <div className="field-labelrow">
+            <label>Description</label>
+            <span className="char-count">{description.length}/500</span>
+          </div>
+          <textarea
+            rows={3}
+            maxLength={500}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="What is this project about? (optional)"
+          />
+        </div>
 
-            <div className="field">
-              <label>Status</label>
-              <StatusDropdown value={status} onChange={setStatus} />
-            </div>
+        <div className="field">
+          <label>Status</label>
+          <StatusDropdown value={status} onChange={setStatus} />
+        </div>
 
-            <div className="field-row">
-              <div className="field">
-                <label>Start Date</label>
-                <DatePicker
-                  value={startDate}
-                  onChange={setStartDate}
-                  placeholder="Start date"
-                />
-              </div>
-              <div className="field">
-                <label>Estimated Due Date</label>
-                <DatePicker
-                  value={dueDate}
-                  onChange={setDueDate}
-                  placeholder="Due date"
-                />
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="field">
-              <label>Project Owner</label>
-              <select value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
-                {members.map((m) => (
-                  <option key={m.user_id} value={m.user_id}>
-                    {m.name || m.email}
-                  </option>
-                ))}
-              </select>
-            </div>
+        <div className="field-row">
+          <div className="field">
+            <label>Start Date</label>
+            <DatePicker
+              value={startDate}
+              onChange={setStartDate}
+              placeholder="Start date"
+            />
+          </div>
+          <div className="field">
+            <label>Estimated Due Date</label>
+            <DatePicker
+              value={dueDate}
+              onChange={setDueDate}
+              placeholder="Due date"
+            />
+          </div>
+        </div>
 
-            <div className="field">
-              <label>Project Manager</label>
-              <select value={managerId} onChange={(e) => setManagerId(e.target.value)}>
-                <option value="">None</option>
-                {members.map((m) => (
-                  <option key={m.user_id} value={m.user_id}>
-                    {m.name || m.email}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="field">
-              <label>Project Members</label>
-              <div className="cp-members">
-                {members.length === 0 && (
-                  <span className="cp-members-empty">No other members yet.</span>
-                )}
-                {members.map((m) => (
-                  <label key={m.user_id} className="cp-member-check">
-                    <input
-                      type="checkbox"
-                      checked={memberIds.includes(m.user_id)}
-                      onChange={() => toggleMember(m.user_id)}
-                    />
-                    <span className="member-avatar sm">
-                      {initials(m.name || m.email || "?")}
-                    </span>
-                    <span className="cp-member-name">{m.name || m.email}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
+        <div className="field-row">
+          <div className="field">
+            <label>Project Manager</label>
+            <MemberPicker
+              members={members}
+              value={managerId ? [managerId] : []}
+              onChange={(ids) => setManagerId(ids[0] ?? "")}
+              placeholder="Select Manager"
+              allowNone
+              searchable={false}
+            />
+          </div>
+          <div className="field">
+            <label>Project Members</label>
+            <MemberPicker
+              members={members}
+              value={memberIds}
+              onChange={setMemberIds}
+              multiple
+              placeholder="Add members"
+            />
+          </div>
+        </div>
 
         {error && <p className="invite-err">{error}</p>}
 
         <div className="modal-actions">
-          <div>
-            {page === 2 && (
-              <button className="btn" onClick={() => setPage(1)} disabled={saving}>
-                Back
-              </button>
-            )}
-          </div>
           <div className="right">
-            <button className="btn" onClick={onClose} disabled={saving}>
-              Cancel
+            <button
+              className="btn btn-primary"
+              onClick={create}
+              disabled={!name.trim() || saving}
+            >
+              {saving ? (
+                <>
+                  {isEdit ? "Updating" : "Creating"}
+                  <Spinner />
+                </>
+              ) : isEdit ? (
+                "Update Project"
+              ) : (
+                "Create Project"
+              )}
             </button>
-            {page === 1 ? (
-              <button
-                className="btn btn-primary"
-                onClick={() => setPage(2)}
-                disabled={!name.trim()}
-              >
-                Next
-              </button>
-            ) : (
-              <button
-                className="btn btn-primary"
-                onClick={create}
-                disabled={!name.trim() || saving}
-              >
-                {saving ? (
-                  <>
-                    Creating
-                    <Spinner />
-                  </>
-                ) : (
-                  "Create project"
-                )}
-              </button>
-            )}
           </div>
         </div>
       </div>

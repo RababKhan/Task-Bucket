@@ -18,6 +18,14 @@
   --card-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset,
     0 12px 40px -12px rgba(0, 0, 0, 0.65), 0 4px 12px -6px rgba(0, 0, 0, 0.5);
 
+  /* Layered workspace (Linear-style floating canvas over the app background) */
+  --canvas-bg: #101218;
+  --canvas-border: var(--border);
+  --canvas-shadow: 0 1px 2px rgba(0, 0, 0, 0.4),
+    0 16px 40px -12px rgba(0, 0, 0, 0.55);
+  --nav-hover: rgba(255, 255, 255, 0.05);
+  --nav-active: rgba(255, 255, 255, 0.08);
+
   --todo: #6b7280;
   --in_progress: #d9a441;
   --done: #16A34A;
@@ -43,12 +51,17 @@ body {
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-geist-sans), "Inter", ui-sans-serif, system-ui,
+  font-family: var(--font-inter), "Inter", ui-sans-serif, system-ui,
     -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 14px;
   line-height: 1.5;
+  /* Match Linear's crisp rendering: tabular/contextual features + slight
+     negative tracking that Inter is designed for. */
+  font-feature-settings: "cv01", "cv03", "cv04", "cv11";
+  letter-spacing: -0.012em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 :root {
@@ -73,18 +86,25 @@ input,
 textarea,
 select {
   font-family: inherit;
-  font-size: inherit;
+  font-size: 11px;
   background: var(--input-bg);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 8px 10px;
+  padding: 0 10px;
   width: 100%;
   transition: border-color 0.2s ease, box-shadow 0.2s ease,
     background-color 0.2s ease;
 }
+/* Single-line fields share a 28px height across every form. */
+input,
+select {
+  height: 28px;
+}
 textarea {
   resize: none;
+  padding: 8px 10px;
+  min-height: 72px;
 }
 input:focus,
 textarea:focus,
@@ -98,10 +118,12 @@ select:focus {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
+  height: 28px;
+  padding: 0 14px;
   border-radius: 8px;
   background: var(--surface-2);
   border: 1px solid var(--border);
+  font-size: 10.5px;
   transition: background 0.12s, border-color 0.12s;
   white-space: nowrap;
 }
@@ -123,7 +145,8 @@ select:focus {
   color: var(--danger);
 }
 .btn-sm {
-  padding: 4px 8px;
+  height: 28px;
+  padding: 0 8px;
   font-size: 12px;
 }
 
@@ -226,12 +249,16 @@ select:focus {
   margin-bottom: 22px;
 }
 .main-header h1 {
-  margin: 0 0 4px;
-  font-size: 24px;
+  margin: 0 0 6px;
+  font-size: 28px;
+  font-weight: 600;
   letter-spacing: -0.02em;
+  color: var(--text);
 }
 .main-header p {
   margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
   color: var(--text-dim);
   max-width: 60ch;
 }
@@ -1177,24 +1204,33 @@ select:focus {
 
 /* ============ Light theme ============ */
 [data-theme="light"] {
-  --bg: #f4f6f9;
-  --surface: #ffffff;
-  --surface-2: #eef1f5;
-  --border: #d7dce3;
-  --text: #1a1d24;
-  --text-dim: #5b6573;
-  --accent: #3f3f46;
-  --accent-hover: #52525b;
-  --link: #3f3f46;
-  --link-hover: #18181b;
+  /* Natural Gray (Stone) — premium, warm-neutral light palette */
+  --bg: #f5f5f4; /* app background */
+  --surface: #ffffff; /* cards */
+  --surface-2: #f0efed; /* hover / inset surfaces */
+  --border: #e7e5e4;
+  --text: #1c1917;
+  --text-dim: #78716c;
+  --accent: #44403c;
+  --accent-hover: #292524;
+  --link: #44403c;
+  --link-hover: #1c1917;
   --danger: #d6353b;
-  --todo: #8a93a3;
+  --todo: #8a8580;
   --in_progress: #c8901f;
-  --done: #16A34A;
-  --prio-low: #16A34A;
+  --done: #16a34a;
+  --prio-low: #16a34a;
   --prio-medium: #c8901f;
   --prio-high: #d6353b;
-  --ring: rgba(63, 63, 70, 0.22);
+  --ring: rgba(68, 64, 60, 0.22);
+
+  /* Floating canvas */
+  --canvas-bg: #fafafa;
+  --canvas-border: rgba(0, 0, 0, 0.05);
+  --canvas-shadow: 0 1px 2px rgba(0, 0, 0, 0.03),
+    0 12px 24px rgba(0, 0, 0, 0.04);
+  --nav-hover: rgba(0, 0, 0, 0.04);
+  --nav-active: rgba(0, 0, 0, 0.06);
 }
 [data-theme="light"] .form-error {
   color: #b3242a;
@@ -1222,13 +1258,13 @@ select,
 /* ============ Theme toggle button ============ */
 .theme-toggle {
   position: relative;
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: 50%;
   border: 1px solid var(--border);
   background: var(--surface-2);
   overflow: hidden;
@@ -1241,8 +1277,8 @@ select,
 }
 .theme-toggle svg {
   position: absolute;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   transition: opacity 0.3s ease,
     transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -1531,7 +1567,7 @@ a:focus-visible,
   margin: 0 0 18px;
 }
 .field {
-  margin-bottom: 13px;
+  margin-bottom: 8px;
 }
 .modal {
   padding: 20px;
@@ -1540,7 +1576,7 @@ a:focus-visible,
   margin: 0 0 16px;
 }
 .modal-actions {
-  margin-top: 18px;
+  margin-top: 6px;
 }
 .main-header {
   margin-bottom: 20px;
@@ -1717,7 +1753,7 @@ select,
   margin: 0 0 20px;
 }
 .field label {
-  font-size: 13px;
+  font-size: 11.375px;
   font-weight: 500;
 }
 .field-hint {
@@ -1739,7 +1775,7 @@ select,
 
 /* Buttons: consistent height, hover elevation, press feedback. */
 .btn {
-  min-height: 38px;
+  min-height: 28px;
   transition: background 0.16s ease, border-color 0.16s ease,
     box-shadow 0.16s ease, transform 0.1s ease;
 }
@@ -1758,9 +1794,8 @@ select,
   }
 }
 
-/* Keep small buttons compact (the 38px min-height is for full-size buttons). */
 .btn-sm {
-  min-height: 30px;
+  min-height: 28px;
 }
 
 /* Remove the browser autofill background (Chrome/Edge/Safari) so autofilled

@@ -87,10 +87,15 @@ function BoardPage() {
   // ---- Project actions ----
   const createProject = () => setCreateOpen(true);
 
-  async function onProjectCreated(p: Project) {
+  function onProjectCreated(p: Project) {
     setCreateOpen(false);
-    await loadProjects();
+    // Optimistically show the new (empty) project's board right away — no
+    // spinner, no empty-state flash. Reconcile the list in the background.
+    setProjects((cur) =>
+      cur.some((x) => x.id === p.id) ? cur : [{ ...p, task_count: 0 }, ...cur]
+    );
     setActiveId(p.id);
+    void loadProjects();
   }
 
   async function renameProject() {
@@ -210,6 +215,7 @@ function BoardPage() {
 
   return (
     <>
+      <div className="board-view">
       <div className="main-header">
         <div className="board-title">
           {/* Project switcher */}
@@ -219,7 +225,7 @@ function BoardPage() {
               onClick={() => setSwitcherOpen((o) => !o)}
             >
               <h1>{activeProject.name}</h1>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <svg className={`dd-chevron${switcherOpen ? " open" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="m6 9 6 6 6-6" />
               </svg>
             </button>
@@ -426,6 +432,7 @@ function BoardPage() {
           </button>
         </div>
       )}
+      </div>
 
       {modalOpen && (
         <TaskModal

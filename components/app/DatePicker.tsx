@@ -22,10 +22,12 @@ export default function DatePicker({
   value,
   onChange,
   placeholder = "Select date",
+  inline = false,
 }: {
   value: string;
   onChange: (val: string) => void;
   placeholder?: string;
+  inline?: boolean;
 }) {
   const today = new Date();
   const sel = parse(value);
@@ -59,6 +61,12 @@ export default function DatePicker({
         year: "numeric",
       })
     : null;
+  const shortLabel = sel
+    ? new Date(sel.y, sel.m, sel.d).toLocaleDateString(undefined, {
+        day: "numeric",
+        month: "short",
+      })
+    : null;
 
   // Monday-first 6-week grid.
   const first = new Date(view.y, view.m, 1);
@@ -82,13 +90,38 @@ export default function DatePicker({
     d.getDate() === today.getDate();
 
   return (
-    <div className="datepicker">
-      <button ref={triggerRef} type="button" className="dp-trigger" onClick={toggle}>
-        <span className={label ? "" : "dp-placeholder"}>{label ?? placeholder}</span>
-        <svg className="dp-cal-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <rect x="3" y="4" width="18" height="17" rx="2" />
-          <path d="M16 2v4M8 2v4M3 10h18" />
-        </svg>
+    <div className={`datepicker${inline ? " dp-inline" : ""}`}>
+      <button
+        ref={triggerRef}
+        type="button"
+        className={inline ? "dp-inline-trigger" : "dp-trigger"}
+        onClick={toggle}
+      >
+        {inline ? (
+          sel ? (
+            <>
+              <svg className="pv-empty-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <rect x="3" y="6" width="13" height="13" rx="2.5" />
+                <path d="M3 10h13" />
+              </svg>
+              <span className="dp-inline-date">{shortLabel}</span>
+            </>
+          ) : (
+            <svg className="pv-empty-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="3" y="6" width="13" height="13" rx="2.5" />
+              <path d="M3 10h13" />
+              <path d="M19 15v5M16.5 17.5h5" />
+            </svg>
+          )
+        ) : (
+          <>
+            <span className={label ? "" : "dp-placeholder"}>{label ?? placeholder}</span>
+            <svg className="dp-cal-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="3" y="4" width="18" height="17" rx="2" />
+              <path d="M16 2v4M8 2v4M3 10h18" />
+            </svg>
+          </>
+        )}
       </button>
 
       {open && (

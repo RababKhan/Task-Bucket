@@ -52,7 +52,7 @@ export default function StatusIcon({
   const pct = PROGRESS[status] ?? 0;
   return (
     <svg className="status-icon" width={size} height={size} viewBox="0 0 16 16" aria-hidden>
-      <circle cx="8" cy="8" r={R} fill="none" stroke={color} strokeOpacity="0.28" strokeWidth={SW} />
+      <circle cx="8" cy="8" r={R} fill="none" stroke={color} strokeOpacity={pct > 0 ? 0.28 : 0.7} strokeWidth={SW} />
       {pct > 0 && (
         <circle
           cx="8"

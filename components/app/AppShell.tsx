@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import type { Project } from "@/lib/types";
 import ThemeToggle from "@/components/ThemeToggle";
-import Logo from "@/components/Logo";
 
 function initials(text: string) {
   const parts = text.trim().split(/\s+/).filter(Boolean);
@@ -15,17 +13,11 @@ function initials(text: string) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-const BoardIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <path d="M4 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" />
-    <path d="M14 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" />
-  </svg>
-);
 const ProjectsIcon = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <path d="M12 3 2 8l10 5 10-5-10-5Z" />
-    <path d="M2 13l10 5 10-5" />
-    <path d="M2 18l10 5 10-5" />
+    <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+    <path d="m3.3 7 8.7 5 8.7-5" />
+    <path d="M12 22V12" />
   </svg>
 );
 const ProfileIcon = (
@@ -83,15 +75,6 @@ function NavLink({
 
 function Sidebar() {
   const pathname = usePathname();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [open, setOpen] = useState(true);
-
-  useEffect(() => {
-    fetch("/api/projects")
-      .then((r) => r.json())
-      .then((d: Project[]) => setProjects(Array.isArray(d) ? d : []))
-      .catch(() => {});
-  }, []);
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -99,31 +82,19 @@ function Sidebar() {
   return (
     <aside className="app-sidebar">
       <div className="sidebar-logo">
-        <Logo className="sidebar-logo-img" />
+        <svg className="sidebar-logo-icon" viewBox="0 0 40 40" fill="none" aria-hidden>
+          <rect x="2" y="7" width="36" height="7" rx="3.5" fill="#3f3f46" />
+          <rect x="2" y="17" width="26" height="7" rx="3.5" fill="#71717a" />
+          <rect x="2" y="27" width="17" height="7" rx="3.5" fill="#a1a1aa" />
+        </svg>
+        <span className="sidebar-logo-text">Task Bucket</span>
+        <svg className="sidebar-logo-collapse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="m18 17-5-5 5-5M11 17l-5-5 5-5" />
+        </svg>
       </div>
 
       <nav className="app-nav">
-        <NavLink href="/" label="Board" icon={BoardIcon} active={isActive("/")} />
         <NavLink href="/projects" label="Projects" icon={ProjectsIcon} active={isActive("/projects")} />
-
-        <div className="nav-section">
-          <button className="nav-section-head" onClick={() => setOpen((o) => !o)}>
-            Projects
-            <svg className={open ? "" : "rot"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="m6 9 6 6 6-6" />
-            </svg>
-          </button>
-          {open &&
-            projects.map((p) => (
-              <Link key={p.id} href={`/?project=${p.id}`} className="nav-proj">
-                <span className="nav-proj-dot" />
-                {p.name}
-              </Link>
-            ))}
-          {open && projects.length === 0 && (
-            <span className="nav-proj-empty">No projects yet</span>
-          )}
-        </div>
       </nav>
 
       <div className="sidebar-bottom">
@@ -142,23 +113,42 @@ function Sidebar() {
 
 /* ---------------- Topbar ---------------- */
 
+function sectionTitle(pathname: string) {
+  if (pathname === "/") return "Board";
+  if (pathname.startsWith("/projects")) return "Projects";
+  if (pathname.startsWith("/settings")) return "Settings";
+  if (pathname.startsWith("/profile")) return "Profile";
+  if (pathname.startsWith("/task")) return "Task";
+  return "Task Bucket";
+}
+
 function Topbar() {
   const { data: session } = useSession();
+  const pathname = usePathname();
   const [menu, setMenu] = useState<null | "notif" | "account">(null);
 
   const user = session?.user;
   const name = user?.name || "Account";
   const email = user?.email || "";
-  const wsName = session?.workspace?.name || "Task Bucket";
+  const title = sectionTitle(pathname);
+  const showAdd = pathname.startsWith("/projects");
 
   return (
     <header className="app-topbar">
-      <div className="ws-switcher-top">
-        <span className="ws-avatar">{initials(wsName)}</span>
-        <span className="ws-name2">{wsName}</span>
-        <svg className="ws-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="m6 9 6 6 6-6" />
-        </svg>
+      <div className="topbar-lead">
+        <h1 className="topbar-title">{title}</h1>
+        {showAdd && (
+          <button
+            type="button"
+            className="topbar-add"
+            aria-label="Create project"
+            onClick={() => window.dispatchEvent(new Event("tb:create-project"))}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
+        )}
       </div>
 
       <div className="topbar-actions">

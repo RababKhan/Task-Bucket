@@ -27,7 +27,7 @@ export default function OAuthButtons({
           <button
             type="button"
             className="oauth-btn"
-            onClick={() => signIn("google", { callbackUrl: "/" })}
+            onClick={() => signIn("google", { callbackUrl: "/projects" })}
           >
             <svg viewBox="0 0 24 24" aria-hidden>
               <path
@@ -54,7 +54,7 @@ export default function OAuthButtons({
           <button
             type="button"
             className="oauth-btn"
-            onClick={() => signIn("github", { callbackUrl: "/" })}
+            onClick={() => signIn("github", { callbackUrl: "/projects" })}
           >
             <svg viewBox="0 0 24 24" aria-hidden fill="currentColor">
               <path d="M12 1A11 11 0 0 0 8.52 22.45c.55.1.75-.24.75-.53v-1.85c-3.06.67-3.7-1.47-3.7-1.47-.5-1.27-1.22-1.61-1.22-1.61-1-.68.08-.67.08-.67 1.1.08 1.68 1.13 1.68 1.13.98 1.69 2.57 1.2 3.2.92.1-.71.38-1.2.69-1.47-2.44-.28-5.01-1.22-5.01-5.44 0-1.2.43-2.18 1.13-2.95-.11-.28-.49-1.4.11-2.92 0 0 .92-.3 3.02 1.13a10.4 10.4 0 0 1 5.5 0c2.1-1.43 3.02-1.13 3.02-1.13.6 1.52.22 2.64.11 2.92.7.77 1.13 1.75 1.13 2.95 0 4.23-2.58 5.16-5.03 5.43.4.34.74 1 .74 2.03v3c0 .3.2.64.76.53A11 11 0 0 0 12 1Z" />
