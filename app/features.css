@@ -811,8 +811,6 @@
 .cp-modal {
   width: 480px;
   max-width: 92vw;
-  max-height: 88vh;
-  overflow-y: auto;
 }
 .cp-head {
   display: flex;
@@ -939,8 +937,14 @@ select,
   border-radius: 10px;
   box-shadow: var(--card-shadow);
   padding: 6px;
-  max-height: 290px;
+  max-height: 250px;
   overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+}
+.status-dd-menu::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 .status-dd-item {
   display: flex;
