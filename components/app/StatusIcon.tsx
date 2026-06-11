@@ -2,8 +2,8 @@ import type { ProjectStatus } from "@/lib/types";
 import { PROJECT_STATUS_COLORS } from "@/lib/types";
 
 // Donut geometry for a 16x16 icon.
-const R = 5;
-const SW = 4;
+const R = 5.5;
+const SW = 3;
 const C = 2 * Math.PI * R;
 
 // Fill fraction of the progress donut for the in-flight statuses.
