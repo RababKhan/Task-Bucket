@@ -907,3 +907,29 @@
   width: 18px;
   height: 18px;
 }
+
+/* Outlined create button (page header) — Figma spec, theme-aware color. */
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.btn-outline:hover {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+.btn-outline svg {
+  width: 15px;
+  height: 15px;
+}

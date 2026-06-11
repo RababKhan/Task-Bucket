@@ -43,8 +43,11 @@ export default function ProjectsPage() {
           <p>All your projects in one place.</p>
         </div>
         <div className="header-actions">
-          <button className="btn btn-primary btn-sm" onClick={createProject}>
-            + New project
+          <button className="btn-outline" onClick={createProject}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Create Project
           </button>
         </div>
       </div>
