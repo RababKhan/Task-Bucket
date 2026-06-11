@@ -1152,3 +1152,12 @@ select,
 .td-field-input-wrap {
   flex: 1;
 }
+
+/* Character counter on form fields */
+.char-count {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.char-count.full {
+  color: var(--danger);
+}

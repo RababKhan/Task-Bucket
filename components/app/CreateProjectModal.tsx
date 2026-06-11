@@ -98,11 +98,17 @@ export default function CreateProjectModal({
         {page === 1 ? (
           <>
             <div className="field">
-              <label>
-                Project name <span className="req">*</span>
-              </label>
+              <div className="field-labelrow">
+                <label>
+                  Project name <span className="req">*</span>
+                </label>
+                <span className={`char-count${name.length >= 32 ? " full" : ""}`}>
+                  {name.length}/32
+                </span>
+              </div>
               <input
                 autoFocus
+                maxLength={32}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Website Redesign"
@@ -110,9 +116,15 @@ export default function CreateProjectModal({
             </div>
 
             <div className="field">
-              <label>Description</label>
+              <div className="field-labelrow">
+                <label>Description</label>
+                <span className={`char-count${description.length >= 500 ? " full" : ""}`}>
+                  {description.length}/500
+                </span>
+              </div>
               <textarea
                 rows={3}
+                maxLength={500}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="What is this project about? (optional)"

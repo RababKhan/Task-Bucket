@@ -31,8 +31,8 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const name = String(body.name ?? "").trim();
-  const description = String(body.description ?? "").trim();
+  const name = String(body.name ?? "").trim().slice(0, 32);
+  const description = String(body.description ?? "").trim().slice(0, 500);
 
   if (!name) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 });
