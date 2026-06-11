@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import type { Project } from "@/lib/types";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -144,35 +144,12 @@ function Sidebar() {
 
 function Topbar() {
   const { data: session } = useSession();
-  const router = useRouter();
   const [menu, setMenu] = useState<null | "notif" | "account">(null);
-  const [creating, setCreating] = useState(false);
 
   const user = session?.user;
   const name = user?.name || "Account";
   const email = user?.email || "";
   const wsName = session?.workspace?.name || "Task Bucket";
-
-  async function createProject() {
-    if (creating) return;
-    const projectName = window.prompt("Project name");
-    if (!projectName?.trim()) return;
-    setCreating(true);
-    const res = await fetch("/api/projects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: projectName }),
-    });
-    setCreating(false);
-    if (res.ok) {
-      const p = await res.json();
-      router.push(`/?project=${p.id}`);
-      router.refresh();
-    } else {
-      const d = await res.json().catch(() => ({}));
-      window.alert(d.error || "Could not create project.");
-    }
-  }
 
   return (
     <header className="app-topbar">
@@ -185,13 +162,6 @@ function Topbar() {
       </div>
 
       <div className="topbar-actions">
-        <button className="btn btn-primary btn-sm create-btn" onClick={createProject} disabled={creating}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          Create
-        </button>
-
         <ThemeToggle />
 
         <div className="menu-anchor">
