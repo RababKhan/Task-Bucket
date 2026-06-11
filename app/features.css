@@ -941,18 +941,38 @@ select,
   border-radius: 8px;
   box-shadow: var(--card-shadow);
   padding: 6px;
-  max-height: 250px;
-  overflow-y: auto;
-  scrollbar-width: none; /* Firefox */
 }
 .status-dd-menu.up {
   top: auto;
   bottom: calc(100% + 6px);
 }
-.status-dd-menu::-webkit-scrollbar {
+.status-dd-scroll {
+  overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+}
+.status-dd-scroll::-webkit-scrollbar {
   width: 0;
   height: 0;
   display: none;
+}
+/* Fade affordance signalling more scrollable content. */
+.status-dd-fade {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  height: 26px;
+  pointer-events: none;
+  z-index: 1;
+}
+.status-dd-fade.top {
+  top: 6px;
+  background: linear-gradient(to bottom, var(--surface), transparent);
+  border-radius: 8px 8px 0 0;
+}
+.status-dd-fade.bottom {
+  bottom: 6px;
+  background: linear-gradient(to top, var(--surface), transparent);
+  border-radius: 0 0 8px 8px;
 }
 .status-dd-item {
   display: flex;

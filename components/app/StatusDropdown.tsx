@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ProjectStatus } from "@/lib/types";
 import { PROJECT_STATUS_ORDER, PROJECT_STATUS_LABELS } from "@/lib/types";
 import StatusIcon from "@/components/app/StatusIcon";
@@ -14,7 +14,10 @@ export default function StatusDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const [maxH, setMaxH] = useState(260);
+  const [fadeTop, setFadeTop] = useState(false);
+  const [fadeBottom, setFadeBottom] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   function toggle() {
     if (!open && triggerRef.current) {
@@ -27,6 +30,24 @@ export default function StatusDropdown({
     }
     setOpen((o) => !o);
   }
+
+  function onScroll() {
+    const el = scrollRef.current;
+    if (!el) return;
+    setFadeTop(el.scrollTop > 4);
+    setFadeBottom(el.scrollTop + el.clientHeight < el.scrollHeight - 4);
+  }
+
+  // When opened, show the bottom fade if the list overflows.
+  useEffect(() => {
+    if (!open) {
+      setFadeTop(false);
+      setFadeBottom(false);
+      return;
+    }
+    const el = scrollRef.current;
+    if (el) setFadeBottom(el.scrollHeight > el.clientHeight + 4);
+  }, [open, maxH]);
 
   return (
     <div className="status-dd">
@@ -46,8 +67,16 @@ export default function StatusDropdown({
       {open && (
         <>
           <div className="status-dd-backdrop" onClick={() => setOpen(false)} />
-          <div className="status-dd-menu" role="listbox" style={{ maxHeight: maxH }}>
-            {PROJECT_STATUS_ORDER.map((s) => (
+          <div className="status-dd-menu">
+            {fadeTop && <div className="status-dd-fade top" aria-hidden />}
+            <div
+              ref={scrollRef}
+              className="status-dd-scroll"
+              role="listbox"
+              style={{ maxHeight: maxH }}
+              onScroll={onScroll}
+            >
+              {PROJECT_STATUS_ORDER.map((s) => (
               <button
                 type="button"
                 key={s}
@@ -67,7 +96,9 @@ export default function StatusDropdown({
                   </svg>
                 )}
               </button>
-            ))}
+              ))}
+            </div>
+            {fadeBottom && <div className="status-dd-fade bottom" aria-hidden />}
           </div>
         </>
       )}
