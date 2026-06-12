@@ -218,22 +218,39 @@
 .topbar-add {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 22px;
   height: 22px;
-  border-radius: 50%;
-  color: var(--text);
-  background: var(--surface-2);
+  padding: 0 2px;
+  border-radius: 999px;
+  color: var(--text-dim);
+  background: transparent;
   border: 1px solid var(--border);
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-}
-.topbar-add:hover {
-  border-color: var(--accent);
-  background: var(--surface-2);
+  overflow: hidden;
+  white-space: nowrap;
+  transition: border-color 0.15s ease, color 0.15s ease,
+    padding-right 0.28s ease;
 }
 .topbar-add svg {
   width: 16px;
   height: 16px;
+  flex-shrink: 0;
+}
+.topbar-add-label {
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  font-size: 11.375px;
+  font-weight: 500;
+  transition: max-width 0.28s ease, opacity 0.18s ease, margin-left 0.28s ease;
+}
+.topbar-add:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  padding-right: 10px;
+}
+.topbar-add:hover .topbar-add-label {
+  max-width: 110px;
+  opacity: 1;
+  margin-left: 5px;
 }
 .app-main {
   flex: 1;

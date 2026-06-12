@@ -275,52 +275,65 @@ select:focus {
   align-items: start;
 }
 .column {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 12px;
+  background: var(--canvas-bg);
+  border: 1px solid var(--canvas-border);
+  border-radius: 12px;
+  padding: 10px;
   min-height: 120px;
 }
 .column-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
-  padding: 0 4px;
+  margin-bottom: 10px;
+  padding: 2px 4px;
 }
 .column-header .dot {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
 }
 .column-header h3 {
   margin: 0;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
 }
 .column-header .count {
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--surface-2);
+  min-width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: 999px;
 }
 
 .card {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  background: var(--surface);
+  border: 1px solid var(--canvas-border);
   border-radius: 8px;
-  padding: 11px 12px;
-  margin-bottom: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
   cursor: pointer;
-  transition: border-color 0.12s, transform 0.06s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: box-shadow 0.15s ease, transform 0.15s ease,
+    border-color 0.15s ease;
 }
 .card:hover {
-  border-color: var(--accent);
+  border-color: var(--border);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 10px 22px -8px rgba(0, 0, 0, 0.07);
+  transform: translateY(-1px);
 }
 .card:active {
-  transform: scale(0.995);
+  transform: translateY(0);
 }
 .card-title {
   font-weight: 500;
-  margin-bottom: 8px;
+  font-size: 12.5px;
+  margin-bottom: 7px;
 }
 .card-meta {
   display: flex;
@@ -329,14 +342,15 @@ select:focus {
   flex-wrap: wrap;
 }
 .badge {
-  font-size: 11px;
+  font-size: 10px;
+  font-weight: 500;
   padding: 1px 8px;
-  border-radius: 10px;
+  border-radius: 999px;
   border: 1px solid var(--border);
   text-transform: capitalize;
 }
 .due {
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--text-dim);
   display: inline-flex;
   align-items: center;
@@ -349,16 +363,17 @@ select:focus {
 .card-move {
   display: flex;
   gap: 6px;
-  margin-top: 10px;
+  margin-top: 9px;
 }
 .card-move button {
   flex: 1;
-  font-size: 11px;
+  font-size: 10.5px;
   padding: 4px;
   border-radius: 6px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--surface-2);
+  border: 1px solid var(--canvas-border);
   color: var(--text-dim);
+  transition: color 0.12s, border-color 0.12s;
 }
 .card-move button:hover:not(:disabled) {
   color: var(--text);
@@ -371,16 +386,20 @@ select:focus {
 
 .add-task {
   width: 100%;
-  padding: 8px;
+  padding: 7px;
   border: 1px dashed var(--border);
   border-radius: 8px;
   color: var(--text-dim);
+  font-size: 11.375px;
+  font-weight: 500;
   background: transparent;
   margin-top: 2px;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 .add-task:hover {
   border-color: var(--accent);
   color: var(--text);
+  background: var(--surface);
 }
 
 .empty {
