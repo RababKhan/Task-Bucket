@@ -92,7 +92,7 @@ export default function ProjectsPage() {
       if (raw) {
         const v = JSON.parse(raw);
         if (typeof v.pageSize === "number") setPageSize(v.pageSize);
-        if (v.visible) setVisible({ ...DEFAULT_VISIBLE, ...v.visible });
+        if (v.visible) setVisible({ ...DEFAULT_VISIBLE, ...v.visible, name: true });
       }
     } catch {}
   }, []);
@@ -605,19 +605,10 @@ export default function ProjectsPage() {
             <div className="pv-drawer-head">
               <span className="pv-drawer-title">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M4 6h10M4 12h7M4 18h13M18 4v6M21 7h-6" />
+                  <path d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
                 View
               </span>
-              <button
-                className="pv-drawer-close"
-                onClick={() => setViewOpen(false)}
-                aria-label="Close"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M18 6 6 18M6 6l12 12" />
-                </svg>
-              </button>
             </div>
 
             <div className="pv-drawer-body">
@@ -650,7 +641,9 @@ export default function ProjectsPage() {
                       <span>{c.label}</span>
                       <input
                         type="checkbox"
+                        className="pv-check"
                         checked={visible[c.key]}
+                        disabled={c.key === "name"}
                         onChange={() =>
                           setVisible((v) => ({ ...v, [c.key]: !v[c.key] }))
                         }
