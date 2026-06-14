@@ -369,7 +369,7 @@ select:focus {
   flex: 1;
   font-size: 10.5px;
   padding: 4px;
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--surface-2);
   border: 1px solid var(--canvas-border);
   color: var(--text-dim);
@@ -1009,7 +1009,7 @@ select:focus {
   justify-content: center;
   width: 30px;
   height: 30px;
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--text-dim);
 }
 .pw-toggle:hover {
@@ -1598,7 +1598,7 @@ a:focus-visible,
   margin-top: 6px;
 }
 .main-header {
-  margin-bottom: 20px;
+  margin-bottom: 8px;
 }
 
 /* --- Responsive: tablet & mobile --- */

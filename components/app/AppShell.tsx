@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
@@ -57,7 +57,7 @@ function NavLink({
   const inner = (
     <>
       <span className="nav-ic">{icon}</span>
-      {label}
+      <span className="nav-label">{label}</span>
     </>
   );
   return external ? (
@@ -73,7 +73,13 @@ function NavLink({
 
 /* ---------------- Sidebar ---------------- */
 
-function Sidebar() {
+function Sidebar({
+  collapsed,
+  onToggle,
+}: {
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
   const pathname = usePathname();
 
   const isActive = (href: string) =>
@@ -88,9 +94,20 @@ function Sidebar() {
           <rect x="2" y="27" width="17" height="7" rx="3.5" fill="#a1a1aa" />
         </svg>
         <span className="sidebar-logo-text">Task Bucket</span>
-        <svg className="sidebar-logo-collapse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="m18 17-5-5 5-5M11 17l-5-5 5-5" />
-        </svg>
+        <button
+          type="button"
+          className="sidebar-logo-collapse"
+          onClick={onToggle}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            {collapsed ? (
+              <path d="m6 17 5-5-5-5M13 17l5-5-5-5" />
+            ) : (
+              <path d="m18 17-5-5 5-5M11 17l-5-5 5-5" />
+            )}
+          </svg>
+        </button>
       </div>
 
       <nav className="app-nav">
@@ -126,17 +143,41 @@ function Topbar() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [menu, setMenu] = useState<null | "notif" | "account">(null);
+  const [boardProject, setBoardProject] = useState<string | null>(null);
+
+  useEffect(() => {
+    function onActive(e: Event) {
+      const detail = (e as CustomEvent<{ name: string } | null>).detail;
+      setBoardProject(detail?.name ?? null);
+    }
+    window.addEventListener("tb:active-project", onActive as EventListener);
+    return () =>
+      window.removeEventListener("tb:active-project", onActive as EventListener);
+  }, []);
 
   const user = session?.user;
   const name = user?.name || "Account";
   const email = user?.email || "";
   const title = sectionTitle(pathname);
   const showAdd = pathname.startsWith("/projects");
+  const showCrumb = pathname === "/" && !!boardProject;
 
   return (
     <header className="app-topbar">
       <div className="topbar-lead">
-        <h1 className="topbar-title">{title}</h1>
+        {showCrumb ? (
+          <nav className="topbar-crumb" aria-label="Breadcrumb">
+            <Link href="/projects" className="topbar-crumb-link">
+              Project
+            </Link>
+            <svg className="topbar-crumb-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+            <span className="topbar-crumb-current">{boardProject}</span>
+          </nav>
+        ) : (
+          <h1 className="topbar-title">{title}</h1>
+        )}
         {showAdd && (
           <button
             type="button"
@@ -233,9 +274,23 @@ function Topbar() {
 /* ---------------- Shell ---------------- */
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    setCollapsed(localStorage.getItem("tb-sidebar-collapsed") === "1");
+  }, []);
+
+  function toggleSidebar() {
+    setCollapsed((c) => {
+      const next = !c;
+      localStorage.setItem("tb-sidebar-collapsed", next ? "1" : "0");
+      return next;
+    });
+  }
+
   return (
-    <div className="app-shell">
-      <Sidebar />
+    <div className={`app-shell${collapsed ? " collapsed" : ""}`}>
+      <Sidebar collapsed={collapsed} onToggle={toggleSidebar} />
       <div className="app-body">
         <Topbar />
         <main className="app-main">{children}</main>

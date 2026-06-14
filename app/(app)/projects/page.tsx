@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Project, ProjectStatus, Member } from "@/lib/types";
+import { PROJECT_STATUS_ORDER, PROJECT_STATUS_LABELS } from "@/lib/types";
 import Spinner from "@/components/Spinner";
+import StatusIcon from "@/components/app/StatusIcon";
 import StatusDropdown from "@/components/app/StatusDropdown";
 import MemberPicker from "@/components/app/MemberPicker";
 import DatePicker from "@/components/app/DatePicker";
@@ -38,6 +40,13 @@ const HEAD: Record<ColKey, string> = {
   progress: "Progress",
 };
 const PAGE_SIZES = [10, 25, 50, 100];
+type SortKey = "name" | "status" | "due" | "progress";
+const SORT_FIELDS: { key: SortKey; label: string }[] = [
+  { key: "name", label: "Name" },
+  { key: "status", label: "Status" },
+  { key: "due", label: "Due Date" },
+  { key: "progress", label: "Progress" },
+];
 const DEFAULT_VISIBLE: Record<ColKey, boolean> = {
   name: true,
   status: true,
@@ -58,14 +67,28 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<Set<ProjectStatus>>(
+    new Set()
+  );
+  const [pendingStatus, setPendingStatus] = useState<Set<ProjectStatus>>(
+    new Set()
+  );
+  const [filterApplying, setFilterApplying] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [menuId, setMenuId] = useState<number | null>(null);
   const [editTarget, setEditTarget] = useState<ProjectRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ProjectRow | null>(null);
   const [bulkDelete, setBulkDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [dragId, setDragId] = useState<number | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [viewOpen, setViewOpen] = useState(false);
+  const [viewClosing, setViewClosing] = useState(false);
+  const [viewSaving, setViewSaving] = useState(false);
   const [pageSize, setPageSize] = useState(50);
   const [visible, setVisible] = useState<Record<ColKey, boolean>>(DEFAULT_VISIBLE);
 
@@ -97,14 +120,56 @@ export default function ProjectsPage() {
     } catch {}
   }, []);
 
-  function saveView() {
+  // Load saved filter + sort.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("tb-projects-filtersort");
+      if (raw) {
+        const v = JSON.parse(raw);
+        if (Array.isArray(v.status)) setStatusFilter(new Set(v.status));
+        if (v.sortBy) setSortBy(v.sortBy);
+        if (v.sortDir === "asc" || v.sortDir === "desc") setSortDir(v.sortDir);
+      }
+    } catch {}
+  }, []);
+
+  // Persist filter + sort whenever they change (skip the initial mount).
+  const fsHydrated = useRef(false);
+  useEffect(() => {
+    if (!fsHydrated.current) {
+      fsHydrated.current = true;
+      return;
+    }
     try {
       localStorage.setItem(
-        "tb-projects-view",
-        JSON.stringify({ pageSize, visible })
+        "tb-projects-filtersort",
+        JSON.stringify({ status: [...statusFilter], sortBy, sortDir })
       );
     } catch {}
-    setViewOpen(false);
+  }, [statusFilter, sortBy, sortDir]);
+
+  function closeView() {
+    if (viewClosing) return;
+    setViewClosing(true);
+    window.setTimeout(() => {
+      setViewOpen(false);
+      setViewClosing(false);
+    }, 220);
+  }
+
+  function saveView() {
+    if (viewSaving) return;
+    setViewSaving(true);
+    window.setTimeout(() => {
+      try {
+        localStorage.setItem(
+          "tb-projects-view",
+          JSON.stringify({ pageSize, visible })
+        );
+      } catch {}
+      setViewSaving(false);
+      closeView();
+    }, 550);
   }
 
   function resetView() {
@@ -125,9 +190,82 @@ export default function ProjectsPage() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return projects;
-    return projects.filter((p) => p.name.toLowerCase().includes(q));
-  }, [projects, query]);
+    return projects.filter(
+      (p) =>
+        (!q || p.name.toLowerCase().includes(q)) &&
+        (statusFilter.size === 0 ||
+          statusFilter.has(p.status as ProjectStatus))
+    );
+  }, [projects, query, statusFilter]);
+
+  function openFilter() {
+    setPendingStatus(new Set(statusFilter));
+    setFilterOpen(true);
+  }
+
+  function togglePending(s: ProjectStatus) {
+    setPendingStatus((cur) => {
+      const next = new Set(cur);
+      if (next.has(s)) next.delete(s);
+      else next.add(s);
+      return next;
+    });
+  }
+
+  function applyFilter() {
+    if (filterApplying) return;
+    setFilterApplying(true);
+    window.setTimeout(() => {
+      setStatusFilter(new Set(pendingStatus));
+      setFilterApplying(false);
+      setFilterOpen(false);
+    }, 550);
+  }
+
+  const sorted = useMemo(() => {
+    if (!sortBy) return filtered;
+    const dir = sortDir === "asc" ? 1 : -1;
+    const val = (p: ProjectRow): string | number => {
+      switch (sortBy) {
+        case "name":
+          return p.name.toLowerCase();
+        case "status":
+          return PROJECT_STATUS_ORDER.indexOf(p.status as ProjectStatus);
+        case "due":
+          return p.due_date ?? "9999-99-99";
+        case "progress":
+          return p.progress;
+      }
+    };
+    return [...filtered].sort((a, b) => {
+      const av = val(a);
+      const bv = val(b);
+      if (av < bv) return -dir;
+      if (av > bv) return dir;
+      return 0;
+    });
+  }, [filtered, sortBy, sortDir]);
+
+  function applySort(key: SortKey) {
+    if (sortBy === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortDir("asc");
+    }
+  }
+
+  function clearSort() {
+    setSortBy(null);
+    setSortOpen(false);
+  }
+
+  function clearAll() {
+    setStatusFilter(new Set());
+    setSortBy(null);
+    setSortOpen(false);
+    setFilterOpen(false);
+  }
 
   async function changeStatus(id: number, status: ProjectStatus) {
     setProjects((cur) => cur.map((p) => (p.id === id ? { ...p, status } : p)));
@@ -226,26 +364,31 @@ export default function ProjectsPage() {
   }
 
   async function confirmDelete() {
-    if (bulkDelete) {
-      const ids = [...selected];
-      setBulkDelete(false);
-      setProjects((cur) => cur.filter((x) => !selected.has(x.id)));
-      setSelected(new Set());
-      await Promise.all(
-        ids.map((id) => fetch(`/api/projects/${id}`, { method: "DELETE" }))
-      );
-      return;
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      if (bulkDelete) {
+        const ids = [...selected];
+        await Promise.all(
+          ids.map((id) => fetch(`/api/projects/${id}`, { method: "DELETE" }))
+        );
+        setProjects((cur) => cur.filter((x) => !ids.includes(x.id)));
+        setSelected(new Set());
+        setBulkDelete(false);
+      } else if (deleteTarget) {
+        const id = deleteTarget.id;
+        await fetch(`/api/projects/${id}`, { method: "DELETE" });
+        setProjects((cur) => cur.filter((x) => x.id !== id));
+        setSelected((cur) => {
+          const next = new Set(cur);
+          next.delete(id);
+          return next;
+        });
+        setDeleteTarget(null);
+      }
+    } finally {
+      setDeleting(false);
     }
-    const p = deleteTarget;
-    if (!p) return;
-    setDeleteTarget(null);
-    setProjects((cur) => cur.filter((x) => x.id !== p.id));
-    setSelected((cur) => {
-      const next = new Set(cur);
-      next.delete(p.id);
-      return next;
-    });
-    await fetch(`/api/projects/${p.id}`, { method: "DELETE" });
   }
 
   if (loading) {
@@ -290,18 +433,120 @@ export default function ProjectsPage() {
             placeholder="Search"
           />
         </div>
-        <button className="pv-tool-btn" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M3 6h18M7 12h10M11 18h2" />
-          </svg>
-          Filter
-        </button>
-        <button className="pv-tool-btn" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M3 7h12M3 12h8M3 17h4M17 5v14M17 19l3-3M17 19l-3-3" />
-          </svg>
-          Sort
-        </button>
+        <div className="pv-sort">
+          <button
+            className={`pv-tool-btn${statusFilter.size ? " active" : ""}`}
+            type="button"
+            onClick={() => (filterOpen ? setFilterOpen(false) : openFilter())}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M3 6h18M7 12h10M11 18h2" />
+            </svg>
+            Filter
+            {statusFilter.size > 0 && (
+              <span className="pv-sort-tag">{statusFilter.size}</span>
+            )}
+          </button>
+          {filterOpen && (
+            <>
+              <div className="pv-menu-backdrop" onClick={() => setFilterOpen(false)} />
+              <div className="pv-filter-pop">
+                <div className="pv-filter-list">
+                  {PROJECT_STATUS_ORDER.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      className={`pv-filter-opt${pendingStatus.has(s) ? " sel" : ""}`}
+                      onClick={() => togglePending(s)}
+                    >
+                      <StatusIcon status={s} size={16} />
+                      <span>{PROJECT_STATUS_LABELS[s]}</span>
+                      {pendingStatus.has(s) && (
+                        <svg className="pv-filter-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <path d="M5 12l4 4 10-10" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  className="pv-filter-apply"
+                  onClick={applyFilter}
+                  disabled={filterApplying}
+                >
+                  {filterApplying ? (
+                    <>
+                      Applying
+                      <Spinner />
+                    </>
+                  ) : (
+                    "Apply Filter"
+                  )}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+        <div className="pv-sort">
+          <button
+            className={`pv-tool-btn${sortBy ? " active" : ""}`}
+            type="button"
+            onClick={() => setSortOpen((o) => !o)}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              {sortBy ? (
+                sortDir === "asc" ? (
+                  <path d="M4 6h10M4 12h7M4 18h4M18 19V5M18 5l-3 3M18 5l3 3" />
+                ) : (
+                  <path d="M4 6h10M4 12h7M4 18h4M18 5v14M18 19l-3-3M18 19l3-3" />
+                )
+              ) : (
+                <path d="M3 7h12M3 12h8M3 17h4M17 5v14M17 19l3-3M17 19l-3-3" />
+              )}
+            </svg>
+            Sort
+            {sortBy && <span className="pv-sort-tag">{SORT_FIELDS.find((f) => f.key === sortBy)?.label}</span>}
+          </button>
+          {sortOpen && (
+            <>
+              <div className="pv-menu-backdrop" onClick={() => setSortOpen(false)} />
+              <div className="pv-sort-menu">
+                {SORT_FIELDS.map((f) => (
+                  <button
+                    key={f.key}
+                    className={`pv-sort-item${sortBy === f.key ? " active" : ""}`}
+                    onClick={() => applySort(f.key)}
+                  >
+                    {f.label}
+                    {sortBy === f.key && (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        {sortDir === "asc" ? (
+                          <path d="m6 15 6-6 6 6" />
+                        ) : (
+                          <path d="m6 9 6 6 6-6" />
+                        )}
+                      </svg>
+                    )}
+                  </button>
+                ))}
+                {sortBy && (
+                  <button className="pv-sort-clear" onClick={clearSort}>
+                    Clear sort
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+        {(statusFilter.size > 0 || sortBy) && (
+          <button className="pv-tool-btn pv-clear-all" type="button" onClick={clearAll}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <circle cx="12" cy="12" r="9" />
+              <path d="M15 9l-6 6M9 9l6 6" />
+            </svg>
+            Clear all
+          </button>
+        )}
         <button
           className="pv-tool-btn pv-view"
           type="button"
@@ -315,6 +560,34 @@ export default function ProjectsPage() {
       </div>
 
       {/* Table */}
+      {filtered.length === 0 ? (
+        query.trim() ? (
+          <div className="pv-empty-search">
+            <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <circle cx="27" cy="27" r="18" />
+              <path d="M40 40l15 15" />
+              <circle cx="21" cy="24" r="1.4" fill="currentColor" stroke="none" />
+              <circle cx="33" cy="24" r="1.4" fill="currentColor" stroke="none" />
+              <path d="M22 34c2.5-3 7.5-3 10 0" />
+            </svg>
+            <p>
+              We couldn&apos;t find any result matching &ldquo;{query.trim()}
+              &rdquo;
+            </p>
+          </div>
+        ) : (
+          <div className="pv-empty-search pv-empty-filter">
+            <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M10 20a4 4 0 0 1 4-4h12l5 6h19a4 4 0 0 1 4 4v18a4 4 0 0 1-4 4H14a4 4 0 0 1-4-4V20Z" />
+              <path d="M24 38h16" />
+            </svg>
+            <p>No projects match the selected filter.</p>
+            <button className="pv-empty-clear" onClick={clearAll}>
+              Clear filter
+            </button>
+          </div>
+        )
+      ) : (
       <div className="pv-table">
         {selected.size > 0 && (
           <div className="pv-selbar">
@@ -349,7 +622,7 @@ export default function ProjectsPage() {
           <span aria-hidden />
         </div>
 
-        {filtered.slice(0, pageSize).map((p) => {
+        {sorted.slice(0, pageSize).map((p) => {
           const overdue =
             p.due_date &&
             p.status !== "completed" &&
@@ -510,11 +783,8 @@ export default function ProjectsPage() {
             </div>
           );
         })}
-
-        {filtered.length === 0 && (
-          <div className="pv-noresult">No projects match “{query}”.</div>
-        )}
       </div>
+      )}
 
       {modalOpen && (
         <CreateProjectModal
@@ -584,6 +854,7 @@ export default function ProjectsPage() {
             <div className="confirm-actions">
               <button
                 className="btn btn-primary confirm-keep"
+                disabled={deleting}
                 onClick={() => {
                   setDeleteTarget(null);
                   setBulkDelete(false);
@@ -591,8 +862,12 @@ export default function ProjectsPage() {
               >
                 No, Keep it
               </button>
-              <button className="btn-outline confirm-del" onClick={confirmDelete}>
-                Yes, Delete it
+              <button
+                className="btn-outline confirm-del"
+                onClick={confirmDelete}
+                disabled={deleting}
+              >
+                {deleting ? <Spinner /> : "Yes, Delete it"}
               </button>
             </div>
           </div>
@@ -600,8 +875,11 @@ export default function ProjectsPage() {
       )}
 
       {viewOpen && (
-        <div className="pv-drawer-overlay" onMouseDown={() => setViewOpen(false)}>
-          <aside className="pv-drawer" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="pv-drawer-overlay" onMouseDown={closeView}>
+          <aside
+            className={`pv-drawer${viewClosing ? " closing" : ""}`}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
             <div className="pv-drawer-head">
               <span className="pv-drawer-title">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -658,8 +936,12 @@ export default function ProjectsPage() {
               <button className="btn" onClick={resetView}>
                 Reset
               </button>
-              <button className="btn btn-primary" onClick={saveView}>
-                Save
+              <button
+                className="btn btn-primary"
+                onClick={saveView}
+                disabled={viewSaving}
+              >
+                {viewSaving ? <Spinner /> : "Save"}
               </button>
             </div>
           </aside>

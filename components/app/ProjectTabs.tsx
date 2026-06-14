@@ -2,13 +2,33 @@
 
 import Link from "next/link";
 
-type Tab = "board" | "sprints" | "members" | "settings";
+type TabKey = "list" | "board" | "sprints";
+export type ActiveTab = TabKey | "members" | "settings";
 
-const TABS: { key: Tab; label: string }[] = [
+const ICONS: Record<TabKey, React.ReactNode> = {
+  list: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+    </svg>
+  ),
+  board: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="3" y="4" width="5" height="16" rx="1" />
+      <rect x="10" y="4" width="5" height="11" rx="1" />
+      <rect x="17" y="4" width="4" height="7" rx="1" />
+    </svg>
+  ),
+  sprints: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 9V3M12 15v6M14.6 10.5 19.8 7.5M9.4 13.5 4.2 16.5M9.4 10.5 4.2 7.5M14.6 13.5 19.8 16.5" />
+    </svg>
+  ),
+};
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: "list", label: "List" },
   { key: "board", label: "Board" },
-  { key: "sprints", label: "Sprints" },
-  { key: "members", label: "Members" },
-  { key: "settings", label: "Settings" },
+  { key: "sprints", label: "Sprint" },
 ];
 
 export default function ProjectTabs({
@@ -16,12 +36,12 @@ export default function ProjectTabs({
   active,
 }: {
   projectId: number;
-  active: Tab;
+  active: ActiveTab;
 }) {
-  function href(key: Tab) {
-    return key === "board"
-      ? `/?project=${projectId}`
-      : `/project/${projectId}/${key}`;
+  function href(key: TabKey) {
+    if (key === "list") return `/?project=${projectId}&view=list`;
+    if (key === "board") return `/?project=${projectId}`;
+    return `/project/${projectId}/${key}`;
   }
   return (
     <div className="project-tabs">
@@ -31,6 +51,7 @@ export default function ProjectTabs({
           href={href(t.key)}
           className={`ptab ${active === t.key ? "active" : ""}`}
         >
+          <span className="ptab-ic">{ICONS[t.key]}</span>
           {t.label}
         </Link>
       ))}

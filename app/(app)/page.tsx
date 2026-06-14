@@ -9,14 +9,19 @@ import {
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Project, Task, TaskStatus } from "@/lib/types";
-import { STATUS_LABELS, STATUS_ORDER } from "@/lib/types";
+import {
+  STATUS_LABELS,
+  STATUS_ORDER,
+  PROJECT_STATUS_LABELS,
+} from "@/lib/types";
 import Spinner from "@/components/Spinner";
 import TaskModal, { type TaskDraft } from "@/app/TaskModal";
 import ProjectTabs from "@/components/app/ProjectTabs";
+import StatusIcon from "@/components/app/StatusIcon";
 import EmptyProjects from "@/components/app/EmptyProjects";
 import CreateProjectModal from "@/components/app/CreateProjectModal";
 
-type ProjectWithCount = Project & { task_count: number };
+type ProjectWithCount = Project & { task_count: number; progress: number };
 type BoardTask = Task & { subtask_total?: number; subtask_done?: number };
 
 const PRIO_COLOR: Record<string, string> = {
@@ -33,14 +38,14 @@ function BoardPage() {
   const params = useSearchParams();
   const router = useRouter();
   const urlProject = params.get("project");
+  const view: "board" | "list" = params.get("view") === "list" ? "list" : "board";
 
   const [projects, setProjects] = useState<ProjectWithCount[]>([]);
   const [activeId, setActiveId] = useState<number | null>(null);
   const [tasks, setTasks] = useState<BoardTask[]>([]);
   const [loading, setLoading] = useState(true);
-  const [switcherOpen, setSwitcherOpen] = useState(false);
-  const [view, setView] = useState<"board" | "list">("board");
   const [createOpen, setCreateOpen] = useState(false);
+  const [query, setQuery] = useState("");
 
   const [editing, setEditing] = useState<Task | null>(null);
   const [creatingStatus, setCreatingStatus] = useState<TaskStatus | null>(null);
@@ -84,6 +89,20 @@ function BoardPage() {
     else setTasks([]);
   }, [activeId, loadTasks]);
 
+  // Broadcast the active project name so the topbar can show a breadcrumb.
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("tb:active-project", {
+        detail: activeProject ? { name: activeProject.name } : null,
+      })
+    );
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent("tb:active-project", { detail: null })
+      );
+    };
+  }, [activeProject]);
+
   // ---- Project actions ----
   const createProject = () => setCreateOpen(true);
 
@@ -92,7 +111,9 @@ function BoardPage() {
     // Optimistically show the new (empty) project's board right away — no
     // spinner, no empty-state flash. Reconcile the list in the background.
     setProjects((cur) =>
-      cur.some((x) => x.id === p.id) ? cur : [{ ...p, task_count: 0 }, ...cur]
+      cur.some((x) => x.id === p.id)
+        ? cur
+        : [{ ...p, task_count: 0, progress: 0 }, ...cur]
     );
     setActiveId(p.id);
     void loadProjects();
@@ -180,14 +201,18 @@ function BoardPage() {
   }
 
   const tasksByStatus = useMemo(() => {
+    const q = query.trim().toLowerCase();
     const map: Record<TaskStatus, BoardTask[]> = {
       todo: [],
       in_progress: [],
       done: [],
     };
-    for (const t of tasks) map[t.status].push(t);
+    for (const t of tasks) {
+      if (q && !t.title.toLowerCase().includes(q)) continue;
+      map[t.status].push(t);
+    }
     return map;
-  }, [tasks]);
+  }, [tasks, query]);
 
   const modalOpen = editing !== null || creatingStatus !== null;
 
@@ -218,94 +243,103 @@ function BoardPage() {
       <div className="board-view">
       <div className="main-header">
         <div className="board-title">
-          {/* Project switcher */}
-          <div className="proj-switcher">
-            <button
-              className="proj-switcher-btn"
-              onClick={() => setSwitcherOpen((o) => !o)}
-            >
+          <div className="proj-head-row">
+            <div className="proj-switcher-btn">
+              <span className="proj-badge" aria-hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                  <path d="m3.3 7 8.7 5 8.7-5M12 22V12" />
+                </svg>
+              </span>
               <h1>{activeProject.name}</h1>
-              <svg className={`dd-chevron${switcherOpen ? " open" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-            </button>
-            {switcherOpen && (
-              <>
-                <div className="menu-backdrop" onClick={() => setSwitcherOpen(false)} />
-                <div className="menu proj-menu">
-                  {projects.map((p) => (
-                    <button
-                      key={p.id}
-                      className={`proj-menu-item ${p.id === activeId ? "active" : ""}`}
-                      onClick={() => {
-                        setActiveId(p.id);
-                        setSwitcherOpen(false);
-                      }}
-                    >
-                      <span className="name">{p.name}</span>
-                      <span className="count">{p.task_count}</span>
-                    </button>
-                  ))}
-                  <button
-                    className="proj-menu-new"
-                    onClick={() => {
-                      setSwitcherOpen(false);
-                      createProject();
-                    }}
-                  >
-                    + New project
-                  </button>
-                </div>
-              </>
-            )}
+            </div>
+
+            <span className="proj-status-view">
+              <StatusIcon status={activeProject.status} size={18} />
+              {PROJECT_STATUS_LABELS[activeProject.status]}
+              <span className="proj-progress-pct">{activeProject.progress}%</span>
+            </span>
           </div>
           {activeProject.description && <p>{activeProject.description}</p>}
         </div>
 
         <div className="header-actions">
-          <div className="view-toggle">
-            <button
-              className={view === "board" ? "active" : ""}
-              onClick={() => setView("board")}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <rect x="3" y="4" width="5" height="16" rx="1" />
-                <rect x="10" y="4" width="5" height="11" rx="1" />
-                <rect x="17" y="4" width="4" height="7" rx="1" />
-              </svg>
-              Board
-            </button>
-            <button
-              className={view === "list" ? "active" : ""}
-              onClick={() => setView("list")}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
-              </svg>
-              List
-            </button>
-          </div>
-          <button className="btn btn-sm" onClick={renameProject} disabled={deletingProject}>
-            Edit
+          <button type="button" className="pv-tool-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M3 3v16a2 2 0 0 0 2 2h16" />
+              <path d="m7 14 4-4 3 3 5-5" />
+            </svg>
+            Insights
           </button>
           <button
-            className="btn btn-sm btn-danger"
-            onClick={deleteProject}
-            disabled={deletingProject}
+            type="button"
+            className="pv-tool-btn"
+            onClick={() => router.push(`/project/${activeProject.id}/settings`)}
           >
-            {deletingProject ? (
-              <>
-                Deleting
-                <Spinner />
-              </>
-            ) : (
-              "Delete"
-            )}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+            </svg>
+            Configuration
           </button>
         </div>
       </div>
 
-      <ProjectTabs projectId={activeProject.id} active="board" />
+      <ProjectTabs
+        projectId={activeProject.id}
+        active={view === "list" ? "list" : "board"}
+      />
+
+      <div className="proj-toolbar">
+        <div className="proj-toolbar-left">
+          <button
+            type="button"
+            className="pv-tool-btn"
+            onClick={() => setCreatingStatus("todo")}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Add Item
+          </button>
+          <div className="proj-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <circle cx="11" cy="11" r="7" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+          <button type="button" className="proj-tool-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M3 7h18M3 12h12M3 17h6" />
+            </svg>
+            Group By
+          </button>
+          <button type="button" className="proj-tool-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M3 5h18l-7 8v6l-4 2v-8z" />
+            </svg>
+            Filter
+          </button>
+          <button type="button" className="proj-tool-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M3 6h12M3 12h9M3 18h6M17 6v12M17 18l3-3M17 18l-3-3" />
+            </svg>
+            Sort
+          </button>
+        </div>
+        <button type="button" className="pv-tool-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M21 4H14M10 4H3M21 12H12M8 12H3M21 20H16M12 20H3M14 2v4M8 10v4M16 18v4" />
+          </svg>
+          View
+        </button>
+      </div>
 
       {view === "board" ? (
         <div className="board">
