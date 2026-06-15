@@ -3,15 +3,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import type { Sprint, Task } from "@/lib/types";
-import { SPRINT_STATUS_LABELS } from "@/lib/types";
+import { SPRINT_STATUS_LABELS, STATUS_COLORS } from "@/lib/types";
 import Spinner from "@/components/Spinner";
 
 type SprintWithCount = Sprint & { task_count: number };
 
 const PRIO_COLOR: Record<string, string> = {
-  low: "var(--prio-low)",
-  medium: "var(--prio-medium)",
+  critical: "var(--prio-critical)",
   high: "var(--prio-high)",
+  medium: "var(--prio-medium)",
+  low: "var(--prio-low)",
 };
 
 function today() {
@@ -171,7 +172,7 @@ export default function SprintsPage() {
               {items.map((t) => (
                 <li key={t.id} className="sprint-task">
                   <button className="st-title" onClick={() => router.push(`/task/${t.id}`)}>
-                    <span className="dot" style={{ background: `var(--${t.status})` }} />
+                    <span className="dot" style={{ background: STATUS_COLORS[t.status] }} />
                     {t.title}
                   </button>
                   <span
@@ -225,7 +226,7 @@ export default function SprintsPage() {
           {backlog.map((t) => (
             <li key={t.id} className="sprint-task">
               <button className="st-title" onClick={() => router.push(`/task/${t.id}`)}>
-                <span className="dot" style={{ background: `var(--${t.status})` }} />
+                <span className="dot" style={{ background: STATUS_COLORS[t.status] }} />
                 {t.title}
               </button>
               <span

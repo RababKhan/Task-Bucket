@@ -8,10 +8,11 @@ import {
   useState,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { Project, Task, TaskStatus } from "@/lib/types";
+import type { Member, Project, Task, TaskStatus } from "@/lib/types";
 import {
   STATUS_LABELS,
   STATUS_ORDER,
+  STATUS_COLORS,
   PROJECT_STATUS_LABELS,
 } from "@/lib/types";
 import Spinner from "@/components/Spinner";
@@ -21,13 +22,21 @@ import StatusIcon from "@/components/app/StatusIcon";
 import EmptyProjects from "@/components/app/EmptyProjects";
 import CreateProjectModal from "@/components/app/CreateProjectModal";
 
-type ProjectWithCount = Project & { task_count: number; progress: number };
-type BoardTask = Task & { subtask_total?: number; subtask_done?: number };
+type ProjectWithCount = Project & {
+  task_count: number;
+  progress: number;
+};
+type BoardTask = Task & {
+  subtask_total?: number;
+  subtask_done?: number;
+  assignees?: string[];
+};
 
 const PRIO_COLOR: Record<string, string> = {
-  low: "var(--prio-low)",
-  medium: "var(--prio-medium)",
+  critical: "var(--prio-critical)",
   high: "var(--prio-high)",
+  medium: "var(--prio-medium)",
+  low: "var(--prio-low)",
 };
 
 function todayISO() {
@@ -46,6 +55,7 @@ function BoardPage() {
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [members, setMembers] = useState<Member[]>([]);
 
   const [editing, setEditing] = useState<Task | null>(null);
   const [creatingStatus, setCreatingStatus] = useState<TaskStatus | null>(null);
@@ -89,6 +99,24 @@ function BoardPage() {
     else setTasks([]);
   }, [activeId, loadTasks]);
 
+  // Workspace members assignable to this project's tasks.
+  useEffect(() => {
+    if (activeId == null) {
+      setMembers([]);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/members?project_id=${activeId}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled) setMembers(Array.isArray(d.members) ? d.members : []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [activeId]);
+
   // Broadcast the active project name so the topbar can show a breadcrumb.
   useEffect(() => {
     window.dispatchEvent(
@@ -108,8 +136,9 @@ function BoardPage() {
 
   function onProjectCreated(p: Project) {
     setCreateOpen(false);
-    // Optimistically show the new (empty) project's board right away — no
-    // spinner, no empty-state flash. Reconcile the list in the background.
+    // Optimistically show the new (empty) project right away — no spinner, no
+    // empty-state flash. Reconcile the list in the background. Land on the
+    // List view.
     setProjects((cur) =>
       cur.some((x) => x.id === p.id)
         ? cur
@@ -117,6 +146,7 @@ function BoardPage() {
     );
     setActiveId(p.id);
     void loadProjects();
+    router.push(`/?project=${p.id}&view=list`);
   }
 
   async function renameProject() {
@@ -202,19 +232,89 @@ function BoardPage() {
 
   const tasksByStatus = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const map: Record<TaskStatus, BoardTask[]> = {
-      todo: [],
-      in_progress: [],
-      done: [],
-    };
+    const map = Object.fromEntries(
+      STATUS_ORDER.map((s) => [s, [] as BoardTask[]])
+    ) as Record<TaskStatus, BoardTask[]>;
     for (const t of tasks) {
       if (q && !t.title.toLowerCase().includes(q)) continue;
-      map[t.status].push(t);
+      (map[t.status] ?? map.backlog).push(t);
     }
     return map;
   }, [tasks, query]);
 
+  const listTasks = useMemo(
+    () => STATUS_ORDER.flatMap((s) => tasksByStatus[s]),
+    [tasksByStatus]
+  );
+
+  // Previously-used labels in this project, offered as suggestions in the modal.
+  const labelSuggestions = useMemo(
+    () =>
+      [...new Set(tasks.flatMap((t) => t.labels ?? []))].sort((a, b) =>
+        a.localeCompare(b)
+      ),
+    [tasks]
+  );
+
   const modalOpen = editing !== null || creatingStatus !== null;
+
+  const emptyState = (
+    <div className="empty-hero task-empty">
+      <div className="empty-box">
+        <span className="empty-cubes task-empty-ill">
+          {view === "board" ? (
+            <svg viewBox="0 0 120 120" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="28" y="32" width="24" height="60" rx="4" />
+              <rect x="58" y="32" width="24" height="60" rx="4" />
+              <rect x="88" y="32" width="24" height="60" rx="4" />
+              <rect x="32" y="62" width="16" height="9" rx="2.5" />
+              <rect x="92" y="38" width="16" height="9" rx="2.5" />
+              <rect
+                className="board-card-move"
+                x="32"
+                y="38"
+                width="16"
+                height="9"
+                rx="2.5"
+                fill="currentColor"
+                fillOpacity="0.14"
+              />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 120 120" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M40 28h-6a6 6 0 0 0-6 6v60a6 6 0 0 0 6 6h52a6 6 0 0 0 6-6V34a6 6 0 0 0-6-6h-6" />
+              <rect x="44" y="20" width="32" height="16" rx="4" />
+              <path className="cubes-grid" d="M40 52l3 3 5-6M56 53h22M40 68l3 3 5-6M56 69h22M40 84l3 3 5-6M56 85h16" />
+            </svg>
+          )}
+        </span>
+        <h2>No tasks yet</h2>
+        <p>
+          Tasks are the individual pieces of work in a project. Add your first
+          task to start tracking progress here.
+        </p>
+        <div className="empty-actions">
+          <button
+            className="empty-create-btn"
+            onClick={() => setCreatingStatus("backlog")}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Add Item
+          </button>
+          <a
+            className="empty-doc-btn"
+            href="https://github.com/RababKhan/Task-Bucket"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Documentation
+          </a>
+        </div>
+      </div>
+    </div>
+  );
 
   if (loading) {
     return (
@@ -274,7 +374,7 @@ function BoardPage() {
           <button
             type="button"
             className="pv-tool-btn"
-            onClick={() => router.push(`/project/${activeProject.id}/settings`)}
+            onClick={() => router.push(`/project/${activeProject.id}/details`)}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <circle cx="12" cy="12" r="3" />
@@ -295,7 +395,7 @@ function BoardPage() {
           <button
             type="button"
             className="pv-tool-btn"
-            onClick={() => setCreatingStatus("todo")}
+            onClick={() => setCreatingStatus("backlog")}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M12 5v14M5 12h14" />
@@ -341,12 +441,14 @@ function BoardPage() {
         </button>
       </div>
 
-      {view === "board" ? (
+      {tasks.length === 0 ? (
+        emptyState
+      ) : view === "board" ? (
         <div className="board">
           {STATUS_ORDER.map((status) => (
             <section className="column" key={status}>
               <div className="column-header">
-                <span className="dot" style={{ background: `var(--${status})` }} />
+                <span className="dot" style={{ background: STATUS_COLORS[status] }} />
                 <h3>{STATUS_LABELS[status]}</h3>
                 <span className="count">{tasksByStatus[status].length}</span>
               </div>
@@ -421,7 +523,7 @@ function BoardPage() {
             <span>Due</span>
             <span>Subtasks</span>
           </div>
-          {STATUS_ORDER.flatMap((s) => tasksByStatus[s]).map((task) => {
+          {listTasks.map((task) => {
             const overdue =
               task.due_date &&
               task.status !== "done" &&
@@ -434,7 +536,7 @@ function BoardPage() {
               >
                 <span className="tl-title">{task.title}</span>
                 <span className="tl-status">
-                  <span className="dot" style={{ background: `var(--${task.status})` }} />
+                  <span className="dot" style={{ background: STATUS_COLORS[task.status] }} />
                   {STATUS_LABELS[task.status]}
                 </span>
                 <span
@@ -455,12 +557,12 @@ function BoardPage() {
               </button>
             );
           })}
-          {tasks.length === 0 && (
-            <div className="tl-empty">No tasks yet.</div>
+          {listTasks.length === 0 && (
+            <div className="tl-empty">No tasks match your search.</div>
           )}
           <button
             className="add-task tl-add"
-            onClick={() => setCreatingStatus("todo")}
+            onClick={() => setCreatingStatus("backlog")}
           >
             + Add task
           </button>
@@ -471,7 +573,9 @@ function BoardPage() {
       {modalOpen && (
         <TaskModal
           task={editing}
-          defaultStatus={creatingStatus ?? "todo"}
+          defaultStatus={creatingStatus ?? "backlog"}
+          members={members}
+          labelSuggestions={labelSuggestions}
           onSave={saveTask}
           onDelete={deleteTask}
           onClose={() => {

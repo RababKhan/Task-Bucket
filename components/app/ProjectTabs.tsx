@@ -13,9 +13,8 @@ const ICONS: Record<TabKey, React.ReactNode> = {
   ),
   board: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="3" y="4" width="5" height="16" rx="1" />
-      <rect x="10" y="4" width="5" height="11" rx="1" />
-      <rect x="17" y="4" width="4" height="7" rx="1" />
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M8 7v7M12 7v4M16 7v9" />
     </svg>
   ),
   sprints: (

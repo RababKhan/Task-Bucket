@@ -10,9 +10,10 @@ import type {
   Sprint,
   CustomFieldWithValue,
 } from "@/lib/types";
-import { STATUS_LABELS, STATUS_ORDER } from "@/lib/types";
+import { STATUS_LABELS, STATUS_ORDER, STATUS_COLORS } from "@/lib/types";
 import Spinner from "@/components/Spinner";
 import DatePicker from "@/components/app/DatePicker";
+import RichTextEditor from "@/components/app/RichTextEditor";
 
 type Detail = Task & {
   project_name: string;
@@ -20,11 +21,12 @@ type Detail = Task & {
   custom_fields: CustomFieldWithValue[];
 };
 
-const PRIORITIES: TaskPriority[] = ["low", "medium", "high"];
+const PRIORITIES: TaskPriority[] = ["critical", "high", "medium", "low"];
 const PRIO_COLOR: Record<string, string> = {
-  low: "var(--prio-low)",
-  medium: "var(--prio-medium)",
+  critical: "var(--prio-critical)",
   high: "var(--prio-high)",
+  medium: "var(--prio-medium)",
+  low: "var(--prio-low)",
 };
 
 export default function TaskDetailPage() {
@@ -117,7 +119,7 @@ export default function TaskDetailPage() {
   }
 
   async function toggleSub(sub: Task) {
-    const next: TaskStatus = sub.status === "done" ? "todo" : "done";
+    const next: TaskStatus = sub.status === "done" ? "backlog" : "done";
     setDetail((d) =>
       d
         ? {
@@ -198,15 +200,13 @@ export default function TaskDetailPage() {
       <div className="td-grid">
         <div className="td-main">
           <label className="td-label">Description</label>
-          <textarea
-            className="td-desc"
+          <RichTextEditor
             value={desc}
-            onChange={(e) => setDesc(e.target.value)}
+            onChange={setDesc}
             onBlur={() => {
               if (desc !== detail.description) patch({ description: desc });
             }}
             placeholder="Add a description…"
-            rows={5}
           />
 
           {detail.custom_fields.length > 0 && (
@@ -313,7 +313,7 @@ export default function TaskDetailPage() {
                 className={`status-pill ${detail.status === s ? "active" : ""}`}
                 onClick={() => patch({ status: s })}
               >
-                <span className="dot" style={{ background: `var(--${s})` }} />
+                <span className="dot" style={{ background: STATUS_COLORS[s] }} />
                 {STATUS_LABELS[s]}
               </button>
             ))}

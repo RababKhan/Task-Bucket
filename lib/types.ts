@@ -74,8 +74,80 @@ export type PendingInvite = {
   created_at: string;
 };
 
-export type TaskStatus = "todo" | "in_progress" | "done";
-export type TaskPriority = "low" | "medium" | "high";
+export type TaskStatus =
+  | "backlog"
+  | "dev_in_progress"
+  | "dev_done"
+  | "in_test"
+  | "test_in_progress"
+  | "test_fail"
+  | "test_done"
+  | "ready_for_deploy"
+  | "done";
+export type TaskPriority = "critical" | "high" | "medium" | "low";
+
+export const PRIORITY_ORDER: TaskPriority[] = [
+  "critical",
+  "high",
+  "medium",
+  "low",
+];
+
+export const PRIORITY_LABELS: Record<TaskPriority, string> = {
+  critical: "Critical",
+  high: "High",
+  medium: "Medium",
+  low: "Low",
+};
+
+export const PRIORITY_COLORS: Record<TaskPriority, string> = {
+  critical: "var(--prio-critical)",
+  high: "var(--prio-high)",
+  medium: "var(--prio-medium)",
+  low: "var(--prio-low)",
+};
+
+export const STATUS_COLORS: Record<TaskStatus, string> = {
+  backlog: "#9ca3af",
+  dev_in_progress: "#3b82f6",
+  dev_done: "#6366f1",
+  in_test: "#e0a30b",
+  test_in_progress: "#f59e0b",
+  test_fail: "#e5484d",
+  test_done: "#14b8a6",
+  ready_for_deploy: "#8b5cf6",
+  done: "#16a34a",
+};
+export type TaskType = "story" | "task" | "bug";
+export type TaskSeverity = "critical" | "major" | "moderate" | "low";
+
+export const TASK_TYPE_LABELS: Record<TaskType, string> = {
+  story: "Story",
+  task: "Task",
+  bug: "Bug",
+};
+
+export const TASK_TYPE_COLORS: Record<TaskType, string> = {
+  story: "#3b82f6", // blue
+  task: "#6b7280", // gray
+  bug: "#e5484d", // red
+};
+
+export const TASK_TYPE_ORDER: TaskType[] = ["story", "task", "bug"];
+
+export const TASK_SEVERITY_LABELS: Record<TaskSeverity, string> = {
+  critical: "Critical",
+  major: "Major",
+  moderate: "Moderate",
+  low: "Low",
+};
+
+export const TASK_SEVERITY_ORDER: TaskSeverity[] = [
+  "critical",
+  "major",
+  "moderate",
+  "low",
+];
 
 export type Task = {
   id: number;
@@ -84,9 +156,14 @@ export type Task = {
   sprint_id: number | null;
   title: string;
   description: string;
+  type: TaskType;
   status: TaskStatus;
   priority: TaskPriority;
+  severity: TaskSeverity | null;
+  story_points: number | null;
+  start_date: string | null;
   due_date: string | null;
+  labels: string[];
   position: number;
   created_at: string;
 };
@@ -125,9 +202,25 @@ export type CustomField = {
 export type CustomFieldWithValue = CustomField & { value: string };
 
 export const STATUS_LABELS: Record<TaskStatus, string> = {
-  todo: "To Do",
-  in_progress: "In Progress",
+  backlog: "Backlog",
+  dev_in_progress: "Development In Progress",
+  dev_done: "Development Done",
+  in_test: "In Test",
+  test_in_progress: "Test In Progress",
+  test_fail: "Test Fail",
+  test_done: "Test Done",
+  ready_for_deploy: "Ready for Deployment",
   done: "Done",
 };
 
-export const STATUS_ORDER: TaskStatus[] = ["todo", "in_progress", "done"];
+export const STATUS_ORDER: TaskStatus[] = [
+  "backlog",
+  "dev_in_progress",
+  "dev_done",
+  "in_test",
+  "test_in_progress",
+  "test_fail",
+  "test_done",
+  "ready_for_deploy",
+  "done",
+];

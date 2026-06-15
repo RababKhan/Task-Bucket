@@ -30,8 +30,9 @@
   --in_progress: #d9a441;
   --done: #16A34A;
   --prio-low: #16A34A;
-  --prio-medium: #d9a441;
+  --prio-medium: #38bdf8;
   --prio-high: #e5484d;
+  --prio-critical: #b91c1c;
 
   /* focus ring */
   --ring: rgba(130, 130, 140, 0.3);
@@ -269,12 +270,14 @@ select:focus {
 
 /* Board */
 .board {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  display: flex;
+  gap: 14px;
   align-items: start;
+  overflow-x: auto;
+  padding-bottom: 6px;
 }
 .column {
+  flex: 0 0 288px;
   background: var(--canvas-bg);
   border: 1px solid var(--canvas-border);
   border-radius: 12px;
@@ -1239,8 +1242,9 @@ select:focus {
   --in_progress: #c8901f;
   --done: #16a34a;
   --prio-low: #16a34a;
-  --prio-medium: #c8901f;
+  --prio-medium: #38a8e0;
   --prio-high: #d6353b;
+  --prio-critical: #a51c1c;
   --ring: rgba(68, 64, 60, 0.22);
 
   /* Floating canvas */
@@ -1602,11 +1606,6 @@ a:focus-visible,
 }
 
 /* --- Responsive: tablet & mobile --- */
-@media (max-width: 1024px) {
-  .board {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
 @media (max-width: 760px) {
   .app {
     grid-template-columns: 200px 1fr;
@@ -1614,8 +1613,8 @@ a:focus-visible,
   .main {
     padding: 16px;
   }
-  .board {
-    grid-template-columns: 1fr;
+  .column {
+    flex-basis: 248px;
   }
 }
 @media (max-width: 560px) {

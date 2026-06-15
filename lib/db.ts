@@ -138,20 +138,33 @@ CREATE TABLE IF NOT EXISTS sprints (
 );
 
 CREATE TABLE IF NOT EXISTS tasks (
-  id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  project_id  INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  parent_id   INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
-  sprint_id   INTEGER REFERENCES sprints(id) ON DELETE SET NULL,
-  title       TEXT NOT NULL,
-  description TEXT NOT NULL DEFAULT '',
-  status      TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo','in_progress','done')),
-  priority    TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('low','medium','high')),
-  due_date    TEXT,
-  position    INTEGER NOT NULL DEFAULT 0,
-  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id   INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  parent_id    INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
+  sprint_id    INTEGER REFERENCES sprints(id) ON DELETE SET NULL,
+  title        TEXT NOT NULL,
+  description  TEXT NOT NULL DEFAULT '',
+  type         TEXT NOT NULL DEFAULT 'task' CHECK (type IN ('story','task','bug')),
+  status       TEXT NOT NULL DEFAULT 'backlog' CHECK (status IN ('backlog','dev_in_progress','dev_done','in_test','test_in_progress','test_fail','test_done','ready_for_deploy','done')),
+  priority     TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('critical','high','medium','low')),
+  severity     TEXT,
+  story_points INTEGER,
+  start_date   TEXT,
+  due_date     TEXT,
+  labels       TEXT NOT NULL DEFAULT '[]',
+  position     INTEGER NOT NULL DEFAULT 0,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);
+
+CREATE TABLE IF NOT EXISTS task_assignees (
+  task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  PRIMARY KEY (task_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_task_assignees_task ON task_assignees(task_id);
 
 CREATE TABLE IF NOT EXISTS custom_fields (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -233,12 +246,112 @@ async function migrate(): Promise<void> {
   if (!taskCols.includes("sprint_id")) {
     await client.execute("ALTER TABLE tasks ADD COLUMN sprint_id INTEGER");
   }
+  // Agile work-item fields added with the task-type redesign.
+  if (!taskCols.includes("type")) {
+    await client.execute(
+      "ALTER TABLE tasks ADD COLUMN type TEXT NOT NULL DEFAULT 'task'"
+    );
+  }
+  if (!taskCols.includes("severity")) {
+    await client.execute("ALTER TABLE tasks ADD COLUMN severity TEXT");
+  }
+  if (!taskCols.includes("story_points")) {
+    await client.execute("ALTER TABLE tasks ADD COLUMN story_points INTEGER");
+  }
+  if (!taskCols.includes("start_date")) {
+    await client.execute("ALTER TABLE tasks ADD COLUMN start_date TEXT");
+  }
+  if (!taskCols.includes("labels")) {
+    await client.execute(
+      "ALTER TABLE tasks ADD COLUMN labels TEXT NOT NULL DEFAULT '[]'"
+    );
+  }
   await client.execute(
     "CREATE INDEX IF NOT EXISTS idx_tasks_parent ON tasks(parent_id)"
   );
   await client.execute(
     "CREATE INDEX IF NOT EXISTS idx_tasks_sprint ON tasks(sprint_id)"
   );
+  await client.execute(
+    "CREATE INDEX IF NOT EXISTS idx_task_assignees_task ON task_assignees(task_id)"
+  );
+
+  // Migrate the task workflow from the original 3 statuses to the 9-stage
+  // agile/dev pipeline. The status column has a CHECK constraint that only
+  // allows the old values, so the table must be rebuilt (SQLite can't ALTER a
+  // CHECK). Detect by whether the new statuses appear in the table's DDL.
+  const tasksDdl = String(
+    (
+      await client.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='tasks'"
+      )
+    ).rows[0]?.sql ?? ""
+  );
+  if (!tasksDdl.includes("'critical'")) {
+    await client.execute("PRAGMA foreign_keys=OFF");
+    await client.execute(`
+      CREATE TABLE tasks_new (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        project_id   INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        parent_id    INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
+        sprint_id    INTEGER REFERENCES sprints(id) ON DELETE SET NULL,
+        title        TEXT NOT NULL,
+        description  TEXT NOT NULL DEFAULT '',
+        type         TEXT NOT NULL DEFAULT 'task' CHECK (type IN ('story','task','bug')),
+        status       TEXT NOT NULL DEFAULT 'backlog' CHECK (status IN ('backlog','dev_in_progress','dev_done','in_test','test_in_progress','test_fail','test_done','ready_for_deploy','done')),
+        priority     TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('critical','high','medium','low')),
+        severity     TEXT,
+        story_points INTEGER,
+        start_date   TEXT,
+        due_date     TEXT,
+        labels       TEXT NOT NULL DEFAULT '[]',
+        position     INTEGER NOT NULL DEFAULT 0,
+        created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
+    // Map legacy statuses; pass already-migrated statuses through unchanged so
+    // re-running this rebuild (e.g. to widen the priority CHECK) is safe.
+    await client.execute(`
+      INSERT INTO tasks_new (id, project_id, parent_id, sprint_id, title, description, type, status, priority, severity, story_points, start_date, due_date, labels, position, created_at)
+      SELECT id, project_id, parent_id, sprint_id, title, description,
+        COALESCE(type, 'task'),
+        CASE status
+          WHEN 'todo' THEN 'backlog'
+          WHEN 'in_progress' THEN 'dev_in_progress'
+          WHEN 'backlog' THEN 'backlog'
+          WHEN 'dev_in_progress' THEN 'dev_in_progress'
+          WHEN 'dev_done' THEN 'dev_done'
+          WHEN 'in_test' THEN 'in_test'
+          WHEN 'test_in_progress' THEN 'test_in_progress'
+          WHEN 'test_fail' THEN 'test_fail'
+          WHEN 'test_done' THEN 'test_done'
+          WHEN 'ready_for_deploy' THEN 'ready_for_deploy'
+          WHEN 'done' THEN 'done'
+          ELSE 'backlog'
+        END,
+        priority, severity, story_points, start_date, due_date,
+        COALESCE(labels, '[]'), position, created_at
+      FROM tasks
+    `);
+    await client.execute("DROP TABLE tasks");
+    await client.execute("ALTER TABLE tasks_new RENAME TO tasks");
+    await client.execute("PRAGMA foreign_keys=ON");
+    await client.execute(
+      "CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id)"
+    );
+    await client.execute(
+      "CREATE INDEX IF NOT EXISTS idx_tasks_parent ON tasks(parent_id)"
+    );
+    await client.execute(
+      "CREATE INDEX IF NOT EXISTS idx_tasks_sprint ON tasks(sprint_id)"
+    );
+  }
+
+  // Remap the legacy severity vocabulary (low/medium/high/critical) to the new
+  // set (critical/major/minor/low). The severity column has no CHECK, so plain
+  // UPDATEs suffice; these are idempotent.
+  await client.execute("UPDATE tasks SET severity = 'moderate' WHERE severity IN ('medium','minor')");
+  await client.execute("UPDATE tasks SET severity = 'major' WHERE severity = 'high'");
 }
 
 // Seed an unowned sample project the first account claims on sign-up.
@@ -254,9 +367,9 @@ async function seedIfEmpty(): Promise<void> {
 
   const tasks: Array<[string, string, string, string, string | null]> = [
     ["Audit current pages", "List all pages and flag outdated content.", "done", "medium", null],
-    ["Design new homepage", "Hero, features, social proof sections.", "in_progress", "high", "2026-06-20"],
-    ["Set up analytics", "Add event tracking for key CTAs.", "todo", "low", null],
-    ["Write launch copy", "Headlines and body copy for all sections.", "todo", "medium", "2026-06-25"],
+    ["Design new homepage", "Hero, features, social proof sections.", "dev_in_progress", "high", "2026-06-20"],
+    ["Set up analytics", "Add event tracking for key CTAs.", "backlog", "low", null],
+    ["Write launch copy", "Headlines and body copy for all sections.", "backlog", "medium", "2026-06-25"],
   ];
   for (let i = 0; i < tasks.length; i++) {
     const t = tasks[i];

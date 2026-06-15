@@ -85,6 +85,14 @@ function Sidebar({
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
+  // "Projects" stays active whenever the user is inside a project: the board
+  // (root), the projects list, a project sub-page, or a task detail page.
+  const projectsActive =
+    pathname === "/" ||
+    pathname.startsWith("/projects") ||
+    pathname.startsWith("/project/") ||
+    pathname.startsWith("/task/");
+
   return (
     <aside className="app-sidebar">
       <div className="sidebar-logo">
@@ -111,7 +119,7 @@ function Sidebar({
       </div>
 
       <nav className="app-nav">
-        <NavLink href="/projects" label="Projects" icon={ProjectsIcon} active={isActive("/projects")} />
+        <NavLink href="/projects" label="Projects" icon={ProjectsIcon} active={projectsActive} />
       </nav>
 
       <div className="sidebar-bottom">

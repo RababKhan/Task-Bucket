@@ -2,6 +2,18 @@ import { NextResponse } from "next/server";
 import { dbAll, dbGet, dbRun, type Task } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 import { canAccessProject } from "@/lib/membership";
+import { STATUS_ORDER, PRIORITY_ORDER } from "@/lib/types";
+import {
+  TASK_TYPES,
+  TASK_SEVERITIES,
+  normalizeLabels,
+  shapeTask,
+} from "@/lib/tasks";
+
+const STATUSES: string[] = STATUS_ORDER;
+const PRIORITIES: string[] = PRIORITY_ORDER;
+
+type TaskRow = Task & { assignees_raw?: string | null };
 
 export async function GET(request: Request) {
   const userId = await currentUserId();
@@ -18,17 +30,20 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const tasks = await dbAll<Task & { subtask_total: number; subtask_done: number }>(
+  const rows = await dbAll<
+    TaskRow & { subtask_total: number; subtask_done: number }
+  >(
     `SELECT t.*,
        (SELECT COUNT(*) FROM tasks s WHERE s.parent_id = t.id) AS subtask_total,
-       (SELECT COUNT(*) FROM tasks s WHERE s.parent_id = t.id AND s.status = 'done') AS subtask_done
+       (SELECT COUNT(*) FROM tasks s WHERE s.parent_id = t.id AND s.status = 'done') AS subtask_done,
+       (SELECT group_concat(ta.user_id) FROM task_assignees ta WHERE ta.task_id = t.id) AS assignees_raw
      FROM tasks t
      WHERE t.project_id = ? AND t.parent_id IS NULL
      ORDER BY t.position ASC, t.id ASC`,
     [projectId]
   );
 
-  return NextResponse.json(tasks);
+  return NextResponse.json(rows.map(shapeTask));
 }
 
 export async function POST(request: Request) {
@@ -64,14 +79,39 @@ export async function POST(request: Request) {
     }
   }
 
-  const status = ["todo", "in_progress", "done"].includes(body.status)
-    ? body.status
-    : "todo";
-  const priority = ["low", "medium", "high"].includes(body.priority)
+  const type =
+    !parentId && TASK_TYPES.includes(body.type) ? body.type : "task";
+  const status = STATUSES.includes(body.status) ? body.status : "backlog";
+  const priority = PRIORITIES.includes(body.priority)
     ? body.priority
     : "medium";
+  const severity = TASK_SEVERITIES.includes(body.severity)
+    ? body.severity
+    : null;
   const description = String(body.description ?? "").trim();
+  const startDate = body.start_date ? String(body.start_date) : null;
   const dueDate = body.due_date ? String(body.due_date) : null;
+  const storyPoints =
+    body.story_points != null && body.story_points !== ""
+      ? Math.max(0, Math.round(Number(body.story_points))) || null
+      : null;
+  const labels = normalizeLabels(body.labels);
+
+  // Only people in the project's workspace can be assignees.
+  const assigneeIds: string[] = Array.isArray(body.assignees)
+    ? [...new Set((body.assignees as unknown[]).map(String))]
+    : [];
+  let validAssignees: string[] = [];
+  if (assigneeIds.length) {
+    const placeholders = assigneeIds.map(() => "?").join(",");
+    const rows = await dbAll<{ user_id: string }>(
+      `SELECT wm.user_id FROM workspace_members wm
+       JOIN projects p ON p.workspace_id = wm.workspace_id
+       WHERE p.id = ? AND wm.user_id IN (${placeholders})`,
+      [projectId, ...assigneeIds]
+    );
+    validAssignees = rows.map((r) => r.user_id);
+  }
 
   const posRow = await dbGet<{ maxPos: number }>(
     parentId
@@ -82,14 +122,39 @@ export async function POST(request: Request) {
   const maxPos = posRow?.maxPos ?? -1;
 
   const info = await dbRun(
-    `INSERT INTO tasks (project_id, parent_id, title, description, status, priority, due_date, position)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [projectId, parentId, title, description, status, priority, dueDate, maxPos + 1]
+    `INSERT INTO tasks (project_id, parent_id, title, description, type, status, priority, severity, story_points, start_date, due_date, labels, position)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      projectId,
+      parentId,
+      title,
+      description,
+      type,
+      status,
+      priority,
+      severity,
+      storyPoints,
+      startDate,
+      dueDate,
+      JSON.stringify(labels),
+      maxPos + 1,
+    ]
+  );
+  const taskId = info.lastInsertRowid;
+
+  for (const uid of validAssignees) {
+    await dbRun(
+      "INSERT OR IGNORE INTO task_assignees (task_id, user_id) VALUES (?, ?)",
+      [taskId, uid]
+    );
+  }
+
+  const row = await dbGet<TaskRow>(
+    `SELECT t.*,
+       (SELECT group_concat(ta.user_id) FROM task_assignees ta WHERE ta.task_id = t.id) AS assignees_raw
+     FROM tasks t WHERE t.id = ?`,
+    [taskId]
   );
 
-  const task = await dbGet<Task>("SELECT * FROM tasks WHERE id = ?", [
-    info.lastInsertRowid,
-  ]);
-
-  return NextResponse.json(task, { status: 201 });
+  return NextResponse.json(row ? shapeTask(row) : null, { status: 201 });
 }

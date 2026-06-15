@@ -408,7 +408,7 @@ export default function ProjectsPage() {
             onClose={() => setModalOpen(false)}
             onCreated={(p) => {
               setModalOpen(false);
-              router.push(`/?project=${p.id}`);
+              router.push(`/?project=${p.id}&view=list`);
             }}
           />
         )}
@@ -644,7 +644,7 @@ export default function ProjectsPage() {
                 setDragId(null);
                 setDragOverId(null);
               }}
-              onClick={() => router.push(`/?project=${p.id}`)}
+              onClick={() => router.push(`/?project=${p.id}&view=list`)}
             >
               <span className="pv-ctrl">
                 <span className="pv-drag-handle" aria-hidden>
@@ -791,7 +791,7 @@ export default function ProjectsPage() {
           onClose={() => setModalOpen(false)}
           onCreated={(p) => {
             setModalOpen(false);
-            router.push(`/?project=${p.id}`);
+            router.push(`/?project=${p.id}&view=list`);
           }}
         />
       )}
