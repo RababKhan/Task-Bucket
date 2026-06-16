@@ -16,11 +16,13 @@ export default function SelectField({
   options,
   onChange,
   placeholder = "Select",
+  inline = false,
 }: {
   value: string;
   options: SelectOption[];
   onChange: (value: string) => void;
   placeholder?: string;
+  inline?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [maxH, setMaxH] = useState(260);
@@ -39,13 +41,14 @@ export default function SelectField({
   }
 
   const current = options.find((o) => o.value === value);
+  const hasGlyph = options.some((o) => o.icon || o.dot);
 
   return (
-    <div className="status-dd">
+    <div className={`status-dd${inline ? " sf-inline" : ""}`}>
       <button
         ref={triggerRef}
         type="button"
-        className="status-dd-btn"
+        className={inline ? "status-dd-inline" : "status-dd-btn"}
         onClick={toggle}
       >
         {current?.icon
@@ -56,18 +59,20 @@ export default function SelectField({
         <span className="status-dd-current">
           {current ? current.label : placeholder}
         </span>
-        <svg
-          className={`status-dd-chevron${open ? " open" : ""}`}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
-        >
-          <path d="m6 9 6 6 6-6" />
-        </svg>
+        {!inline && (
+          <svg
+            className={`status-dd-chevron${open ? " open" : ""}`}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        )}
       </button>
 
       {open && (
@@ -95,9 +100,9 @@ export default function SelectField({
                     o.icon
                   ) : o.dot ? (
                     <span className="sf-dot" style={{ background: o.dot }} />
-                  ) : (
+                  ) : hasGlyph ? (
                     <span className="sf-dot sf-dot-empty" />
-                  )}
+                  ) : null}
                   <span className="status-dd-label">{o.label}</span>
                   {o.value === value && (
                     <svg className="status-dd-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

@@ -22,6 +22,7 @@ import DatePicker from "@/components/app/DatePicker";
 import MemberPicker from "@/components/app/MemberPicker";
 import SelectField, { type SelectOption } from "@/components/app/SelectField";
 import TaskStatusIcon from "@/components/app/TaskStatusIcon";
+import TaskTypeIcon from "@/components/app/TaskTypeIcon";
 import RichTextEditor from "@/components/app/RichTextEditor";
 import { labelColor } from "@/lib/tasks";
 
@@ -91,29 +92,6 @@ export type TaskDraft = {
   assignees: string[];
 };
 
-function TypeIcon({ type }: { type: TaskType }) {
-  if (type === "story") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-      </svg>
-    );
-  }
-  if (type === "bug") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <rect x="8" y="6" width="8" height="14" rx="4" />
-        <path d="M19 7l-2 2M5 7l2 2M3 13h3M18 13h3M5 19l2-2M19 19l-2-2M12 2v2" />
-      </svg>
-    );
-  }
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="3" y="3" width="18" height="18" rx="3" />
-      <path d="m8 12 3 3 5-6" />
-    </svg>
-  );
-}
 
 export default function TaskModal({
   task,
@@ -251,11 +229,8 @@ export default function TaskModal({
                     }
                     onClick={() => set("type", t)}
                   >
-                    <span
-                      className="tm-type-ic"
-                      style={{ color: TASK_TYPE_COLORS[t] }}
-                    >
-                      <TypeIcon type={t} />
+                    <span className="tm-type-ic">
+                      <TaskTypeIcon type={t} size={15} />
                     </span>
                     {TASK_TYPE_LABELS[t]}
                   </button>
@@ -266,18 +241,22 @@ export default function TaskModal({
 
           {/* Task name */}
           <div className="field">
-            <label>
-              {draft.type === "bug"
-                ? "Bug Title"
-                : draft.type === "story"
-                ? "Story Name"
-                : "Task Name"}{" "}
-              <span className="tm-req">*</span>
-            </label>
+            <div className="field-labelrow">
+              <label>
+                {draft.type === "bug"
+                  ? "Bug Title"
+                  : draft.type === "story"
+                  ? "Story Name"
+                  : "Task Name"}{" "}
+                <span className="tm-req">*</span>
+              </label>
+              <span className="char-count">{draft.title.length}/128</span>
+            </div>
             <input
               value={draft.title}
               required
               aria-required="true"
+              maxLength={128}
               placeholder="What needs to be done?"
               onChange={(e) => set("title", e.target.value)}
               onKeyDown={(e) => {
@@ -329,7 +308,24 @@ export default function TaskModal({
               </div>
             ) : (
               <div className="field">
-                <label>Story Points</label>
+                <label>
+                  Story Points
+                  <span className="field-tip" tabIndex={0}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="M12 16v-4M12 8h.01" />
+                    </svg>
+                    <span className="field-tip-box" role="tooltip">
+                      <strong>Story Point Guide</strong>
+                      <span><b>1</b> — Trivial. Text/CSS fixes</span>
+                      <span><b>2</b> — Small. Clear, low risk.</span>
+                      <span><b>3</b> — Medium. Standard feature work.</span>
+                      <span><b>5</b> — Large. Complex or needs research.</span>
+                      <span><b>8</b> — Very Large. Heavy dependencies.</span>
+                      <span><b>13</b> — Epic. Break this task down.</span>
+                    </span>
+                  </span>
+                </label>
                 <input
                   type="number"
                   min={0}
@@ -433,6 +429,8 @@ export default function TaskModal({
               <label>Start Date</label>
               <DatePicker
                 value={draft.start_date}
+                max={draft.due_date || undefined}
+                quick
                 onChange={(v) => set("start_date", v)}
                 placeholder="Select start date"
               />
@@ -441,6 +439,8 @@ export default function TaskModal({
               <label>End Date</label>
               <DatePicker
                 value={draft.due_date}
+                min={draft.start_date || undefined}
+                quick
                 onChange={(v) => set("due_date", v)}
                 placeholder="Select end date"
               />

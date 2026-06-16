@@ -1218,6 +1218,14 @@
 .board-view {
   animation: boardViewIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+/* Pin the project header (title/status + tabs + toolbar); table scrolls under. */
+.proj-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--canvas-bg);
+  padding-top: 2px;
+}
 @keyframes boardViewIn {
   from {
     opacity: 0;

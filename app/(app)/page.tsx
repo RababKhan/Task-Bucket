@@ -13,12 +13,21 @@ import {
   STATUS_LABELS,
   STATUS_ORDER,
   STATUS_COLORS,
+  PRIORITY_LABELS,
+  PRIORITY_ORDER,
   PROJECT_STATUS_LABELS,
 } from "@/lib/types";
 import Spinner from "@/components/Spinner";
 import TaskModal, { type TaskDraft } from "@/app/TaskModal";
 import ProjectTabs from "@/components/app/ProjectTabs";
 import StatusIcon from "@/components/app/StatusIcon";
+import TaskStatusIcon from "@/components/app/TaskStatusIcon";
+import TaskTypeIcon from "@/components/app/TaskTypeIcon";
+import PriorityIcon from "@/components/app/PriorityIcon";
+import SelectField, { type SelectOption } from "@/components/app/SelectField";
+import MemberPicker from "@/components/app/MemberPicker";
+import DatePicker from "@/components/app/DatePicker";
+import LabelsField from "@/components/app/LabelsField";
 import EmptyProjects from "@/components/app/EmptyProjects";
 import CreateProjectModal from "@/components/app/CreateProjectModal";
 
@@ -43,6 +52,17 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+const STATUS_OPTS: SelectOption[] = STATUS_ORDER.map((s) => ({
+  value: s,
+  label: STATUS_LABELS[s],
+  icon: <TaskStatusIcon status={s} size={15} />,
+}));
+const PRIORITY_OPTS: SelectOption[] = PRIORITY_ORDER.map((p) => ({
+  value: p,
+  label: PRIORITY_LABELS[p],
+  icon: <PriorityIcon priority={p} size={14} />,
+}));
+
 function BoardPage() {
   const params = useSearchParams();
   const router = useRouter();
@@ -57,10 +77,16 @@ function BoardPage() {
   const [query, setQuery] = useState("");
   const [members, setMembers] = useState<Member[]>([]);
 
-  const [editing, setEditing] = useState<Task | null>(null);
+  const [editing, setEditing] = useState<BoardTask | null>(null);
   const [creatingStatus, setCreatingStatus] = useState<TaskStatus | null>(null);
   const [deletingProject, setDeletingProject] = useState(false);
   const [movingId, setMovingId] = useState<number | null>(null);
+
+  // List-table row controls (selection, drag-reorder, kebab, delete).
+  const [selectedTasks, setSelectedTasks] = useState<Set<number>>(new Set());
+  const [taskMenuId, setTaskMenuId] = useState<number | null>(null);
+  const [dragTaskId, setDragTaskId] = useState<number | null>(null);
+  const [dragOverTaskId, setDragOverTaskId] = useState<number | null>(null);
 
   const activeProject = useMemo(
     () => projects.find((p) => p.id === activeId) ?? null,
@@ -210,6 +236,65 @@ function BoardPage() {
     await loadProjects();
   }
 
+  function toggleSelectTask(id: number) {
+    setSelectedTasks((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function dropTask(targetId: number) {
+    setTasks((cur) => {
+      if (dragTaskId == null || dragTaskId === targetId) return cur;
+      const arr = [...cur];
+      const from = arr.findIndex((t) => t.id === dragTaskId);
+      const to = arr.findIndex((t) => t.id === targetId);
+      if (from < 0 || to < 0) return cur;
+      const [moved] = arr.splice(from, 1);
+      arr.splice(to, 0, moved);
+      return arr;
+    });
+    setDragTaskId(null);
+    setDragOverTaskId(null);
+  }
+
+  async function deleteTaskById(id: number) {
+    setTasks((cur) => cur.filter((t) => t.id !== id));
+    setSelectedTasks((cur) => {
+      const next = new Set(cur);
+      next.delete(id);
+      return next;
+    });
+    await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+    await loadProjects();
+  }
+
+  async function deleteSelectedTasks() {
+    const ids = [...selectedTasks];
+    if (!ids.length) return;
+    setTasks((cur) => cur.filter((t) => !ids.includes(t.id)));
+    setSelectedTasks(new Set());
+    await Promise.all(
+      ids.map((id) => fetch(`/api/tasks/${id}`, { method: "DELETE" }))
+    );
+    await loadProjects();
+  }
+
+  // Inline edits from the list table.
+  async function updateTask(id: number, patch: Record<string, unknown>) {
+    setTasks((cur) =>
+      cur.map((t) => (t.id === id ? ({ ...t, ...patch } as BoardTask) : t))
+    );
+    await fetch(`/api/tasks/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if ("status" in patch) await loadProjects(); // refresh progress
+  }
+
   async function moveTask(task: Task, dir: -1 | 1) {
     const idx = STATUS_ORDER.indexOf(task.status);
     const next = STATUS_ORDER[idx + dir];
@@ -341,6 +426,7 @@ function BoardPage() {
   return (
     <>
       <div className="board-view">
+      <div className="proj-sticky">
       <div className="main-header">
         <div className="board-title">
           <div className="proj-head-row">
@@ -440,6 +526,7 @@ function BoardPage() {
           View
         </button>
       </div>
+      </div>
 
       {tasks.length === 0 ? (
         emptyState
@@ -516,47 +603,204 @@ function BoardPage() {
         </div>
       ) : (
         <div className="task-list">
+          {selectedTasks.size > 0 && (
+            <div className="pv-selbar">
+              <span className="pv-selcount">{selectedTasks.size}</span>
+              {selectedTasks.size === 1 && (
+                <button
+                  type="button"
+                  className="pv-selact"
+                  onClick={() => {
+                    const id = [...selectedTasks][0];
+                    const t = tasks.find((x) => x.id === id);
+                    if (t) setEditing(t);
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                  </svg>
+                  Edit
+                </button>
+              )}
+              <button
+                type="button"
+                className="pv-selact danger"
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `Delete ${selectedTasks.size} task(s)? This cannot be undone.`
+                    )
+                  )
+                    deleteSelectedTasks();
+                }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                  <path d="M10 11v6M14 11v6" />
+                </svg>
+                Delete
+              </button>
+            </div>
+          )}
           <div className="tl-head">
+            <span />
             <span>Title</span>
             <span>Status</span>
             <span>Priority</span>
-            <span>Due</span>
-            <span>Subtasks</span>
+            <span>Assignee</span>
+            <span>Labels</span>
+            <span>Start Date</span>
+            <span>End Date</span>
+            <span />
           </div>
-          {listTasks.map((task) => {
-            const overdue =
-              task.due_date &&
-              task.status !== "done" &&
-              task.due_date < todayISO();
-            return (
-              <button
-                key={task.id}
-                className="tl-row"
+          {listTasks.map((task) => (
+            <div
+              key={task.id}
+              className={`tl-row${dragOverTaskId === task.id ? " dragover" : ""}${
+                dragTaskId === task.id ? " dragging" : ""
+              }${selectedTasks.has(task.id) ? " selected" : ""}`}
+              draggable
+              onDragStart={() => setDragTaskId(task.id)}
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (dragOverTaskId !== task.id) setDragOverTaskId(task.id);
+              }}
+              onDrop={() => dropTask(task.id)}
+              onDragEnd={() => {
+                setDragTaskId(null);
+                setDragOverTaskId(null);
+              }}
+            >
+              <span className="pv-ctrl">
+                <span className="pv-drag-handle" aria-hidden>
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="9" cy="6" r="1.5" /><circle cx="15" cy="6" r="1.5" />
+                    <circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" />
+                    <circle cx="9" cy="18" r="1.5" /><circle cx="15" cy="18" r="1.5" />
+                  </svg>
+                </span>
+                <input
+                  type="checkbox"
+                  className="pv-check"
+                  checked={selectedTasks.has(task.id)}
+                  onChange={() => toggleSelectTask(task.id)}
+                  aria-label={`Select ${task.title}`}
+                />
+              </span>
+              <span
+                className="tl-title tl-title-link"
                 onClick={() => router.push(`/task/${task.id}`)}
               >
-                <span className="tl-title">{task.title}</span>
-                <span className="tl-status">
-                  <span className="dot" style={{ background: STATUS_COLORS[task.status] }} />
-                  {STATUS_LABELS[task.status]}
-                </span>
-                <span
-                  className="badge"
-                  style={{
-                    color: PRIO_COLOR[task.priority],
-                    borderColor: PRIO_COLOR[task.priority],
-                  }}
-                >
-                  {task.priority}
-                </span>
-                <span className={`tl-due ${overdue ? "overdue" : ""}`}>
-                  {task.due_date || "—"}
-                </span>
-                <span className="tl-sub">
-                  {task.subtask_total ? `${task.subtask_done}/${task.subtask_total}` : "—"}
-                </span>
+                <TaskTypeIcon type={task.type} size={15} />
+                <span className="tl-title-text">{task.title}</span>
+              </span>
+              <span className="tl-cell">
+                <SelectField
+                  inline
+                  value={task.status}
+                  options={STATUS_OPTS}
+                  onChange={(v) => updateTask(task.id, { status: v })}
+                />
+              </span>
+              <span className="tl-cell">
+                <SelectField
+                  inline
+                  value={task.priority}
+                  options={PRIORITY_OPTS}
+                  onChange={(v) => updateTask(task.id, { priority: v })}
+                />
+              </span>
+              <span className="tl-cell">
+                <MemberPicker
+                  inline
+                  multiple
+                  members={members}
+                  value={task.assignees ?? []}
+                  onChange={(ids) => updateTask(task.id, { assignees: ids })}
+                  placeholder="Assign"
+                />
+              </span>
+              <span className="tl-cell tl-labels-cell">
+                <LabelsField
+                  value={task.labels ?? []}
+                  suggestions={labelSuggestions}
+                  onChange={(labels) => updateTask(task.id, { labels })}
+                />
+              </span>
+              <span className="tl-cell">
+                <DatePicker
+                  inline
+                  quick
+                  value={task.start_date ?? ""}
+                  max={task.due_date || undefined}
+                  onChange={(v) => updateTask(task.id, { start_date: v || null })}
+                />
+              </span>
+              <span className="tl-cell">
+                <DatePicker
+                  inline
+                  quick
+                  value={task.due_date ?? ""}
+                  min={task.start_date || undefined}
+                  onChange={(v) => updateTask(task.id, { due_date: v || null })}
+                />
+              </span>
+
+              <button
+                className={`pv-kebab${taskMenuId === task.id ? " open" : ""}`}
+                aria-label="Row actions"
+                onClick={() =>
+                  setTaskMenuId(taskMenuId === task.id ? null : task.id)
+                }
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                  <circle cx="12" cy="5" r="1.8" />
+                  <circle cx="12" cy="12" r="1.8" />
+                  <circle cx="12" cy="19" r="1.8" />
+                </svg>
               </button>
-            );
-          })}
+              {taskMenuId === task.id && (
+                <>
+                  <div
+                    className="pv-menu-backdrop"
+                    onClick={() => setTaskMenuId(null)}
+                  />
+                  <div className="pv-menu">
+                    <button
+                      className="pv-menu-item"
+                      onClick={() => {
+                        setTaskMenuId(null);
+                        setEditing(task);
+                      }}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                      </svg>
+                      Edit
+                    </button>
+                    <button
+                      className="pv-menu-item danger"
+                      onClick={() => {
+                        setTaskMenuId(null);
+                        if (
+                          window.confirm(`Delete "${task.title}"? This cannot be undone.`)
+                        )
+                          deleteTaskById(task.id);
+                      }}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                        <path d="M10 11v6M14 11v6" />
+                      </svg>
+                      Delete
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
           {listTasks.length === 0 && (
             <div className="tl-empty">No tasks match your search.</div>
           )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Member } from "@/lib/types";
 
 function initials(text: string) {
@@ -40,6 +40,20 @@ export default function MemberPicker({
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Close on any click outside the picker (robust across stacking contexts).
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setQ("");
+      }
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
 
   const selected = new Set(value);
   const filtered = members.filter((m) =>
@@ -106,7 +120,7 @@ export default function MemberPicker({
   }
 
   return (
-    <div className={`mp${inline ? " mp-inline" : ""}`}>
+    <div ref={rootRef} className={`mp${inline ? " mp-inline" : ""}`}>
       <button
         ref={triggerRef}
         type="button"

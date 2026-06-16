@@ -128,8 +128,8 @@ export const TASK_TYPE_LABELS: Record<TaskType, string> = {
 };
 
 export const TASK_TYPE_COLORS: Record<TaskType, string> = {
-  story: "#3b82f6", // blue
-  task: "#6b7280", // gray
+  story: "#66C2AC", // teal
+  task: "#2AA7E1", // light blue
   bug: "#e5484d", // red
 };
 

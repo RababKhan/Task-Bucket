@@ -162,6 +162,8 @@ export default function RichTextEditor({
   const [, setTick] = useState(0);
   const bump = () => setTick((t) => t + 1);
   const editorRef = useRef<Editor | null>(null);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
 
   function insertImageFile(file: File) {
     const reader = new FileReader();
@@ -240,15 +242,19 @@ export default function RichTextEditor({
     return <div className="rte rte-loading" />;
   }
 
-  function link() {
-    const prev = editor!.getAttributes("link").href as string | undefined;
-    const url = window.prompt("Link URL", prev ?? "");
-    if (url === null) return;
-    if (url === "") {
-      editor!.chain().focus().unsetLink().run();
-    } else {
-      editor!.chain().focus().setLink({ href: url }).run();
-    }
+  function openLink() {
+    setLinkUrl((editor!.getAttributes("link").href as string) ?? "");
+    setLinkOpen(true);
+  }
+  function applyLink() {
+    const url = linkUrl.trim();
+    if (url) editor!.chain().focus().setLink({ href: url }).run();
+    else editor!.chain().focus().unsetLink().run();
+    setLinkOpen(false);
+  }
+  function removeLink() {
+    editor!.chain().focus().unsetLink().run();
+    setLinkOpen(false);
   }
 
   return (
@@ -294,13 +300,42 @@ export default function RichTextEditor({
             <path d="m8 16-4-4 4-4M16 8l4 4-4 4" />
           </svg>
         </ToolBtn>
-        <ToolBtn active={editor.isActive("link")} title="Link" onClick={link}>
+        <ToolBtn active={editor.isActive("link") || linkOpen} title="Link" onClick={() => (linkOpen ? setLinkOpen(false) : openLink())}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1" />
             <path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" />
           </svg>
         </ToolBtn>
       </div>
+
+      {linkOpen && (
+        <div className="rte-link-pop">
+          <input
+            autoFocus
+            className="rte-link-input"
+            value={linkUrl}
+            placeholder="https://example.com"
+            onChange={(e) => setLinkUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                applyLink();
+              } else if (e.key === "Escape") {
+                setLinkOpen(false);
+              }
+            }}
+          />
+          <button type="button" className="rte-link-apply" onMouseDown={(e) => { e.preventDefault(); applyLink(); }}>
+            Apply
+          </button>
+          {editor.isActive("link") && (
+            <button type="button" className="rte-link-remove" onMouseDown={(e) => { e.preventDefault(); removeLink(); }}>
+              Remove
+            </button>
+          )}
+        </div>
+      )}
+
       <EditorContent editor={editor} />
     </div>
   );
