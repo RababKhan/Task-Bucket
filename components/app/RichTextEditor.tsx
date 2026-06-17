@@ -151,11 +151,13 @@ export default function RichTextEditor({
   onChange,
   onBlur,
   placeholder,
+  toolbarBottom = false,
 }: {
   value: string;
   onChange: (html: string) => void;
   onBlur?: () => void;
   placeholder?: string;
+  toolbarBottom?: boolean;
 }) {
   // Force the toolbar to re-render on selection/content changes so the active
   // states stay in sync (TipTap v3 doesn't re-render on every transaction).
@@ -258,7 +260,7 @@ export default function RichTextEditor({
   }
 
   return (
-    <div className="rte">
+    <div className={`rte${toolbarBottom ? " rte-bottom" : ""}`}>
       <div className="rte-toolbar">
         <HeadingMenu editor={editor} />
         <span className="rte-sep" />

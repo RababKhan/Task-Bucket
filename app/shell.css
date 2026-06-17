@@ -282,6 +282,20 @@
   overflow-y: auto;
   padding: 6px 32px 32px;
 }
+/* The list/board page has a sticky add-task footer. Drop the scroll container's
+   bottom padding so the footer pins flush with the scroll bottom (no row peeks
+   beneath it), and move the breathing room below it to .app-body's padding —
+   that 10px sits outside the scroll area, so it stays a consistent gap below
+   the footer (floating or at rest) without ever exposing scrolling rows. */
+.app-main:has(.board-view) {
+  padding-bottom: 0;
+  /* The board-view fills this and the table scrolls internally, so the main
+     area itself must not scroll (hides the tall outer scrollbar). */
+  overflow: hidden;
+}
+.app-body:has(.board-view) {
+  padding-bottom: 10px;
+}
 .page-loading {
   display: grid;
   place-items: center;
@@ -1217,6 +1231,13 @@
    (e.g. right after a project is created or when navigating in). */
 .board-view {
   animation: boardViewIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* Fill the main area and lay out as a column so the table scrolls internally
+     (header pinned above, add-item bar below) instead of the whole page. */
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 /* Pin the project header (title/status + tabs + toolbar); table scrolls under. */
 .proj-sticky {
@@ -1225,15 +1246,34 @@
   z-index: 20;
   background: var(--canvas-bg);
   padding-top: 2px;
+  padding-bottom: 10px;
+  /* Fixed header row of the board-view column — keep its height while the
+     table below it scrolls. */
+  flex-shrink: 0;
 }
+/* Board and empty views also fill the column and scroll internally. */
+.board-view > .board {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.board-view > .empty-hero {
+  flex: 1;
+  min-height: 0;
+}
+/* The toolbar's bottom spacing now lives in .proj-sticky's padding so its
+   background covers the gap (otherwise rows peek between the two sticky bars). */
+.proj-sticky .proj-toolbar {
+  margin-bottom: 0;
+}
+/* Fade only (no transform) — a transform here would make .board-view the
+   containing block for the inline popovers' fixed menus and offset them. */
 @keyframes boardViewIn {
   from {
     opacity: 0;
-    transform: translateY(12px);
   }
   to {
     opacity: 1;
-    transform: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {

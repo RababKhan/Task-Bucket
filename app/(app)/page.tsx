@@ -5,10 +5,19 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
+  type CSSProperties,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { Member, Project, Task, TaskStatus } from "@/lib/types";
+import type {
+  Member,
+  Project,
+  Task,
+  TaskStatus,
+  TaskPriority,
+  TaskType,
+} from "@/lib/types";
 import {
   STATUS_LABELS,
   STATUS_ORDER,
@@ -16,6 +25,9 @@ import {
   PRIORITY_LABELS,
   PRIORITY_ORDER,
   PROJECT_STATUS_LABELS,
+  TASK_TYPE_ORDER,
+  TASK_TYPE_LABELS,
+  TASK_TYPE_COLORS,
 } from "@/lib/types";
 import Spinner from "@/components/Spinner";
 import TaskModal, { type TaskDraft } from "@/app/TaskModal";
@@ -63,6 +75,24 @@ const PRIORITY_OPTS: SelectOption[] = PRIORITY_ORDER.map((p) => ({
   icon: <PriorityIcon priority={p} size={14} />,
 }));
 
+// Editable defaults for the inline add-task row.
+function blankNewTask() {
+  return {
+    type: "task" as TaskType,
+    status: "backlog" as TaskStatus,
+    priority: "medium" as TaskPriority,
+    assignees: [] as string[],
+    labels: [] as string[],
+    start_date: null as string | null,
+    due_date: null as string | null,
+  };
+}
+// Cycle Story → Task → Bug → Story on each click of the add-row type icon.
+function nextTaskType(t: TaskType): TaskType {
+  const i = TASK_TYPE_ORDER.indexOf(t);
+  return TASK_TYPE_ORDER[(i + 1) % TASK_TYPE_ORDER.length];
+}
+
 function BoardPage() {
   const params = useSearchParams();
   const router = useRouter();
@@ -87,10 +117,34 @@ function BoardPage() {
   const [taskMenuId, setTaskMenuId] = useState<number | null>(null);
   const [dragTaskId, setDragTaskId] = useState<number | null>(null);
   const [dragOverTaskId, setDragOverTaskId] = useState<number | null>(null);
+  // Delete-confirmation modal (single via kebab, or bulk via selection bar).
+  const [deleteTaskTarget, setDeleteTaskTarget] = useState<BoardTask | null>(null);
+  const [bulkDeleteTasks, setBulkDeleteTasks] = useState(false);
+  const [deletingTasks, setDeletingTasks] = useState(false);
+  const stickyRef = useRef<HTMLDivElement>(null);
+
+  // Inline "add task" row at the bottom of the list table (editable defaults).
+  const [addingTask, setAddingTask] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTask, setNewTask] = useState(blankNewTask);
+  const [savingTask, setSavingTask] = useState(false);
+  const addInputRef = useRef<HTMLInputElement>(null);
+  const addRowRef = useRef<HTMLDivElement>(null);
 
   const activeProject = useMemo(
     () => projects.find((p) => p.id === activeId) ?? null,
     [projects, activeId]
+  );
+
+  // Task-id prefix: first 3 alphanumerics of the project name, uppercased
+  // (e.g. "Development" → "DEV"), used as DEV-001, DEV-002, …
+  const projectPrefix = useMemo(
+    () =>
+      (activeProject?.name ?? "")
+        .replace(/[^a-zA-Z0-9]/g, "")
+        .slice(0, 3)
+        .toUpperCase() || "TSK",
+    [activeProject]
   );
 
   const loadProjects = useCallback(async () => {
@@ -142,6 +196,33 @@ function BoardPage() {
       cancelled = true;
     };
   }, [activeId]);
+
+  // Expose the pinned project-header height so the table header can stick below
+  // it. Defer to rAF and skip redundant writes to avoid a resize/reflow loop
+  // (which makes the page jitter while scrolling).
+  useEffect(() => {
+    const el = stickyRef.current;
+    if (!el) return;
+    let prev = "";
+    let frame = 0;
+    const update = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const v = `${el.offsetHeight}px`;
+        if (v !== prev) {
+          prev = v;
+          document.documentElement.style.setProperty("--proj-sticky-h", v);
+        }
+      });
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      cancelAnimationFrame(frame);
+      ro.disconnect();
+    };
+  }, [activeId, view, loading]);
 
   // Broadcast the active project name so the topbar can show a breadcrumb.
   useEffect(() => {
@@ -228,6 +309,25 @@ function BoardPage() {
     await loadProjects(); // refresh counts
   }
 
+  // Create a task from just a title (defaults applied server-side), then keep
+  // the inline row open and focused so several can be added in a row.
+  async function quickAddTask() {
+    const title = newTaskTitle.trim();
+    if (!title || activeId == null || savingTask) return;
+    setSavingTask(true);
+    await fetch("/api/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, project_id: activeId, ...newTask }),
+    });
+    setNewTaskTitle("");
+    setNewTask(blankNewTask());
+    setSavingTask(false);
+    await loadTasks(activeId);
+    await loadProjects();
+    addInputRef.current?.focus();
+  }
+
   async function deleteTask() {
     if (!editing) return;
     await fetch(`/api/tasks/${editing.id}`, { method: "DELETE" });
@@ -280,6 +380,15 @@ function BoardPage() {
       ids.map((id) => fetch(`/api/tasks/${id}`, { method: "DELETE" }))
     );
     await loadProjects();
+  }
+
+  async function confirmDeleteTask() {
+    setDeletingTasks(true);
+    if (bulkDeleteTasks) await deleteSelectedTasks();
+    else if (deleteTaskTarget) await deleteTaskById(deleteTaskTarget.id);
+    setDeletingTasks(false);
+    setDeleteTaskTarget(null);
+    setBulkDeleteTasks(false);
   }
 
   // Inline edits from the list table.
@@ -426,7 +535,7 @@ function BoardPage() {
   return (
     <>
       <div className="board-view">
-      <div className="proj-sticky">
+      <div className="proj-sticky" ref={stickyRef}>
       <div className="main-header">
         <div className="board-title">
           <div className="proj-head-row">
@@ -602,7 +711,8 @@ function BoardPage() {
           ))}
         </div>
       ) : (
-        <div className="task-list">
+        <>
+        <div className={`task-list${selectedTasks.size > 0 ? " has-selbar" : ""}`}>
           {selectedTasks.size > 0 && (
             <div className="pv-selbar">
               <span className="pv-selcount">{selectedTasks.size}</span>
@@ -626,14 +736,7 @@ function BoardPage() {
               <button
                 type="button"
                 className="pv-selact danger"
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      `Delete ${selectedTasks.size} task(s)? This cannot be undone.`
-                    )
-                  )
-                    deleteSelectedTasks();
-                }}
+                onClick={() => setBulkDeleteTasks(true)}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
@@ -646,12 +749,12 @@ function BoardPage() {
           <div className="tl-head">
             <span />
             <span>Title</span>
+            <span>Assignee</span>
             <span>Status</span>
             <span>Priority</span>
-            <span>Assignee</span>
-            <span>Labels</span>
             <span>Start Date</span>
             <span>End Date</span>
+            <span>Labels</span>
             <span />
           </div>
           {listTasks.map((task) => (
@@ -693,7 +796,22 @@ function BoardPage() {
                 onClick={() => router.push(`/task/${task.id}`)}
               >
                 <TaskTypeIcon type={task.type} size={15} />
+                {task.seq != null && (
+                  <span className="tl-task-id">
+                    {projectPrefix}-{String(task.seq).padStart(3, "0")}
+                  </span>
+                )}
                 <span className="tl-title-text">{task.title}</span>
+              </span>
+              <span className="tl-cell">
+                <MemberPicker
+                  inline
+                  multiple
+                  members={members}
+                  value={task.assignees ?? []}
+                  onChange={(ids) => updateTask(task.id, { assignees: ids })}
+                  placeholder="Assign"
+                />
               </span>
               <span className="tl-cell">
                 <SelectField
@@ -712,23 +830,6 @@ function BoardPage() {
                 />
               </span>
               <span className="tl-cell">
-                <MemberPicker
-                  inline
-                  multiple
-                  members={members}
-                  value={task.assignees ?? []}
-                  onChange={(ids) => updateTask(task.id, { assignees: ids })}
-                  placeholder="Assign"
-                />
-              </span>
-              <span className="tl-cell tl-labels-cell">
-                <LabelsField
-                  value={task.labels ?? []}
-                  suggestions={labelSuggestions}
-                  onChange={(labels) => updateTask(task.id, { labels })}
-                />
-              </span>
-              <span className="tl-cell">
                 <DatePicker
                   inline
                   quick
@@ -744,6 +845,13 @@ function BoardPage() {
                   value={task.due_date ?? ""}
                   min={task.start_date || undefined}
                   onChange={(v) => updateTask(task.id, { due_date: v || null })}
+                />
+              </span>
+              <span className="tl-cell tl-labels-cell">
+                <LabelsField
+                  value={task.labels ?? []}
+                  suggestions={labelSuggestions}
+                  onChange={(labels) => updateTask(task.id, { labels })}
                 />
               </span>
 
@@ -784,10 +892,7 @@ function BoardPage() {
                       className="pv-menu-item danger"
                       onClick={() => {
                         setTaskMenuId(null);
-                        if (
-                          window.confirm(`Delete "${task.title}"? This cannot be undone.`)
-                        )
-                          deleteTaskById(task.id);
+                        setDeleteTaskTarget(task);
                       }}
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -801,16 +906,156 @@ function BoardPage() {
               )}
             </div>
           ))}
-          {listTasks.length === 0 && (
+          {listTasks.length === 0 && !addingTask && (
             <div className="tl-empty">No tasks match your search.</div>
           )}
+        </div>
+        <div className="tl-foot">
+          {addingTask && (
+            <div className="tl-row tl-addrow" ref={addRowRef}>
+              <span className="pv-ctrl" />
+              <span className="tl-title">
+                <button
+                  type="button"
+                  className="tl-addtype"
+                  style={{ borderColor: TASK_TYPE_COLORS[newTask.type] }}
+                  title={`Type: ${TASK_TYPE_LABELS[newTask.type]} (click to change)`}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() =>
+                    setNewTask((n) => ({ ...n, type: nextTaskType(n.type) }))
+                  }
+                >
+                  <TaskTypeIcon type={newTask.type} size={15} />
+                </button>
+                <input
+                  ref={addInputRef}
+                  autoFocus
+                  className="tl-add-input"
+                  placeholder="Write a task name"
+                  style={
+                    {
+                      borderColor: TASK_TYPE_COLORS[newTask.type],
+                      "--tl-type": TASK_TYPE_COLORS[newTask.type],
+                    } as CSSProperties
+                  }
+                  value={newTaskTitle}
+                  disabled={savingTask}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      quickAddTask();
+                    } else if (e.key === "Escape") {
+                      setAddingTask(false);
+                      setNewTaskTitle("");
+                      setNewTask(blankNewTask());
+                    }
+                  }}
+                  onBlur={() => {
+                    // Close only if nothing's typed and focus left the whole row
+                    // (so picking a status/date in this row doesn't dismiss it).
+                    setTimeout(() => {
+                      if (
+                        !newTaskTitle.trim() &&
+                        addRowRef.current &&
+                        !addRowRef.current.contains(document.activeElement)
+                      ) {
+                        setAddingTask(false);
+                        setNewTask(blankNewTask());
+                      }
+                    }, 120);
+                  }}
+                />
+                {savingTask && (
+                  <span className="tl-add-dots" aria-label="Creating">
+                    <span />
+                    <span />
+                    <span />
+                  </span>
+                )}
+              </span>
+              <span className="tl-cell">
+                <MemberPicker
+                  inline
+                  multiple
+                  members={members}
+                  value={newTask.assignees}
+                  onChange={(ids) => setNewTask((n) => ({ ...n, assignees: ids }))}
+                  placeholder="Assign"
+                />
+              </span>
+              <span className="tl-cell">
+                <SelectField
+                  inline
+                  value={newTask.status}
+                  options={STATUS_OPTS}
+                  onChange={(v) => {
+                    setNewTask((n) => ({ ...n, status: v as TaskStatus }));
+                    requestAnimationFrame(() => addInputRef.current?.focus());
+                  }}
+                />
+              </span>
+              <span className="tl-cell">
+                <SelectField
+                  inline
+                  value={newTask.priority}
+                  options={PRIORITY_OPTS}
+                  onChange={(v) => {
+                    setNewTask((n) => ({ ...n, priority: v as TaskPriority }));
+                    requestAnimationFrame(() => addInputRef.current?.focus());
+                  }}
+                />
+              </span>
+              <span className="tl-cell">
+                <DatePicker
+                  inline
+                  quick
+                  value={newTask.start_date ?? ""}
+                  max={newTask.due_date || undefined}
+                  onChange={(v) => {
+                    setNewTask((n) => ({ ...n, start_date: v || null }));
+                    requestAnimationFrame(() => addInputRef.current?.focus());
+                  }}
+                />
+              </span>
+              <span className="tl-cell">
+                <DatePicker
+                  inline
+                  quick
+                  value={newTask.due_date ?? ""}
+                  min={newTask.start_date || undefined}
+                  onChange={(v) => {
+                    setNewTask((n) => ({ ...n, due_date: v || null }));
+                    requestAnimationFrame(() => addInputRef.current?.focus());
+                  }}
+                />
+              </span>
+              <span className="tl-cell tl-labels-cell">
+                <LabelsField
+                  value={newTask.labels}
+                  suggestions={labelSuggestions}
+                  onChange={(labels) => setNewTask((n) => ({ ...n, labels }))}
+                />
+              </span>
+              <span />
+            </div>
+          )}
           <button
-            className="add-task tl-add"
-            onClick={() => setCreatingStatus("backlog")}
+            type="button"
+            className="pv-tool-btn tl-add"
+            onClick={() => {
+              setAddingTask(true);
+              setNewTaskTitle("");
+              requestAnimationFrame(() => addInputRef.current?.focus());
+            }}
           >
-            + Add task
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Add Item
           </button>
         </div>
+        </>
       )}
       </div>
 
@@ -834,6 +1079,65 @@ function BoardPage() {
           onClose={() => setCreateOpen(false)}
           onCreated={onProjectCreated}
         />
+      )}
+
+      {(deleteTaskTarget || bulkDeleteTasks) && (
+        <div
+          className="overlay"
+          onMouseDown={() => {
+            if (deletingTasks) return;
+            setDeleteTaskTarget(null);
+            setBulkDeleteTasks(false);
+          }}
+        >
+          <div
+            className="modal confirm-modal"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <span className="confirm-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                <path d="M10 11v6M14 11v6" />
+              </svg>
+            </span>
+
+            <h2>
+              Delete{" "}
+              {bulkDeleteTasks && selectedTasks.size > 1 ? "Items" : "Item"}
+            </h2>
+            <p className="confirm-text">
+              Are you sure you want to delete{" "}
+              {bulkDeleteTasks ? (
+                <strong>
+                  {selectedTasks.size} item{selectedTasks.size === 1 ? "" : "s"}
+                </strong>
+              ) : (
+                <strong>{deleteTaskTarget?.title}</strong>
+              )}
+              ? This action cannot be undone.
+            </p>
+
+            <div className="confirm-actions">
+              <button
+                className="btn btn-primary confirm-keep"
+                disabled={deletingTasks}
+                onClick={() => {
+                  setDeleteTaskTarget(null);
+                  setBulkDeleteTasks(false);
+                }}
+              >
+                No, Keep it
+              </button>
+              <button
+                className="btn-outline confirm-del"
+                onClick={confirmDeleteTask}
+                disabled={deletingTasks}
+              >
+                {deletingTasks ? <Spinner /> : "Yes, Delete it"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

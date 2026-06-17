@@ -153,14 +153,17 @@ export default function TaskModal({
     addLabelValue(labelInput);
   }
 
+  const labelTrimmed = labelInput.trim();
   const labelMatches = labelSuggestions
     .filter(
       (s) => !draft.labels.some((l) => l.toLowerCase() === s.toLowerCase())
     )
-    .filter((s) =>
-      s.toLowerCase().includes(labelInput.trim().toLowerCase())
-    )
+    .filter((s) => s.toLowerCase().includes(labelTrimmed.toLowerCase()))
     .slice(0, 10);
+  const showLabelCreate =
+    labelTrimmed.length > 0 &&
+    !draft.labels.some((l) => l.toLowerCase() === labelTrimmed.toLowerCase()) &&
+    !labelMatches.some((s) => s.toLowerCase() === labelTrimmed.toLowerCase());
 
   function removeLabel(i: number) {
     set(
@@ -204,7 +207,7 @@ export default function TaskModal({
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="tm-head">
-          <h2>{task ? "Edit Task" : "Create Task"}</h2>
+          <h2>{task ? "Update Item" : "Create Item"}</h2>
         </div>
 
         <div className="tm-body">
@@ -396,8 +399,20 @@ export default function TaskModal({
                 }}
               />
             </div>
-            {labelFocus && labelMatches.length > 0 && (
+            {labelFocus && (showLabelCreate || labelMatches.length > 0) && (
               <div className="tm-label-suggest">
+                {showLabelCreate && (
+                  <button
+                    type="button"
+                    className="tm-suggest-row lf-create"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      addLabelValue(labelTrimmed);
+                    }}
+                  >
+                    Add &quot;{labelTrimmed}&quot;
+                  </button>
+                )}
                 {labelMatches.map((s) => {
                   const c = labelColor(s);
                   return (
@@ -473,46 +488,23 @@ export default function TaskModal({
           </div>
         </div>
 
-        <div className="modal-actions">
-          <div>
-            {task && (
-              <button
-                className="btn btn-danger"
-                onClick={handleDelete}
-                disabled={busy}
-              >
-                {deleting ? (
-                  <>
-                    Deleting
-                    <Spinner />
-                  </>
-                ) : (
-                  "Delete"
-                )}
-              </button>
+        <div className="modal-actions modal-actions-left">
+          <button
+            className="btn btn-primary"
+            onClick={handleSave}
+            disabled={!draft.title.trim() || busy}
+          >
+            {saving ? (
+              <>
+                {task ? "Updating" : "Creating"}
+                <Spinner />
+              </>
+            ) : task ? (
+              "Update Item"
+            ) : (
+              "Create Item"
             )}
-          </div>
-          <div className="right">
-            <button className="btn" onClick={onClose} disabled={busy}>
-              Cancel
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={handleSave}
-              disabled={!draft.title.trim() || busy}
-            >
-              {saving ? (
-                <>
-                  Saving
-                  <Spinner />
-                </>
-              ) : task ? (
-                "Save"
-              ) : (
-                "Create"
-              )}
-            </button>
-          </div>
+          </button>
         </div>
       </div>
     </div>

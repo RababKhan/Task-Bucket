@@ -121,9 +121,21 @@ export async function POST(request: Request) {
   );
   const maxPos = posRow?.maxPos ?? -1;
 
+  // Per-project incremental number behind the human task id (e.g. DEV-001).
+  // Uses a monotonic counter on the project so numbers are never reused, even
+  // after a task is deleted.
+  await dbRun("UPDATE projects SET task_seq = task_seq + 1 WHERE id = ?", [
+    projectId,
+  ]);
+  const seqRow = await dbGet<{ task_seq: number }>(
+    "SELECT task_seq FROM projects WHERE id = ?",
+    [projectId]
+  );
+  const seq = seqRow?.task_seq ?? 1;
+
   const info = await dbRun(
-    `INSERT INTO tasks (project_id, parent_id, title, description, type, status, priority, severity, story_points, start_date, due_date, labels, position)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO tasks (project_id, parent_id, title, description, type, status, priority, severity, story_points, start_date, due_date, labels, position, seq)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       projectId,
       parentId,
@@ -138,6 +150,7 @@ export async function POST(request: Request) {
       dueDate,
       JSON.stringify(labels),
       maxPos + 1,
+      seq,
     ]
   );
   const taskId = info.lastInsertRowid;

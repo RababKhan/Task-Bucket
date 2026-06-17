@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 export type SelectOption = {
   value: string;
@@ -26,16 +26,30 @@ export default function SelectField({
 }) {
   const [open, setOpen] = useState(false);
   const [maxH, setMaxH] = useState(260);
+  // Fixed-position coords so the menu escapes the scrolling table's clip.
+  const [menuPos, setMenuPos] = useState<CSSProperties>({});
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   function toggle() {
     if (!open && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
       const box = triggerRef.current.closest(".modal");
+      const topBound = box ? box.getBoundingClientRect().top + 12 : 12;
       const bottomBound =
         (box ? box.getBoundingClientRect().bottom : window.innerHeight) - 12;
       const spaceBelow = bottomBound - rect.bottom - 6;
-      setMaxH(Math.max(120, Math.min(280, spaceBelow)));
+      const spaceAbove = rect.top - topBound - 6;
+      const openUp = spaceBelow < 160 && spaceAbove > spaceBelow;
+      setMaxH(Math.max(120, Math.min(280, openUp ? spaceAbove : spaceBelow)));
+      setMenuPos({
+        position: "fixed",
+        left: rect.left,
+        right: "auto",
+        minWidth: Math.max(rect.width, inline ? 200 : 160),
+        ...(openUp
+          ? { top: "auto", bottom: window.innerHeight - rect.top + 4 }
+          : { bottom: "auto", top: rect.bottom + 4 }),
+      });
     }
     setOpen((o) => !o);
   }
@@ -78,7 +92,7 @@ export default function SelectField({
       {open && (
         <>
           <div className="status-dd-backdrop" onClick={() => setOpen(false)} />
-          <div className="status-dd-menu">
+          <div className="status-dd-menu" style={menuPos}>
             <div
               className="status-dd-scroll"
               role="listbox"

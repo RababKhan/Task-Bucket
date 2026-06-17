@@ -165,6 +165,7 @@ export type Task = {
   due_date: string | null;
   labels: string[];
   position: number;
+  seq: number | null;
   created_at: string;
 };
 
@@ -203,10 +204,10 @@ export type CustomFieldWithValue = CustomField & { value: string };
 
 export const STATUS_LABELS: Record<TaskStatus, string> = {
   backlog: "Backlog",
-  dev_in_progress: "Development In Progress",
+  dev_in_progress: "Development Ongoing",
   dev_done: "Development Done",
   in_test: "In Test",
-  test_in_progress: "Test In Progress",
+  test_in_progress: "Test Ongoing",
   test_fail: "Test Fail",
   test_done: "Test Done",
   ready_for_deploy: "Ready for Deployment",

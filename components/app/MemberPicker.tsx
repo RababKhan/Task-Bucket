@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { Member } from "@/lib/types";
 
 function initials(text: string) {
@@ -39,6 +39,8 @@ export default function MemberPicker({
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
+  // Fixed-position coords so the menu escapes the scrolling table's clip.
+  const [menuPos, setMenuPos] = useState<CSSProperties>({});
   const triggerRef = useRef<HTMLButtonElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -61,6 +63,20 @@ export default function MemberPicker({
   );
 
   function toggle() {
+    if (!open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      const openUp =
+        window.innerHeight - rect.bottom < 280 && rect.top > window.innerHeight - rect.bottom;
+      setMenuPos({
+        position: "fixed",
+        left: rect.left,
+        right: "auto",
+        minWidth: Math.max(rect.width, 240),
+        ...(openUp
+          ? { top: "auto", bottom: window.innerHeight - rect.top + 4 }
+          : { bottom: "auto", top: rect.bottom + 4 }),
+      });
+    }
     setOpen((o) => !o);
   }
 
@@ -138,7 +154,7 @@ export default function MemberPicker({
       {open && (
         <>
           <div className="mp-backdrop" onClick={close} />
-          <div className="mp-menu">
+          <div className="mp-menu" style={menuPos}>
             {searchable && (
               <div className="mp-search-wrap">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

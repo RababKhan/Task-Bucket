@@ -472,6 +472,15 @@ select:focus {
   gap: 10px;
   margin-top: 22px;
 }
+.modal-actions-left {
+  justify-content: flex-start;
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.modal.task-modal {
+  padding-bottom: 14px;
+}
 .modal-actions .right {
   display: flex;
   gap: 10px;

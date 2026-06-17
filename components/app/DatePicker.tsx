@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import SelectField from "@/components/app/SelectField";
 
 const WEEKDAYS_MON = ["Mo", "Tu", "We", "Th", "Fr", "Sat", "Su"];
@@ -51,6 +51,8 @@ export default function DatePicker({
   const [open, setOpen] = useState(false);
   const [dropUp, setDropUp] = useState(false);
   const [alignRight, setAlignRight] = useState(false);
+  // Fixed-position coords so the calendar escapes the scrolling table's clip.
+  const [calPos, setCalPos] = useState<CSSProperties>({});
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [view, setView] = useState(() =>
     sel ? { y: sel.y, m: sel.m } : { y: today.getFullYear(), m: today.getMonth() }
@@ -59,11 +61,27 @@ export default function DatePicker({
   function toggle() {
     if (!open && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
-      setDropUp(window.innerHeight - rect.bottom < (quick ? 430 : 360));
+      // Match the actual calendar widths (.dp-cal.dp-pro = 370px, .dp-cal = 232px).
+      const popW = quick ? 370 : 232;
+      const popH = quick ? 380 : 300;
       const box = triggerRef.current.closest(".modal");
       const rightBound =
         (box ? box.getBoundingClientRect().right : window.innerWidth) - 10;
-      setAlignRight(rect.left + (quick ? 500 : 280) > rightBound);
+      const up = window.innerHeight - rect.bottom < popH && rect.top > popH;
+      const right = rect.left + popW > rightBound;
+      setDropUp(up);
+      setAlignRight(right);
+      const left = right
+        ? Math.max(8, rect.right - popW)
+        : Math.max(8, rect.left);
+      setCalPos({
+        position: "fixed",
+        left,
+        right: "auto",
+        ...(up
+          ? { top: "auto", bottom: window.innerHeight - rect.top + 4 }
+          : { bottom: "auto", top: rect.bottom + 4 }),
+      });
     }
     setOpen((o) => !o);
   }
@@ -213,7 +231,7 @@ export default function DatePicker({
           <div className="dp-backdrop" onClick={() => setOpen(false)} />
 
           {quick ? (
-            <div className={`dp-cal dp-pro${dropUp ? " up" : ""}${alignRight ? " right" : ""}`}>
+            <div className={`dp-cal dp-pro${dropUp ? " up" : ""}${alignRight ? " right" : ""}`} style={calPos}>
               <div className="dp-pro-side">
                 {SHORTCUTS.map((s) => {
                   const d = offsetDate(s.days);
@@ -277,7 +295,7 @@ export default function DatePicker({
               </div>
             </div>
           ) : (
-            <div className={`dp-cal${dropUp ? " up" : ""}${alignRight ? " right" : ""}`}>
+            <div className={`dp-cal${dropUp ? " up" : ""}${alignRight ? " right" : ""}`} style={calPos}>
               {head}
               {grid}
               {label && (

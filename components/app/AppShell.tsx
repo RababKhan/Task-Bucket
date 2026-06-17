@@ -20,6 +20,33 @@ const ProjectsIcon = (
     <path d="M12 22V12" />
   </svg>
 );
+const DashboardIcon = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <rect x="3" y="3" width="7" height="9" rx="1.5" />
+    <rect x="14" y="3" width="7" height="5" rx="1.5" />
+    <rect x="14" y="12" width="7" height="9" rx="1.5" />
+    <rect x="3" y="16" width="7" height="5" rx="1.5" />
+  </svg>
+);
+const TasksIcon = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M11 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6" />
+    <path d="m9 11 3 3L22 4" />
+  </svg>
+);
+const DirectoryIcon = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13A4 4 0 0 1 16 11" />
+  </svg>
+);
+const TimeSheetIcon = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <circle cx="12" cy="13" r="8" />
+    <path d="M12 9v4l2.5 2.5M9 2h6" />
+  </svg>
+);
 const ProfileIcon = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
     <circle cx="12" cy="8" r="4" />
@@ -119,7 +146,11 @@ function Sidebar({
       </div>
 
       <nav className="app-nav">
-        <NavLink href="/projects" label="Projects" icon={ProjectsIcon} active={projectsActive} />
+        <NavLink href="/dashboard" label="Dashboard" icon={DashboardIcon} active={isActive("/dashboard")} />
+        <NavLink href="/projects" label="Project" icon={ProjectsIcon} active={projectsActive} />
+        <NavLink href="/tasks" label="Tasks" icon={TasksIcon} active={isActive("/tasks")} />
+        <NavLink href="/directory" label="Employee Directory" icon={DirectoryIcon} active={isActive("/directory")} />
+        <NavLink href="/timesheet" label="Time Sheet" icon={TimeSheetIcon} active={isActive("/timesheet")} />
       </nav>
 
       <div className="sidebar-bottom">
@@ -140,7 +171,11 @@ function Sidebar({
 
 function sectionTitle(pathname: string) {
   if (pathname === "/") return "Board";
+  if (pathname.startsWith("/dashboard")) return "Dashboard";
   if (pathname.startsWith("/projects")) return "Projects";
+  if (pathname.startsWith("/tasks")) return "Tasks";
+  if (pathname.startsWith("/directory")) return "Employee Directory";
+  if (pathname.startsWith("/timesheet")) return "Time Sheet";
   if (pathname.startsWith("/settings")) return "Settings";
   if (pathname.startsWith("/profile")) return "Profile";
   if (pathname.startsWith("/task")) return "Task";
@@ -152,15 +187,29 @@ function Topbar() {
   const pathname = usePathname();
   const [menu, setMenu] = useState<null | "notif" | "account">(null);
   const [boardProject, setBoardProject] = useState<string | null>(null);
+  const [taskCrumb, setTaskCrumb] = useState<{
+    project: string;
+    projectId: number;
+    task: string;
+  } | null>(null);
 
   useEffect(() => {
     function onActive(e: Event) {
       const detail = (e as CustomEvent<{ name: string } | null>).detail;
       setBoardProject(detail?.name ?? null);
     }
+    function onTaskCrumb(e: Event) {
+      setTaskCrumb(
+        (e as CustomEvent<{ project: string; projectId: number; task: string } | null>)
+          .detail ?? null
+      );
+    }
     window.addEventListener("tb:active-project", onActive as EventListener);
-    return () =>
+    window.addEventListener("tb:task-crumb", onTaskCrumb as EventListener);
+    return () => {
       window.removeEventListener("tb:active-project", onActive as EventListener);
+      window.removeEventListener("tb:task-crumb", onTaskCrumb as EventListener);
+    };
   }, []);
 
   const user = session?.user;
@@ -169,11 +218,25 @@ function Topbar() {
   const title = sectionTitle(pathname);
   const showAdd = pathname.startsWith("/projects");
   const showCrumb = pathname === "/" && !!boardProject;
+  const showTaskCrumb = pathname.startsWith("/task/") && !!taskCrumb;
 
   return (
     <header className="app-topbar">
       <div className="topbar-lead">
-        {showCrumb ? (
+        {showTaskCrumb ? (
+          <nav className="topbar-crumb" aria-label="Breadcrumb">
+            <Link
+              href={`/?project=${taskCrumb!.projectId}`}
+              className="topbar-crumb-link"
+            >
+              {taskCrumb!.project}
+            </Link>
+            <svg className="topbar-crumb-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+            <span className="topbar-crumb-current">{taskCrumb!.task}</span>
+          </nav>
+        ) : showCrumb ? (
           <nav className="topbar-crumb" aria-label="Breadcrumb">
             <Link href="/projects" className="topbar-crumb-link">
               Project

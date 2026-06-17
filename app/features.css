@@ -46,18 +46,44 @@
 /* ---- List view ---- */
 .task-list {
   border: 1px solid var(--canvas-border);
-  border-radius: 8px;
-  /* visible so inline-editor popovers (status/date/labels) aren't clipped */
-  overflow: visible;
+  /* Square bottom — the .tl-foot bar below continues the card. */
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  /* The rows scroll inside the card (thin scrollbar) instead of the whole page;
+     the column header and selection bar stick to the top of this container. */
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
   background: var(--surface);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  scrollbar-width: thin;
+  scrollbar-color: var(--canvas-border) transparent;
+  /* Always reserve the scrollbar gutter so the rows' column widths stay
+     consistent with the (non-scrolling) add-item row below. */
+  scrollbar-gutter: stable;
+}
+.task-list::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.task-list::-webkit-scrollbar-thumb {
+  background: var(--canvas-border);
+  border-radius: 4px;
+}
+.task-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
+}
+.task-list::-webkit-scrollbar-track {
+  background: transparent;
 }
 .tl-head,
 .tl-row {
   display: grid;
-  grid-template-columns: 34px minmax(160px, 1fr) 140px 120px 110px 170px 110px 110px 32px;
+  /* Title, narrow Assignee (avatar only), then equal Status, Priority, Start,
+     End, Labels. */
+  grid-template-columns: 34px minmax(160px, 1fr) 70px repeat(5, 105px) 32px;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   padding: 0 14px;
 }
 .tl-row {
@@ -78,12 +104,16 @@
   opacity: 1;
 }
 .tl-head {
+  position: sticky;
+  top: 0;
+  z-index: 15;
   height: 38px;
   font-size: 11px;
   font-weight: 500;
   color: var(--text-dim);
-  background: transparent;
+  background: var(--surface);
   border-bottom: 1px solid var(--border);
+  border-radius: 8px 8px 0 0;
 }
 .tl-row {
   width: 100%;
@@ -94,6 +124,7 @@
   color: var(--text);
 }
 .tl-title {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 7px;
@@ -103,6 +134,15 @@
 .tl-title svg {
   flex-shrink: 0;
   transform-origin: center;
+}
+/* Human task id (e.g. DEV-001) shown before the title. */
+.tl-task-id {
+  flex-shrink: 0;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
 }
 .tl-row:hover .tl-title svg {
   animation: tlTwinkle 0.6s ease-in-out;
@@ -197,6 +237,14 @@
   align-items: center;
   min-width: 0;
 }
+/* Uniform height for every inline cell control (Assignee, Status, Priority,
+   Start/End Date, Labels) so all columns line up at the same row height. */
+.tl-cell .status-dd-inline,
+.tl-cell .mp-inline-trigger,
+.tl-cell .dp-inline-trigger,
+.tl-cell .lf-trigger {
+  min-height: 22.26px;
+}
 .tl-cell .status-dd,
 .tl-cell .mp,
 .tl-cell .datepicker,
@@ -207,14 +255,17 @@
 /* Inline labels field */
 .lf {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   min-width: 0;
   width: 100%;
 }
 .lf-trigger {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 4px;
-  width: 100%;
+  max-width: 100%;
   min-width: 0;
   overflow: hidden;
   height: 26px;
@@ -225,6 +276,43 @@
 }
 .lf-trigger:hover {
   background: var(--nav-hover);
+}
+/* Tag icon shown in an empty Labels cell (like the assignee/date add icons). */
+.lf-empty-ic {
+  width: 14px;
+  height: 14px;
+  color: var(--text-dim);
+}
+/* "+N" badge for the remaining labels beyond the first shown chip — a separate
+   control so the label chip's hover/selection doesn't include it. */
+.lf-more {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.lf-more:hover {
+  background: var(--border);
+  color: var(--text);
+}
+/* Hover preview of the hidden labels (colored chips, like the editor popover). */
+.lf-more-pop {
+  z-index: 75;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  max-width: 240px;
+  padding: 7px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px -8px rgba(0, 0, 0, 0.22);
 }
 .lf-backdrop {
   position: fixed;
@@ -302,14 +390,141 @@
   color: var(--text-dim);
   font-size: 11.375px;
 }
+/* Sticky table footer so the add-task row stays reachable while rows scroll.
+   The list page zeroes .app-main's bottom padding (see shell.css) so bottom: 0
+   pins this bar flush with the true scroll bottom — no gap for rows to peek
+   through beneath it. */
+/* The add-item bar sits below the internally-scrolling card (a fixed flex item,
+   not part of the scroll), continuing the card's outline. Side/bottom borders
+   match the card; the top border is the divider. The 10px gap below it comes
+   from .app-body's padding (see shell.css). */
+.tl-foot {
+  flex-shrink: 0;
+  z-index: 14;
+  background: var(--surface);
+  border: 1px solid var(--canvas-border);
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 8px 8px;
+}
+/* Drop the last row's bottom border so it doesn't stack with the bar's top
+   border into a double line when the bar rests right below it. */
+.tl-row:last-child {
+  border-bottom: none;
+}
+/* Matches the toolbar's "Add Item" button (.pv-tool-btn) but with no fill; the
+   margin keeps the footer ~38px tall (28px button + 5px top/bottom). Left indent
+   aligns the button's plus icon with the rows' task-type icons (14px pad + 34px
+   ctrl column + 12px gap - 10px button padding = 50px). */
 .tl-add {
-  width: auto;
-  margin: 10px 14px 12px;
+  margin: 5px 14px 5px 50px;
+  background: transparent;
+}
+
+/* Inline "add task" row — a live row at the bottom for typing a task name. */
+.tl-addrow {
+  cursor: default;
+  /* Match the scrolling rows' reserved scrollbar gutter (~9px) so the columns
+     after the title line up with the rows above. */
+  padding-right: 23px;
+}
+.tl-addrow:hover {
+  background: transparent;
+}
+/* The inline name field matches the Create Task modal's name input: it inherits
+   the global input styles (white --input-bg, 28px, radius 8, 11px, 1px accent
+   focus); only the flex sizing differs. */
+.tl-add-input {
+  flex: 1;
+  min-width: 0;
+  margin-right: 20px;
+}
+/* Border + focus ring match the selected task-type color (--tl-type set inline). */
+.tl-add-input:focus {
+  border-color: var(--tl-type);
+  box-shadow: 0 0 0 1px var(--tl-type);
+}
+/* Clickable task-type icon in the add row — cycles Story/Task/Bug. A gentle
+   pulse hints it's interactive; hover makes that explicit. */
+.tl-addtype {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 3px;
+  margin: -3px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  animation: tlTypeHint 1.8s ease-in-out infinite;
+}
+@keyframes tlTypeHint {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.16);
+  }
+}
+.tl-addtype:hover {
+  transform: scale(1.2);
+  animation: none;
+}
+/* Tap feedback — the icon presses in on click, then springs back. */
+.tl-addtype:active {
+  transform: scale(0.8);
+  animation: none;
+  transition: transform 0.06s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tl-addtype {
+    animation: none;
+  }
+}
+.tl-add-input:disabled {
+  opacity: 0.6;
+}
+/* 3-dot loader shown inside the input (right edge) while creating the task. */
+.tl-add-dots {
+  position: absolute;
+  right: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.tl-add-dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  animation: tlAddDot 1s ease-in-out infinite;
+}
+.tl-add-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.tl-add-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes tlAddDot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
 }
 
 /* ---- Task detail page ---- */
 .task-detail {
-  max-width: 920px;
+  width: 100%;
 }
 .crumbs {
   display: flex;
@@ -334,7 +549,7 @@
 }
 .td-title {
   width: 100%;
-  font-size: 24px;
+  font-size: 18px;
   font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--text);
@@ -342,7 +557,10 @@
   border: 1px solid transparent;
   border-radius: 8px;
   padding: 6px 8px;
-  margin: 0 0 18px -8px;
+  margin: 0 0 0 -8px;
+}
+.td-title::placeholder {
+  font-size: 18px;
 }
 .td-title:hover {
   border-color: var(--border);
@@ -354,9 +572,10 @@
 }
 .td-grid {
   display: grid;
-  grid-template-columns: 1fr 260px;
+  grid-template-columns: 1fr 310px;
   gap: 24px;
-  align-items: start;
+  /* stretch so the sidebar divider spans the full height of the taller column */
+  align-items: stretch;
 }
 .td-label {
   display: block;
@@ -477,10 +696,238 @@
   border-color: var(--accent);
 }
 .td-side {
-  background: var(--surface);
+  position: relative;
+  padding: 0 0 0 24px;
+}
+/* Divider line as a pseudo-element so it reaches up to the topbar line
+   (-6px = app-main's top padding) without offsetting the content. */
+.td-side::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  background: var(--border);
+}
+
+/* ---- Task detail: collapsible click-to-edit description ---- */
+.td-desc-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+.td-desc-view {
+  min-height: 38px;
+  padding: 8px 10px;
+  /* Indent so the text lines up under the "Description" label (past the caret),
+     while the hover background keeps horizontal breathing room. */
+  margin: 0 -10px 0 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: text;
+  font-size: 13px;
+  color: var(--text);
+}
+.td-desc-view:hover {
+  background: var(--surface-2);
+}
+.td-desc-placeholder {
+  color: var(--text-dim);
+  font-size: 11.375px;
+}
+.td-desc-content > :first-child {
+  margin-top: 0;
+}
+.td-desc-content > :last-child {
+  margin-bottom: 0;
+}
+.td-desc-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ---- Task detail: top action row ---- */
+.td-topbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.td-timer,
+.td-complete {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.td-timer {
+  background: var(--surface-2);
+  color: var(--text-dim);
+  cursor: not-allowed;
+}
+.td-timer svg {
+  width: 15px;
+  height: 15px;
+}
+.td-complete {
+  background: var(--surface);
+  color: var(--text);
+}
+.td-complete svg {
+  width: 14px;
+  height: 14px;
+}
+.td-complete:hover {
+  border-color: var(--accent);
+}
+.td-complete.done {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #fff;
+}
+
+/* ---- Task detail: collapsible left-column sections ---- */
+.td-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  /* Negative left pulls the caret chevron flush with the task title's text
+     (the caret SVG has ~6px of internal left whitespace). */
+  margin: 22px 0 8px -6px;
+}
+.td-section-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.375px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+.td-caret {
+  width: 15px;
+  height: 15px;
+  color: var(--text-dim);
+  transition: transform 0.15s ease;
+}
+.td-caret.open {
+  transform: rotate(90deg);
+}
+.td-section-count {
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.td-att-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 16px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--text-dim);
+  font-size: 12.5px;
+}
+.td-att-empty svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ---- Task detail: Properties panel ---- */
+.td-prop-section {
+  display: block;
+  font-size: 11.375px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+.td-prop-progress {
+  /* Stretch the divider left into the sidebar's padding so it meets the
+     vertical divider line; padding keeps the content aligned. */
+  margin: 0 0 14px -24px;
+  padding: 0 0 14px 24px;
+  border-bottom: 1px solid var(--border);
+}
+.td-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.td-progress-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.td-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+.td-progress-pct {
+  font-size: 11.375px;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 34px;
+  text-align: right;
+}
+.td-props {
+  display: flex;
+  flex-direction: column;
+}
+.td-prop {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 2px 0;
+}
+.td-prop-k {
+  font-size: 11.375px;
+  color: var(--text-dim);
+}
+.td-prop-v {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+/* Inline controls align flush to the value column (drop their table offsets). */
+.td-prop-v .status-dd-inline,
+.td-prop-v .mp-inline-trigger,
+.td-prop-v .lf-trigger,
+.td-prop-v .lf {
+  margin-left: 0;
+}
+.td-prop-ro {
+  font-size: 11.375px;
+  color: var(--text);
+}
+.td-prop-input {
+  width: 100%;
+  height: 28px;
+  font-size: 11.375px;
 }
 .td-side .td-label {
   margin-top: 16px;
@@ -594,6 +1041,44 @@
 .header-actions .btn svg {
   width: 14px;
   height: 14px;
+}
+
+/* ---- Coming-soon placeholder ---- */
+.coming-soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 60vh;
+  gap: 2px;
+}
+.coming-soon-ic {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 12px;
+  border-radius: 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.coming-soon-ic svg {
+  width: 28px;
+  height: 28px;
+}
+.coming-soon h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.coming-soon p {
+  margin: 0;
+  font-size: 11.375px;
+  color: var(--text-dim);
+  max-width: 34ch;
 }
 
 /* ---- Project configuration (sidebar + content) ---- */
@@ -770,6 +1255,20 @@
   padding: 3px 6px;
   border-bottom: 1px solid var(--border);
   background: transparent;
+}
+/* Toolbar-at-bottom variant (e.g. task description editor). */
+.rte-bottom {
+  display: flex;
+  flex-direction: column-reverse;
+}
+.rte-bottom .rte-toolbar {
+  border-bottom: none;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 8px 8px;
+}
+.rte-bottom .rte-link-pop {
+  top: auto;
+  bottom: 44px;
 }
 .rte-tool {
   display: grid;
@@ -1228,6 +1727,14 @@
 }
 .tm-suggest-row:hover {
   background: var(--nav-hover);
+}
+.tm-suggest-row.lf-create {
+  font-size: 11.375px;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+.tm-suggest-row.lf-create:hover {
+  color: var(--text);
 }
 .tm-label-input:focus {
   outline: none;
@@ -2553,6 +3060,18 @@ textarea::placeholder {
   border-radius: 8px 8px 0 0;
   background: transparent;
 }
+/* In the task list the bar is the pinned top row of the table card, so it needs
+   a solid background and sticks just below the project header while rows scroll. */
+.task-list .pv-selbar {
+  position: sticky;
+  top: 0;
+  z-index: 16;
+  background: var(--surface);
+}
+.task-list.has-selbar .tl-head {
+  top: 38px;
+  border-radius: 0;
+}
 .pv-selcount {
   display: grid;
   place-items: center;
@@ -2786,8 +3305,8 @@ textarea::placeholder {
 .mp-inline-trigger {
   display: inline-flex;
   align-items: center;
-  padding: 3px;
-  margin-left: -3px;
+  padding: 2px;
+  margin-left: -2px;
   border-radius: 6px;
   color: var(--text-dim);
   transition: background 0.12s;
@@ -2804,8 +3323,8 @@ textarea::placeholder {
   align-items: center;
 }
 .mp-inline-trigger .mp-avatar {
-  width: 19px;
-  height: 19px;
+  width: 18px;
+  height: 18px;
   font-size: 8px;
   border: 1.5px solid var(--surface);
 }
