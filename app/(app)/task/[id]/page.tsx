@@ -60,6 +60,14 @@ const TYPE_OPTS: SelectOption[] = TASK_TYPE_ORDER.map((t) => ({
   icon: <TaskTypeIcon type={t} size={15} />,
 }));
 
+// Description has content if there's text OR embedded media (image/table/etc.),
+// so an image-only description isn't treated as empty.
+function hasRichContent(html: string | null | undefined) {
+  if (!html) return false;
+  if (/<(img|table|hr|iframe|video)/i.test(html)) return true;
+  return html.replace(/<[^>]*>/g, "").trim().length > 0;
+}
+
 function fmtDate(iso: string | null | undefined) {
   if (!iso) return "—";
   const d = new Date(iso.includes("T") ? iso : iso.replace(" ", "T") + "Z");
@@ -292,12 +300,13 @@ export default function TaskDetailPage() {
           </div>
           {openDesc &&
             (editingDesc ? (
-            <>
+            <div className="td-desc-edit">
               <RichTextEditor
                 value={desc}
                 onChange={setDesc}
                 placeholder="Add a description…"
                 toolbarBottom
+                autoFocus
               />
               <div className="td-desc-actions">
                 <button
@@ -326,7 +335,7 @@ export default function TaskDetailPage() {
                   {savingDesc ? <Spinner /> : "Save"}
                 </button>
               </div>
-            </>
+            </div>
           ) : (
             <div
               className="td-desc-view"
@@ -337,8 +346,7 @@ export default function TaskDetailPage() {
                 setEditingDesc(true);
               }}
             >
-              {detail.description &&
-              detail.description.replace(/<[^>]*>/g, "").trim() ? (
+              {hasRichContent(detail.description) ? (
                 <div
                   className="td-desc-content"
                   dangerouslySetInnerHTML={{ __html: detail.description }}

@@ -37,15 +37,14 @@ function CodeBlockView({ node }: NodeViewProps) {
         onClick={copy}
       >
         {copied ? (
-          "Copied!"
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
         ) : (
-          <>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <rect x="9" y="9" width="11" height="11" rx="2" />
-              <path d="M5 15V5a2 2 0 0 1 2-2h10" />
-            </svg>
-            Copy
-          </>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <rect x="9" y="9" width="11" height="11" rx="2" />
+            <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+          </svg>
         )}
       </button>
       <pre>
@@ -152,12 +151,14 @@ export default function RichTextEditor({
   onBlur,
   placeholder,
   toolbarBottom = false,
+  autoFocus = false,
 }: {
   value: string;
   onChange: (html: string) => void;
   onBlur?: () => void;
   placeholder?: string;
   toolbarBottom?: boolean;
+  autoFocus?: boolean;
 }) {
   // Force the toolbar to re-render on selection/content changes so the active
   // states stay in sync (TipTap v3 doesn't re-render on every transaction).
@@ -191,11 +192,14 @@ export default function RichTextEditor({
         link: { openOnClick: false, autolink: true },
         codeBlock: false,
       }),
-      CustomCodeBlock,
-      Image.configure({ inline: false }),
+      // Keep consecutive blank lines inside the block instead of exiting it.
+      CustomCodeBlock.configure({ exitOnTripleEnter: false }),
+      // allowBase64 so pasted/uploaded data-URL images survive HTML round-trips
+      // (they're stripped on parse otherwise, disappearing after save/reload).
+      Image.configure({ inline: false, allowBase64: true }),
       TaskList,
       TaskItem.configure({ nested: true }),
-      Table.configure({ resizable: false }),
+      Table.configure({ resizable: true, cellMinWidth: 40 }),
       TableRow,
       TableHeader,
       TableCell,
@@ -232,6 +236,21 @@ export default function RichTextEditor({
     onBlur: () => onBlur?.(),
   });
   editorRef.current = editor;
+
+  // Load the current value when the editor (re)mounts (e.g. opening the
+  // description editor), in case the initial `content` didn't take.
+  useEffect(() => {
+    if (editor && value && editor.isEmpty) {
+      editor.commands.setContent(value, { emitUpdate: false });
+    }
+    // Drop the cursor inside the editor (at the end of any existing content)
+    // so clicking "edit" lets the user type immediately.
+    if (editor && autoFocus) {
+      editor.commands.focus("end");
+    }
+    // Only when the editor instance changes (mount); value handled below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor]);
 
   // Sync external value changes (e.g. switching tasks) when not editing.
   useEffect(() => {
@@ -335,6 +354,28 @@ export default function RichTextEditor({
               Remove
             </button>
           )}
+        </div>
+      )}
+
+      {editor.isActive("table") && (
+        <div className="rte-table-controls">
+          <button type="button" onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().addColumnAfter().run(); }}>
+            + Column
+          </button>
+          <button type="button" onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().deleteColumn().run(); }}>
+            − Column
+          </button>
+          <span className="rte-table-sep" />
+          <button type="button" onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().addRowAfter().run(); }}>
+            + Row
+          </button>
+          <button type="button" onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().deleteRow().run(); }}>
+            − Row
+          </button>
+          <span className="rte-table-sep" />
+          <button type="button" className="rte-table-del" onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().deleteTable().run(); }}>
+            Delete table
+          </button>
         </div>
       )}
 

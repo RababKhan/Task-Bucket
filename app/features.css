@@ -746,11 +746,22 @@
 .td-desc-content > :last-child {
   margin-bottom: 0;
 }
+.td-desc-edit {
+  position: relative;
+}
+/* Cancel/Save sit in the empty right side of the bottom toolbar row. */
 .td-desc-actions {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
   display: flex;
-  justify-content: flex-end;
   gap: 8px;
-  margin-top: 8px;
+}
+.td-desc-actions .btn {
+  height: 20px;
+  min-height: 20px;
+  padding: 0 10px;
+  font-size: 10.5px;
 }
 
 /* ---- Task detail: top action row ---- */
@@ -1261,6 +1272,43 @@
   display: flex;
   flex-direction: column-reverse;
 }
+/* Contextual table editing controls — shown only when the cursor is in a table. */
+.rte-table-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 5px 8px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2, var(--surface));
+}
+.rte-table-controls button {
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+.rte-table-controls button:hover {
+  border-color: var(--accent);
+}
+.rte-table-controls .rte-table-del {
+  color: var(--danger);
+}
+.rte-table-controls .rte-table-del:hover {
+  border-color: var(--danger);
+}
+.rte-table-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  margin: 0 2px;
+}
 .rte-bottom .rte-toolbar {
   border-bottom: none;
   border-top: 1px solid var(--border);
@@ -1360,6 +1408,10 @@
   line-height: 1.6;
   color: var(--text);
   outline: none;
+  scrollbar-width: none; /* Firefox */
+}
+.rte-content::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Edge */
 }
 .rte-content p {
   margin: 0 0 6px;
@@ -1391,10 +1443,11 @@
   color: var(--accent);
   text-decoration: underline;
 }
-.rte-content img {
-  max-width: 70px;
-  max-height: 50px;
-  height: auto;
+.rte-content img,
+.td-desc-content img {
+  width: 500px;
+  height: 300px;
+  object-fit: cover;
   border-radius: 6px;
   margin: 4px 0;
 }
@@ -1491,6 +1544,7 @@
 }
 .rte-content th,
 .rte-content td {
+  position: relative;
   border: 1px solid var(--border);
   padding: 5px 7px;
   vertical-align: top;
@@ -1501,6 +1555,26 @@
   font-weight: 600;
   text-align: left;
 }
+/* Column resize handle (TipTap injects this element on hover/while resizing).
+   Force it out of flow so it never adds height to the hovered cell/row. */
+.rte-content .column-resize-handle,
+.column-resize-handle {
+  position: absolute !important;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  height: auto;
+  background: transparent;
+  pointer-events: none;
+  z-index: 5;
+}
+.rte-content.resize-cursor {
+  cursor: col-resize;
+}
+.rte-content .tableWrapper {
+  overflow-x: auto;
+}
 /* Placeholder (extension) */
 .rte-content p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
@@ -1508,6 +1582,104 @@
   height: 0;
   color: var(--text-dim);
   pointer-events: none;
+}
+
+/* Saved description view mirrors the editor's rich-content styling so code
+   blocks, lists, tables, etc. render the same way they were authored. */
+.td-desc-content {
+  font-size: 11.375px;
+  line-height: 1.6;
+  color: var(--text);
+}
+.td-desc-content p {
+  margin: 0 0 6px;
+}
+.td-desc-content h1 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 4px 0 6px;
+}
+.td-desc-content h2 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 4px 0 6px;
+}
+.td-desc-content h3 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 4px 0 6px;
+}
+.td-desc-content ul,
+.td-desc-content ol {
+  margin: 0 0 6px;
+  padding-left: 20px;
+}
+.td-desc-content a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.td-desc-content pre {
+  margin: 0 0 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #0d1117;
+  color: #e6edf3;
+  border: 1px solid #1f2630;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.55;
+  overflow-x: auto;
+}
+.td-desc-content pre code {
+  color: inherit;
+  background: transparent;
+}
+.td-desc-content code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.92em;
+}
+.td-desc-content ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 2px;
+}
+.td-desc-content ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+}
+.td-desc-content ul[data-type="taskList"] li > label {
+  margin-top: 1px;
+  user-select: none;
+}
+.td-desc-content ul[data-type="taskList"] li > label input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
+.td-desc-content ul[data-type="taskList"] li > div {
+  flex: 1;
+  min-width: 0;
+}
+.td-desc-content table {
+  border-collapse: collapse;
+  margin: 4px 0 8px;
+  width: 100%;
+  table-layout: fixed;
+}
+.td-desc-content th,
+.td-desc-content td {
+  border: 1px solid var(--border);
+  padding: 5px 7px;
+  vertical-align: top;
+  min-width: 40px;
+}
+.td-desc-content th {
+  background: var(--surface-2);
+  font-weight: 600;
+  text-align: left;
 }
 
 /* ---- Redesigned Task modal ---- */
