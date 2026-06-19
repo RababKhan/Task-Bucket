@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { dbAll, dbGet, dbRun, type Task } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 import { canAccessProject } from "@/lib/membership";
+import { logActivity } from "@/lib/activity";
 import { STATUS_ORDER, PRIORITY_ORDER } from "@/lib/types";
 import {
   TASK_TYPES,
@@ -154,6 +155,12 @@ export async function POST(request: Request) {
     ]
   );
   const taskId = info.lastInsertRowid;
+
+  await logActivity(
+    Number(taskId),
+    userId,
+    parentId ? "added this subtask" : "created this item"
+  );
 
   for (const uid of validAssignees) {
     await dbRun(

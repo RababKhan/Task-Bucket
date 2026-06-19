@@ -525,6 +525,13 @@
 /* ---- Task detail page ---- */
 .task-detail {
   width: 100%;
+  /* Fill the scroll area's height (plus app-main's 32px bottom padding, pulled
+     back with a negative margin so it doesn't add scroll) so the sidebar's
+     divider and centered actions reach the canvas bottom. */
+  min-height: calc(100% + 32px);
+  margin-bottom: -32px;
+  display: flex;
+  flex-direction: column;
 }
 .crumbs {
   display: flex;
@@ -576,6 +583,8 @@
   gap: 24px;
   /* stretch so the sidebar divider spans the full height of the taller column */
   align-items: stretch;
+  /* grow to fill .task-detail so the divider reaches the bottom of the page */
+  flex: 1;
 }
 .td-label {
   display: block;
@@ -698,9 +707,12 @@
 .td-side {
   position: relative;
   padding: 0 0 0 24px;
+  display: flex;
+  flex-direction: column;
 }
 /* Divider line as a pseudo-element so it reaches up to the topbar line
-   (-6px = app-main's top padding) without offsetting the content. */
+   (-6px = app-main's top padding) and down to the canvas bottom
+   (-32px = app-main's bottom padding) without offsetting the content. */
 .td-side::before {
   content: "";
   position: absolute;
@@ -863,6 +875,107 @@
   height: 16px;
 }
 
+/* ---- Activity section (Activity / Comments / Time Entry tabs) ---- */
+.td-activity {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.td-activity-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 12px;
+}
+.td-tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--surface-2);
+  border-radius: 8px;
+}
+.td-tab {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 11.375px;
+  font-weight: 500;
+  color: var(--text-dim);
+  transition: background 0.12s, color 0.12s;
+}
+.td-tab:hover {
+  color: var(--text);
+}
+.td-tab.active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+.td-tab-panel {
+  margin-top: 16px;
+}
+.td-tab-empty {
+  font-size: 11.375px;
+  color: var(--text-dim);
+  padding: 8px 0;
+}
+.td-activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.td-activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.td-activity-avatar {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  overflow: hidden;
+}
+.td-activity-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.td-activity-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.td-activity-text {
+  font-size: 11.375px;
+  color: var(--text);
+  line-height: 1.45;
+}
+.td-activity-text strong {
+  font-weight: 600;
+}
+.td-activity-time {
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+.td-comment-input {
+  width: 100%;
+  min-height: 76px;
+  resize: vertical;
+  padding: 10px 12px;
+  font-size: 11.375px;
+  line-height: 1.5;
+}
+
 /* ---- Task detail: Properties panel ---- */
 .td-prop-section {
   display: block;
@@ -873,39 +986,123 @@
 }
 .td-prop-progress {
   /* Stretch the divider left into the sidebar's padding so it meets the
-     vertical divider line; padding keeps the content aligned. */
-  margin: 0 0 14px -24px;
-  padding: 0 0 14px 24px;
+     vertical divider line, and right into app-main's padding so it reaches
+     the canvas edge; the matching padding keeps the content aligned. */
+  margin: 0 -32px 14px -24px;
+  padding: 0 32px 14px 24px;
   border-bottom: 1px solid var(--border);
 }
 .td-progress {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
-.td-progress-track {
+/* Interactive progress slider: track filled to --td-progress, round handle.
+   The fill gradient lives on the track sub-element (not the input) so the
+   thumb sits flush at the ends — no stray track stub left of it at 0%. */
+.td-progress-slider {
   flex: 1;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--surface-2);
-  overflow: hidden;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  outline: none;
 }
-.td-progress-fill {
-  height: 100%;
+/* Override the global input:focus ring — the slider has no box outline. */
+.td-progress-slider:focus {
+  outline: none;
+  border: none;
+  box-shadow: none;
+}
+/* WebKit / Chrome / Edge */
+.td-progress-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--accent) 0%,
+    var(--accent) var(--td-progress, 0%),
+    var(--border) var(--td-progress, 0%),
+    var(--border) 100%
+  );
+}
+.td-progress-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  margin-top: -4.5px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  cursor: grab;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.td-progress-slider:hover::-webkit-slider-thumb {
+  transform: scale(1.18);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2),
+    0 0 0 5px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.td-progress-slider:active::-webkit-slider-thumb {
+  transform: scale(1.05);
+  cursor: grabbing;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2),
+    0 0 0 7px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+/* Firefox */
+.td-progress-slider::-moz-range-track {
+  height: 4px;
+  border: none;
+  border-radius: 999px;
+  background: var(--border);
+}
+.td-progress-slider::-moz-range-progress {
+  height: 4px;
+  border: none;
   border-radius: 999px;
   background: var(--accent);
-  transition: width 0.3s ease;
+}
+.td-progress-slider::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  cursor: grab;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.td-progress-slider:hover::-moz-range-thumb {
+  transform: scale(1.18);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2),
+    0 0 0 5px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.td-progress-slider:active::-moz-range-thumb {
+  transform: scale(1.05);
+  cursor: grabbing;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2),
+    0 0 0 7px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 .td-progress-pct {
   font-size: 11.375px;
   font-weight: 600;
   color: var(--text);
-  min-width: 34px;
+  min-width: 28px;
   text-align: right;
 }
 .td-props {
   display: flex;
   flex-direction: column;
+  /* Bottom divider, stretched to both edges like the progress section. */
+  margin: 0 -32px 0 -24px;
+  padding: 0 32px 14px 24px;
+  border-bottom: 1px solid var(--border);
 }
 .td-prop {
   display: grid;
@@ -924,20 +1121,86 @@
   display: flex;
   align-items: center;
 }
-/* Inline controls align flush to the value column (drop their table offsets). */
-.td-prop-v .status-dd-inline,
-.td-prop-v .mp-inline-trigger,
-.td-prop-v .lf-trigger,
-.td-prop-v .lf {
-  margin-left: 0;
-}
 .td-prop-ro {
   font-size: 11.375px;
+  color: var(--text);
+}
+/* Sidebar action buttons (Add Attachment / Add Link) below the properties. */
+.td-actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  /* Fill the space below the properties and center the buttons vertically. */
+  flex: 1;
+}
+.td-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  font-size: 11.375px;
+  font-weight: 500;
+  color: var(--text-dim);
+  text-align: left;
+  background: #f9fafb;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: background 0.12s, border-color 0.12s;
+}
+.td-action:hover {
+  border-color: var(--text-dim);
+}
+.td-action svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+.td-created-ic {
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+/* Match the date value color to the other property values (not dimmed). */
+.td-prop-v .dp-inline-date {
   color: var(--text);
 }
 .td-prop-input {
   width: 100%;
   height: 28px;
+  font-size: 11.375px;
+}
+/* Story Point: icon-only at rest (like assignee/label), click to edit inline. */
+.sp-inline-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px;
+  margin-left: -6px;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 11.375px;
+  transition: background 0.12s;
+}
+.sp-inline-trigger:hover {
+  background: var(--surface-2);
+}
+.sp-ic {
+  width: 14px;
+  height: 14px;
+  color: var(--text-dim);
+}
+.sp-val {
+  font-weight: 500;
+}
+.sp-inline-input {
+  width: 64px;
+  height: 24px;
+  padding: 0 6px;
+  margin-left: -6px;
   font-size: 11.375px;
 }
 .td-side .td-label {

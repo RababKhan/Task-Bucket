@@ -1,7 +1,17 @@
 import { NextResponse } from "next/server";
 import { dbAll, dbGet, dbRun, type Task } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
-import { STATUS_ORDER, PRIORITY_ORDER } from "@/lib/types";
+import { logActivity } from "@/lib/activity";
+import {
+  STATUS_ORDER,
+  PRIORITY_ORDER,
+  STATUS_LABELS,
+  PRIORITY_LABELS,
+  TASK_TYPE_LABELS,
+  type TaskStatus,
+  type TaskPriority,
+  type TaskType,
+} from "@/lib/types";
 import {
   TASK_TYPES,
   TASK_SEVERITIES,
@@ -89,7 +99,25 @@ export async function GET(_request: Request, { params }: Ctx) {
     return { ...r, options };
   });
 
-  return NextResponse.json({ ...shaped, subtasks, custom_fields });
+  // Activity log (newest first) with the actor's name/avatar.
+  const activity = await dbAll<{
+    id: number;
+    text: string;
+    created_at: string;
+    actor_id: string | null;
+    actor_name: string | null;
+    actor_image: string | null;
+  }>(
+    `SELECT a.id, a.text, a.created_at, a.actor_id,
+       u.name AS actor_name, u.image AS actor_image
+     FROM task_activity a
+     LEFT JOIN users u ON u.id = a.actor_id
+     WHERE a.task_id = ?
+     ORDER BY a.id DESC`,
+    [id]
+  );
+
+  return NextResponse.json({ ...shaped, subtasks, custom_fields, activity });
 }
 
 export async function PATCH(request: Request, { params }: Ctx) {
@@ -164,9 +192,15 @@ export async function PATCH(request: Request, { params }: Ctx) {
     body.labels !== undefined
       ? normalizeLabels(body.labels)
       : parseLabels(existing.labels);
+  const progress =
+    body.progress !== undefined
+      ? body.progress != null && body.progress !== ""
+        ? Math.min(100, Math.max(0, Math.round(Number(body.progress))))
+        : null
+      : existing.progress;
 
   await dbRun(
-    `UPDATE tasks SET title = ?, description = ?, type = ?, status = ?, priority = ?, severity = ?, story_points = ?, start_date = ?, due_date = ?, labels = ?, sprint_id = ? WHERE id = ?`,
+    `UPDATE tasks SET title = ?, description = ?, type = ?, status = ?, priority = ?, severity = ?, story_points = ?, start_date = ?, due_date = ?, labels = ?, sprint_id = ?, progress = ? WHERE id = ?`,
     [
       title,
       description,
@@ -179,6 +213,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
       dueDate,
       JSON.stringify(labels),
       sprintId,
+      progress,
       id,
     ]
   );
@@ -207,6 +242,49 @@ export async function PATCH(request: Request, { params }: Ctx) {
       );
     }
   }
+
+  // Record human-readable activity for whatever changed.
+  const events: string[] = [];
+  if (title !== existing.title) events.push(`renamed this item to "${title}"`);
+  if (status !== existing.status)
+    events.push(
+      `changed status to ${STATUS_LABELS[status as TaskStatus] ?? status}`
+    );
+  if (priority !== existing.priority)
+    events.push(
+      `changed priority to ${
+        PRIORITY_LABELS[priority as TaskPriority] ?? priority
+      }`
+    );
+  if (type !== existing.type)
+    events.push(
+      `changed type to ${TASK_TYPE_LABELS[type as TaskType] ?? type}`
+    );
+  if (startDate !== existing.start_date)
+    events.push(
+      startDate ? `set the start date to ${startDate}` : "cleared the start date"
+    );
+  if (dueDate !== existing.due_date)
+    events.push(
+      dueDate ? `set the due date to ${dueDate}` : "cleared the due date"
+    );
+  if (storyPoints !== existing.story_points)
+    events.push(
+      storyPoints != null
+        ? `set story points to ${storyPoints}`
+        : "cleared story points"
+    );
+  if (progress !== existing.progress)
+    events.push(
+      progress != null ? `set progress to ${progress}%` : "cleared progress"
+    );
+  if (JSON.stringify(labels) !== JSON.stringify(parseLabels(existing.labels)))
+    events.push("updated the labels");
+  if (description !== existing.description)
+    events.push("updated the description");
+  if (sprintId !== existing.sprint_id) events.push("changed the sprint");
+  if (body.assignees !== undefined) events.push("updated the assignees");
+  for (const text of events) await logActivity(Number(id), userId, text);
 
   const updated = await fetchShaped(id);
   return NextResponse.json(updated ? shapeTask(updated) : null);

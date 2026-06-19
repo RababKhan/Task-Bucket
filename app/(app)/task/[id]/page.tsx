@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import type {
@@ -30,11 +30,21 @@ import TaskStatusIcon from "@/components/app/TaskStatusIcon";
 import PriorityIcon from "@/components/app/PriorityIcon";
 import TaskTypeIcon from "@/components/app/TaskTypeIcon";
 
+type ActivityItem = {
+  id: number;
+  text: string;
+  created_at: string;
+  actor_id: string | null;
+  actor_name: string | null;
+  actor_image: string | null;
+};
+
 type Detail = Task & {
   project_name: string;
   assignees?: string[];
   subtasks: Task[];
   custom_fields: CustomFieldWithValue[];
+  activity?: ActivityItem[];
 };
 
 const PRIO_COLOR: Record<string, string> = {
@@ -68,6 +78,18 @@ function hasRichContent(html: string | null | undefined) {
   return html.replace(/<[^>]*>/g, "").trim().length > 0;
 }
 
+// Persisted collapse state for the detail-page sections (per section key).
+function readOpen(key: string, def: boolean): boolean {
+  if (typeof window === "undefined") return def;
+  const v = window.localStorage.getItem(`td-open-${key}`);
+  return v == null ? def : v === "1";
+}
+function writeOpen(key: string, open: boolean) {
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(`td-open-${key}`, open ? "1" : "0");
+  }
+}
+
 function fmtDate(iso: string | null | undefined) {
   if (!iso) return "—";
   const d = new Date(iso.includes("T") ? iso : iso.replace(" ", "T") + "Z");
@@ -77,6 +99,30 @@ function fmtDate(iso: string | null | undefined) {
     day: "2-digit",
     year: "numeric",
   });
+}
+
+function fmtDateTime(iso: string | null | undefined) {
+  if (!iso) return "";
+  const d = new Date(iso.includes("T") ? iso : iso.replace(" ", "T") + "Z");
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "2-digit",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function initials(name: string | null | undefined) {
+  if (!name) return "?";
+  return (
+    name
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase() ?? "")
+      .join("") || "?"
+  );
 }
 
 export default function TaskDetailPage() {
@@ -94,15 +140,28 @@ export default function TaskDetailPage() {
   // Local edit buffers for free-text fields.
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
+  // Live value while dragging the progress slider (null = not dragging).
+  const [dragProgress, setDragProgress] = useState<number | null>(null);
+  // Story Point is click-to-edit so its resting state shows just an icon/value.
+  const [editingSP, setEditingSP] = useState(false);
+  // Activity section tabs.
+  const [activityTab, setActivityTab] = useState<
+    "activity" | "comments" | "time"
+  >("activity");
   const [newSub, setNewSub] = useState("");
   const [addingSub, setAddingSub] = useState(false);
-  // Collapsible left-column sections.
-  const [openSub, setOpenSub] = useState(true);
-  const [openAtt, setOpenAtt] = useState(true);
+  // Collapsible left-column sections — persisted so they survive a refresh.
+  const [openSub, setOpenSub] = useState(() => readOpen("sub", true));
+  const [openAtt, setOpenAtt] = useState(() => readOpen("att", true));
   // Description is collapsible + click-to-edit (editor + Save while editing).
-  const [openDesc, setOpenDesc] = useState(true);
+  const [openDesc, setOpenDesc] = useState(() => readOpen("desc", true));
   const [editingDesc, setEditingDesc] = useState(false);
   const [savingDesc, setSavingDesc] = useState(false);
+
+  // Persist section collapse state across refreshes.
+  useEffect(() => writeOpen("desc", openDesc), [openDesc]);
+  useEffect(() => writeOpen("sub", openSub), [openSub]);
+  useEffect(() => writeOpen("att", openAtt), [openAtt]);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/tasks/${id}`);
@@ -147,22 +206,31 @@ export default function TaskDetailPage() {
       .catch(() => {});
   }, [detail?.project_id]);
 
-  // Feed the topbar breadcrumb: Project Name › Task Name.
+  // Feed the topbar breadcrumb: Project Name › Item ID.
   useEffect(() => {
     if (!detail) return;
+    const crumbId =
+      detail.seq != null
+        ? `${
+            detail.project_name
+              .replace(/[^a-zA-Z0-9]/g, "")
+              .slice(0, 3)
+              .toUpperCase() || "TSK"
+          }-${String(detail.seq).padStart(3, "0")}`
+        : detail.title;
     window.dispatchEvent(
       new CustomEvent("tb:task-crumb", {
         detail: {
           project: detail.project_name,
           projectId: detail.project_id,
-          task: detail.title,
+          task: crumbId,
         },
       })
     );
     return () => {
       window.dispatchEvent(new CustomEvent("tb:task-crumb", { detail: null }));
     };
-  }, [detail?.project_name, detail?.project_id, detail?.title]);
+  }, [detail?.project_name, detail?.project_id, detail?.title, detail?.seq]);
 
   // Patch the main task and merge the result back.
   async function patch(fields: Partial<Task>) {
@@ -256,14 +324,33 @@ export default function TaskDetailPage() {
     );
   }
 
+  // Human item id, e.g. DEV-001 (3-char project prefix + zero-padded seq).
+  const itemId =
+    detail.seq != null
+      ? `${
+          detail.project_name
+            .replace(/[^a-zA-Z0-9]/g, "")
+            .slice(0, 3)
+            .toUpperCase() || "TSK"
+        }-${String(detail.seq).padStart(3, "0")}`
+      : null;
+
   const subDone = detail.subtasks.filter((s) => s.status === "done").length;
-  // Progress = completed subtasks; a Done task counts as 100%.
-  const progress =
+  // Derived progress = completed subtasks; a Done task counts as 100%.
+  const derivedProgress =
     detail.status === "done"
       ? 100
       : detail.subtasks.length
       ? Math.round((subDone / detail.subtasks.length) * 100)
       : 0;
+  // A manually-set value (detail.progress) overrides the derived one; while the
+  // slider is being dragged, show the live drag value.
+  const progress =
+    dragProgress != null
+      ? dragProgress
+      : detail.progress != null
+      ? detail.progress
+      : derivedProgress;
 
   return (
     <div className="task-detail">
@@ -484,18 +571,101 @@ export default function TaskDetailPage() {
               <span>Attachments — coming soon</span>
             </div>
           )}
+
+          <div className="td-activity">
+            <h3 className="td-activity-title">Activity</h3>
+            <div className="td-tabs">
+              <button
+                type="button"
+                className={`td-tab${activityTab === "activity" ? " active" : ""}`}
+                onClick={() => setActivityTab("activity")}
+              >
+                Activity
+              </button>
+              <button
+                type="button"
+                className={`td-tab${activityTab === "comments" ? " active" : ""}`}
+                onClick={() => setActivityTab("comments")}
+              >
+                Comments
+              </button>
+              <button
+                type="button"
+                className={`td-tab${activityTab === "time" ? " active" : ""}`}
+                onClick={() => setActivityTab("time")}
+              >
+                Time Entry
+              </button>
+            </div>
+            <div className="td-tab-panel">
+              {activityTab === "activity" &&
+                (detail.activity && detail.activity.length ? (
+                  <ul className="td-activity-list">
+                    {detail.activity.map((a) => (
+                      <li key={a.id} className="td-activity-item">
+                        <span className="td-activity-avatar">
+                          {a.actor_image ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={a.actor_image} alt="" />
+                          ) : (
+                            initials(a.actor_name)
+                          )}
+                        </span>
+                        <div className="td-activity-body">
+                          <span className="td-activity-text">
+                            <strong>{a.actor_name ?? "Someone"}</strong> {a.text}
+                          </span>
+                          <span className="td-activity-time">
+                            {fmtDateTime(a.created_at)}
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="td-tab-empty">No activity yet</div>
+                ))}
+              {activityTab === "comments" && (
+                <textarea
+                  className="td-comment-input"
+                  placeholder="Add a comment…"
+                />
+              )}
+              {activityTab === "time" && (
+                <div className="td-tab-empty">No time entries yet</div>
+              )}
+            </div>
+          </div>
         </div>
 
         <aside className="td-side">
           <div className="td-prop-progress">
             <span className="td-prop-section">Progress</span>
             <div className="td-progress">
-              <div className="td-progress-track">
-                <div
-                  className="td-progress-fill"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={progress}
+                className="td-progress-slider"
+                style={{ "--td-progress": `${progress}%` } as CSSProperties}
+                onChange={(e) => setDragProgress(Number(e.target.value))}
+                onPointerUp={(e) => {
+                  const v = Number((e.target as HTMLInputElement).value);
+                  // Update detail optimistically before clearing the drag value
+                  // so it doesn't briefly snap back to the old value.
+                  setDetail((d) => (d ? { ...d, progress: v } : d));
+                  setDragProgress(null);
+                  patch({ progress: v });
+                }}
+                onKeyUp={(e) => {
+                  const v = Number((e.target as HTMLInputElement).value);
+                  setDetail((d) => (d ? { ...d, progress: v } : d));
+                  setDragProgress(null);
+                  patch({ progress: v });
+                }}
+                aria-label="Progress"
+              />
               <span className="td-progress-pct">{progress}%</span>
             </div>
           </div>
@@ -511,6 +681,16 @@ export default function TaskDetailPage() {
                   options={TYPE_OPTS}
                   onChange={(v) => patch({ type: v as TaskType })}
                 />
+              </span>
+            </div>
+            <div className="td-prop">
+              <span className="td-prop-k">Item ID</span>
+              <span className="td-prop-v td-prop-ro">
+                <svg className="td-created-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1.5a1.5 1.5 0 0 0 0 3V16a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2.5a1.5 1.5 0 0 0 0-3V8Z" />
+                  <path d="M9 9v6" strokeDasharray="1 3" />
+                </svg>
+                {itemId ?? "—"}
               </span>
             </div>
             <div className="td-prop">
@@ -575,20 +755,39 @@ export default function TaskDetailPage() {
             <div className="td-prop">
               <span className="td-prop-k">Story Point</span>
               <span className="td-prop-v">
-                <input
-                  className="td-prop-input"
-                  type="number"
-                  min={0}
-                  defaultValue={detail.story_points ?? ""}
-                  placeholder="—"
-                  onBlur={(e) =>
-                    patch({
-                      story_points: e.target.value
+                {editingSP ? (
+                  <input
+                    className="sp-inline-input"
+                    type="number"
+                    min={0}
+                    autoFocus
+                    defaultValue={detail.story_points ?? ""}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") e.currentTarget.blur();
+                      else if (e.key === "Escape") setEditingSP(false);
+                    }}
+                    onBlur={(e) => {
+                      const v = e.target.value
                         ? Math.max(0, Math.round(Number(e.target.value)))
-                        : null,
-                    })
-                  }
-                />
+                        : null;
+                      setEditingSP(false);
+                      if (v !== detail.story_points) patch({ story_points: v });
+                    }}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    className="sp-inline-trigger"
+                    onClick={() => setEditingSP(true)}
+                  >
+                    <svg className="sp-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18" />
+                    </svg>
+                    {detail.story_points != null && (
+                      <span className="sp-val">{detail.story_points}</span>
+                    )}
+                  </button>
+                )}
               </span>
             </div>
             <div className="td-prop">
@@ -624,9 +823,30 @@ export default function TaskDetailPage() {
             <div className="td-prop">
               <span className="td-prop-k">Created</span>
               <span className="td-prop-v td-prop-ro">
+                <svg className="td-created-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v5l3 2" />
+                </svg>
                 {fmtDate(detail.created_at)}
               </span>
             </div>
+          </div>
+
+          <div className="td-actions">
+            <button type="button" className="td-action">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+                <path d="M14 3v6h6M12 12v6M9 15h6" />
+              </svg>
+              Add Attachment
+            </button>
+            <button type="button" className="td-action">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1" />
+                <path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" />
+              </svg>
+              Add Link
+            </button>
           </div>
 
         </aside>

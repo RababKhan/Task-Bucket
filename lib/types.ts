@@ -166,6 +166,7 @@ export type Task = {
   labels: string[];
   position: number;
   seq: number | null;
+  progress: number | null;
   created_at: string;
 };
 

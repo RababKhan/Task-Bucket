@@ -19,9 +19,9 @@ export function labelColor(label: string): {
   }
   const hue = LABEL_HUES[h % LABEL_HUES.length];
   return {
-    color: `hsl(${hue}, 62%, 50%)`,
-    bg: `hsla(${hue}, 65%, 50%, 0.13)`,
-    border: `hsla(${hue}, 60%, 50%, 0.32)`,
+    color: `hsl(${hue}, 72%, 48%)`,
+    bg: `hsla(${hue}, 85%, 55%, 0.20)`,
+    border: `hsla(${hue}, 72%, 50%, 0.42)`,
   };
 }
 

@@ -155,6 +155,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   labels       TEXT NOT NULL DEFAULT '[]',
   position     INTEGER NOT NULL DEFAULT 0,
   seq          INTEGER,
+  progress     INTEGER,
   created_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -183,6 +184,16 @@ CREATE TABLE IF NOT EXISTS custom_field_values (
   value    TEXT NOT NULL DEFAULT '',
   PRIMARY KEY (field_id, task_id)
 );
+
+CREATE TABLE IF NOT EXISTS task_activity (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  task_id    INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  actor_id   TEXT REFERENCES users(id) ON DELETE SET NULL,
+  text       TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_task_activity_task ON task_activity(task_id);
 `;
 
 // Lightweight migration for databases created before auth was added.
@@ -279,6 +290,11 @@ async function migrate(): Promise<void> {
       ) WHERE seq IS NULL
     `);
   }
+  // Manually-set completion percentage (0-100); null falls back to the derived
+  // subtask-completion progress on the detail page.
+  if (!taskCols.includes("progress")) {
+    await client.execute("ALTER TABLE tasks ADD COLUMN progress INTEGER");
+  }
   // Monotonic per-project task counter behind the human task id. Never decreases,
   // so deleting a task doesn't let the next one reuse its number. Seeded from the
   // current highest task seq (runs after tasks.seq exists/backfills above).
@@ -333,13 +349,14 @@ async function migrate(): Promise<void> {
         labels       TEXT NOT NULL DEFAULT '[]',
         position     INTEGER NOT NULL DEFAULT 0,
         seq          INTEGER,
+        progress     INTEGER,
         created_at   TEXT NOT NULL DEFAULT (datetime('now'))
       )
     `);
     // Map legacy statuses; pass already-migrated statuses through unchanged so
     // re-running this rebuild (e.g. to widen the priority CHECK) is safe.
     await client.execute(`
-      INSERT INTO tasks_new (id, project_id, parent_id, sprint_id, title, description, type, status, priority, severity, story_points, start_date, due_date, labels, position, seq, created_at)
+      INSERT INTO tasks_new (id, project_id, parent_id, sprint_id, title, description, type, status, priority, severity, story_points, start_date, due_date, labels, position, seq, progress, created_at)
       SELECT id, project_id, parent_id, sprint_id, title, description,
         COALESCE(type, 'task'),
         CASE status
@@ -357,7 +374,7 @@ async function migrate(): Promise<void> {
           ELSE 'backlog'
         END,
         priority, severity, story_points, start_date, due_date,
-        COALESCE(labels, '[]'), position, seq, created_at
+        COALESCE(labels, '[]'), position, seq, progress, created_at
       FROM tasks
     `);
     await client.execute("DROP TABLE tasks");
