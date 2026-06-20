@@ -16,12 +16,14 @@ export default function SelectField({
   options,
   onChange,
   placeholder = "Select",
+  placeholderIcon,
   inline = false,
 }: {
   value: string;
   options: SelectOption[];
   onChange: (value: string) => void;
   placeholder?: string;
+  placeholderIcon?: ReactNode; // leading icon shown when nothing is selected
   inline?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -67,9 +69,11 @@ export default function SelectField({
       >
         {current?.icon
           ? current.icon
-          : current?.dot && (
-              <span className="sf-dot" style={{ background: current.dot }} />
-            )}
+          : current?.dot
+          ? <span className="sf-dot" style={{ background: current.dot }} />
+          : !current && placeholderIcon
+          ? placeholderIcon
+          : null}
         <span className="status-dd-current">
           {current ? current.label : placeholder}
         </span>

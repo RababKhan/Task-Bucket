@@ -190,6 +190,7 @@ CREATE TABLE IF NOT EXISTS task_activity (
   task_id    INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
   actor_id   TEXT REFERENCES users(id) ON DELETE SET NULL,
   text       TEXT NOT NULL,
+  meta       TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -307,6 +308,13 @@ async function migrate(): Promise<void> {
         SELECT COALESCE(MAX(seq), 0) FROM tasks WHERE tasks.project_id = projects.id
       )
     `);
+  }
+  // Structured metadata for activity entries (e.g. field + raw from/to values
+  // so the UI can render status/priority icons inline).
+  const actInfo = await client.execute("PRAGMA table_info(task_activity)");
+  const actCols = actInfo.rows.map((r) => (r as Row).name);
+  if (actCols.length && !actCols.includes("meta")) {
+    await client.execute("ALTER TABLE task_activity ADD COLUMN meta TEXT");
   }
   await client.execute(
     "CREATE INDEX IF NOT EXISTS idx_tasks_parent ON tasks(parent_id)"

@@ -30,6 +30,12 @@ import TaskStatusIcon from "@/components/app/TaskStatusIcon";
 import PriorityIcon from "@/components/app/PriorityIcon";
 import TaskTypeIcon from "@/components/app/TaskTypeIcon";
 
+type ActivityMeta = {
+  field: "status" | "priority" | "type";
+  from: string | null;
+  to: string | null;
+};
+
 type ActivityItem = {
   id: number;
   text: string;
@@ -37,6 +43,7 @@ type ActivityItem = {
   actor_id: string | null;
   actor_name: string | null;
   actor_image: string | null;
+  meta?: ActivityMeta | null;
 };
 
 type Detail = Task & {
@@ -111,6 +118,54 @@ function fmtDateTime(iso: string | null | undefined) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+// Sprint icon (custom filled gear/cycle glyph).
+function SprintIcon() {
+  return (
+    <svg className="td-sprint-ic" viewBox="0 0 14 14" fill="none" aria-hidden>
+      <path d="M12.7235 7.93333L10.5301 6.66667L12.7235 5.4C13.0435 5.21333 13.1501 4.80667 12.9701 4.48667L11.6368 2.18C11.4501 1.86 11.0435 1.75333 10.7235 1.93333L8.53015 3.2V0.666667C8.53015 0.3 8.23015 0 7.86348 0H5.19681C4.83015 0 4.53015 0.3 4.53015 0.666667V3.2L2.33681 1.93333C2.01681 1.75333 1.61015 1.86 1.42348 2.18L0.0901479 4.48667C-0.0965188 4.80667 0.0168146 5.21333 0.336815 5.4L2.53015 6.66667L0.336815 7.93333C0.0168146 8.12 -0.0898521 8.52667 0.0901479 8.84667L1.42348 11.1533C1.61015 11.4733 2.01681 11.58 2.33681 11.4L4.53015 10.1333V12.6667C4.53015 13.0333 4.83015 13.3333 5.19681 13.3333H7.86348C8.23015 13.3333 8.53015 13.0333 8.53015 12.6667V10.1333L10.7235 11.4C11.0435 11.5867 11.4501 11.4733 11.6368 11.1533L12.9701 8.84667C13.1568 8.52667 13.0435 8.12 12.7235 7.93333ZM10.8168 9.91333L7.69682 8.11333C7.47682 7.98 7.19682 8.14 7.19682 8.4V12H5.86348V8.4C5.86348 8.14667 5.58348 7.98 5.36348 8.11333L2.24348 9.91333L1.57681 8.76L4.69681 6.96C4.91681 6.83333 4.91681 6.51333 4.69681 6.38L1.57681 4.58L2.24348 3.42667L5.36348 5.22667C5.58348 5.35333 5.86348 5.19333 5.86348 4.93333V1.33333H7.19682V4.93333C7.19682 5.18667 7.47682 5.35333 7.69682 5.22L10.8168 3.42L11.4835 4.57333L8.36348 6.37333C8.14348 6.5 8.14348 6.82 8.36348 6.95333L11.4835 8.75333L10.8168 9.91333Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+// A status/priority value rendered as its icon + label, for inline use in the
+// activity log (e.g. "changed status from [icon] Backlog to [icon] In Test").
+function ActivityValue({
+  field,
+  value,
+}: {
+  field: "status" | "priority" | "type";
+  value: string | null;
+}) {
+  if (!value) return <>none</>;
+  return (
+    <span className="td-activity-val">
+      {field === "status" ? (
+        <TaskStatusIcon status={value as TaskStatus} size={14} />
+      ) : field === "priority" ? (
+        <PriorityIcon priority={value as TaskPriority} size={13} />
+      ) : (
+        <TaskTypeIcon type={value as TaskType} size={14} />
+      )}
+      {field === "status"
+        ? STATUS_LABELS[value as TaskStatus] ?? value
+        : field === "priority"
+        ? PRIORITY_LABELS[value as TaskPriority] ?? value
+        : TASK_TYPE_LABELS[value as TaskType] ?? value}
+    </span>
+  );
+}
+
+// Render an activity string, turning **…** segments into bold (used for names).
+function renderActivityText(text: string) {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith("**") && part.endsWith("**") ? (
+      <strong key={i}>{part.slice(2, -2)}</strong>
+    ) : (
+      <span key={i}>{part}</span>
+    )
+  );
 }
 
 function initials(name: string | null | undefined) {
@@ -240,7 +295,9 @@ export default function TaskDetailPage() {
       body: JSON.stringify(fields),
     });
     if (res.ok) {
-      const updated: Task = await res.json();
+      // Response includes the refreshed activity log so sidebar edits show up
+      // in the Activity section immediately.
+      const updated: Task & { activity?: ActivityItem[] } = await res.json();
       setDetail((d) => (d ? { ...d, ...updated } : d));
     }
   }
@@ -373,6 +430,7 @@ export default function TaskDetailPage() {
             }}
             placeholder="Enter your item title"
           />
+          <div className="td-main-scroll">
           <div className="td-section-head">
             <button
               type="button"
@@ -571,9 +629,9 @@ export default function TaskDetailPage() {
               <span>Attachments — coming soon</span>
             </div>
           )}
+          </div>
 
           <div className="td-activity">
-            <h3 className="td-activity-title">Activity</h3>
             <div className="td-tabs">
               <button
                 type="button"
@@ -613,7 +671,23 @@ export default function TaskDetailPage() {
                         </span>
                         <div className="td-activity-body">
                           <span className="td-activity-text">
-                            <strong>{a.actor_name ?? "Someone"}</strong> {a.text}
+                            <strong>{a.actor_name ?? "Someone"}</strong>{" "}
+                            {a.meta ? (
+                              <>
+                                changed {a.meta.field} from{" "}
+                                <ActivityValue
+                                  field={a.meta.field}
+                                  value={a.meta.from}
+                                />{" "}
+                                to{" "}
+                                <ActivityValue
+                                  field={a.meta.field}
+                                  value={a.meta.to}
+                                />
+                              </>
+                            ) : (
+                              renderActivityText(a.text)
+                            )}
                           </span>
                           <span className="td-activity-time">
                             {fmtDateTime(a.created_at)}
@@ -687,8 +761,7 @@ export default function TaskDetailPage() {
               <span className="td-prop-k">Item ID</span>
               <span className="td-prop-v td-prop-ro">
                 <svg className="td-created-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1.5a1.5 1.5 0 0 0 0 3V16a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2.5a1.5 1.5 0 0 0 0-3V8Z" />
-                  <path d="M9 9v6" strokeDasharray="1 3" />
+                  <path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18" />
                 </svg>
                 {itemId ?? "—"}
               </span>
@@ -781,13 +854,43 @@ export default function TaskDetailPage() {
                     onClick={() => setEditingSP(true)}
                   >
                     <svg className="sp-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                      <path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18" />
+                      <path d="M6 3h12l4 6-10 13L2 9Z" />
+                      <path d="M11 3 8 9l4 13 4-13-3-6" />
+                      <path d="M2 9h20" />
                     </svg>
                     {detail.story_points != null && (
                       <span className="sp-val">{detail.story_points}</span>
                     )}
                   </button>
                 )}
+              </span>
+            </div>
+            <div className="td-prop">
+              <span className="td-prop-k">Time Logged</span>
+              <span className="td-prop-v td-prop-ro">
+                <svg className="td-created-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <circle cx="12" cy="13" r="8" />
+                  <path d="M12 9v4l2.5 1.5M9 2h6" />
+                </svg>
+              </span>
+            </div>
+            <div className="td-prop">
+              <span className="td-prop-k">Sprint</span>
+              <span className="td-prop-v">
+                <SelectField
+                  inline
+                  value={String(detail.sprint_id ?? "")}
+                  placeholder="Add sprint"
+                  placeholderIcon={<SprintIcon />}
+                  options={sprints.map((s) => ({
+                    value: String(s.id),
+                    label: s.name,
+                    icon: <SprintIcon />,
+                  }))}
+                  onChange={(v) =>
+                    patch({ sprint_id: v ? Number(v) : null } as Partial<Task>)
+                  }
+                />
               </span>
             </div>
             <div className="td-prop">
@@ -799,27 +902,6 @@ export default function TaskDetailPage() {
                 />
               </span>
             </div>
-            {sprints.length > 0 && (
-              <div className="td-prop">
-                <span className="td-prop-k">Sprint</span>
-                <span className="td-prop-v">
-                  <SelectField
-                    inline
-                    value={String(detail.sprint_id ?? "")}
-                    options={[
-                      { value: "", label: "Backlog" },
-                      ...sprints.map((s) => ({
-                        value: String(s.id),
-                        label: s.name,
-                      })),
-                    ]}
-                    onChange={(v) =>
-                      patch({ sprint_id: v ? Number(v) : null } as Partial<Task>)
-                    }
-                  />
-                </span>
-              </div>
-            )}
             <div className="td-prop">
               <span className="td-prop-k">Created</span>
               <span className="td-prop-v td-prop-ro">

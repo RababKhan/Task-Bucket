@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { dbAll, dbGet, dbRun, type Task } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
-import { logActivity } from "@/lib/activity";
+import { logActivity, type ActivityMeta } from "@/lib/activity";
 import {
   STATUS_ORDER,
   PRIORITY_ORDER,
@@ -33,6 +33,37 @@ function fetchShaped(id: string) {
      FROM tasks t WHERE t.id = ?`,
     [id]
   );
+}
+
+// Activity log (newest first) with the actor's name/avatar and any structured
+// meta (parsed from JSON) so the UI can render icons inline.
+async function fetchActivity(id: string) {
+  const rows = await dbAll<{
+    id: number;
+    text: string;
+    meta: string | null;
+    created_at: string;
+    actor_id: string | null;
+    actor_name: string | null;
+    actor_image: string | null;
+  }>(
+    `SELECT a.id, a.text, a.meta, a.created_at, a.actor_id,
+       u.name AS actor_name, u.image AS actor_image
+     FROM task_activity a
+     LEFT JOIN users u ON u.id = a.actor_id
+     WHERE a.task_id = ?
+     ORDER BY a.id DESC`,
+    [id]
+  );
+  return rows.map(({ meta, ...r }) => {
+    let parsed: ActivityMeta | null = null;
+    if (meta) {
+      try {
+        parsed = JSON.parse(meta) as ActivityMeta;
+      } catch {}
+    }
+    return { ...r, meta: parsed };
+  });
 }
 
 // Fetch a task only if its project belongs to the given user.
@@ -99,23 +130,7 @@ export async function GET(_request: Request, { params }: Ctx) {
     return { ...r, options };
   });
 
-  // Activity log (newest first) with the actor's name/avatar.
-  const activity = await dbAll<{
-    id: number;
-    text: string;
-    created_at: string;
-    actor_id: string | null;
-    actor_name: string | null;
-    actor_image: string | null;
-  }>(
-    `SELECT a.id, a.text, a.created_at, a.actor_id,
-       u.name AS actor_name, u.image AS actor_image
-     FROM task_activity a
-     LEFT JOIN users u ON u.id = a.actor_id
-     WHERE a.task_id = ?
-     ORDER BY a.id DESC`,
-    [id]
-  );
+  const activity = await fetchActivity(id);
 
   return NextResponse.json({ ...shaped, subtasks, custom_fields, activity });
 }
@@ -218,7 +233,8 @@ export async function PATCH(request: Request, { params }: Ctx) {
     ]
   );
 
-  // Rebuild assignees when provided.
+  // Rebuild assignees when provided, and note who was added/removed by name.
+  let assigneeEvent: string | null = null;
   if (body.assignees !== undefined) {
     const ids: string[] = Array.isArray(body.assignees)
       ? [...new Set((body.assignees as unknown[]).map(String))]
@@ -234,6 +250,14 @@ export async function PATCH(request: Request, { params }: Ctx) {
       );
       valid = rows.map((r) => r.user_id);
     }
+    const oldRows = await dbAll<{ user_id: string }>(
+      "SELECT user_id FROM task_assignees WHERE task_id = ?",
+      [id]
+    );
+    const oldIds = oldRows.map((r) => r.user_id);
+    const added = valid.filter((u) => !oldIds.includes(u));
+    const removed = oldIds.filter((u) => !valid.includes(u));
+
     await dbRun("DELETE FROM task_assignees WHERE task_id = ?", [id]);
     for (const uid of valid) {
       await dbRun(
@@ -241,53 +265,115 @@ export async function PATCH(request: Request, { params }: Ctx) {
         [id, uid]
       );
     }
+
+    // Resolve names for the changed assignees to build a readable message.
+    const changedIds = [...added, ...removed];
+    if (changedIds.length) {
+      const ph = changedIds.map(() => "?").join(",");
+      const nameRows = await dbAll<{ id: string; name: string | null }>(
+        `SELECT id, name FROM users WHERE id IN (${ph})`,
+        changedIds
+      );
+      const nameOf = (uid: string) =>
+        nameRows.find((r) => r.id === uid)?.name ?? "someone";
+      // Wrap names in **…** so the UI renders them bold.
+      const bold = (uid: string) => `**${nameOf(uid)}**`;
+      const parts: string[] = [];
+      if (added.length)
+        parts.push(`assigned ${added.map(bold).join(", ")}`);
+      if (removed.length)
+        parts.push(`unassigned ${removed.map(bold).join(", ")}`);
+      assigneeEvent = parts.join(" and ");
+    }
   }
 
-  // Record human-readable activity for whatever changed.
-  const events: string[] = [];
-  if (title !== existing.title) events.push(`renamed this item to "${title}"`);
+  // Record human-readable activity for whatever changed — always old → new.
+  const events: { text: string; meta?: ActivityMeta }[] = [];
+  const statusLbl = (s: string) => STATUS_LABELS[s as TaskStatus] ?? s;
+  const prioLbl = (p: string) => PRIORITY_LABELS[p as TaskPriority] ?? p;
+  const typeLbl = (t: string) => TASK_TYPE_LABELS[t as TaskType] ?? t;
+  // "from X to Y", with set/cleared phrasing when one side is empty.
+  const changed = (field: string, from: string | null, to: string | null) => {
+    if (!from && to) return `set the ${field} to ${to}`;
+    if (from && !to) return `cleared the ${field} (was ${from})`;
+    return `changed the ${field} from ${from} to ${to}`;
+  };
+
+  if (title !== existing.title)
+    events.push({
+      text: `renamed this item from "${existing.title}" to "${title}"`,
+    });
   if (status !== existing.status)
-    events.push(
-      `changed status to ${STATUS_LABELS[status as TaskStatus] ?? status}`
-    );
+    events.push({
+      text: `changed status from ${statusLbl(existing.status)} to ${statusLbl(
+        status
+      )}`,
+      meta: { field: "status", from: existing.status, to: status },
+    });
   if (priority !== existing.priority)
-    events.push(
-      `changed priority to ${
-        PRIORITY_LABELS[priority as TaskPriority] ?? priority
-      }`
-    );
+    events.push({
+      text: `changed priority from ${prioLbl(existing.priority)} to ${prioLbl(
+        priority
+      )}`,
+      meta: { field: "priority", from: existing.priority, to: priority },
+    });
   if (type !== existing.type)
-    events.push(
-      `changed type to ${TASK_TYPE_LABELS[type as TaskType] ?? type}`
-    );
+    events.push({
+      text: `changed type from ${typeLbl(existing.type)} to ${typeLbl(type)}`,
+      meta: { field: "type", from: existing.type, to: type },
+    });
   if (startDate !== existing.start_date)
-    events.push(
-      startDate ? `set the start date to ${startDate}` : "cleared the start date"
-    );
+    events.push({ text: changed("start date", existing.start_date, startDate) });
   if (dueDate !== existing.due_date)
-    events.push(
-      dueDate ? `set the due date to ${dueDate}` : "cleared the due date"
-    );
+    events.push({ text: changed("due date", existing.due_date, dueDate) });
   if (storyPoints !== existing.story_points)
-    events.push(
-      storyPoints != null
-        ? `set story points to ${storyPoints}`
-        : "cleared story points"
-    );
+    events.push({
+      text: changed(
+        "story points",
+        existing.story_points != null ? String(existing.story_points) : null,
+        storyPoints != null ? String(storyPoints) : null
+      ),
+    });
   if (progress !== existing.progress)
-    events.push(
-      progress != null ? `set progress to ${progress}%` : "cleared progress"
-    );
-  if (JSON.stringify(labels) !== JSON.stringify(parseLabels(existing.labels)))
-    events.push("updated the labels");
+    events.push({
+      text: changed(
+        "progress",
+        existing.progress != null ? `${existing.progress}%` : null,
+        progress != null ? `${progress}%` : null
+      ),
+    });
+  {
+    const oldLabels = parseLabels(existing.labels);
+    if (JSON.stringify(labels) !== JSON.stringify(oldLabels)) {
+      const addedL = labels.filter((l) => !oldLabels.includes(l));
+      const removedL = oldLabels.filter((l) => !labels.includes(l));
+      const quote = (arr: string[]) => arr.map((l) => `"${l}"`).join(", ");
+      const parts: string[] = [];
+      if (addedL.length)
+        parts.push(
+          `added ${addedL.length > 1 ? "labels" : "the label"} ${quote(addedL)}`
+        );
+      if (removedL.length)
+        parts.push(
+          `removed ${
+            removedL.length > 1 ? "labels" : "the label"
+          } ${quote(removedL)}`
+        );
+      if (parts.length) events.push({ text: parts.join(" and ") });
+    }
+  }
   if (description !== existing.description)
-    events.push("updated the description");
-  if (sprintId !== existing.sprint_id) events.push("changed the sprint");
-  if (body.assignees !== undefined) events.push("updated the assignees");
-  for (const text of events) await logActivity(Number(id), userId, text);
+    events.push({ text: "updated the description" });
+  if (sprintId !== existing.sprint_id) events.push({ text: "changed the sprint" });
+  if (assigneeEvent) events.push({ text: assigneeEvent });
+  for (const e of events)
+    await logActivity(Number(id), userId, e.text, e.meta);
 
   const updated = await fetchShaped(id);
-  return NextResponse.json(updated ? shapeTask(updated) : null);
+  const activity = await fetchActivity(id);
+  return NextResponse.json(
+    updated ? { ...shapeTask(updated), activity } : null
+  );
 }
 
 export async function DELETE(_request: Request, { params }: Ctx) {

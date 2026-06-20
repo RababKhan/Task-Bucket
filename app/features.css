@@ -525,13 +525,18 @@
 /* ---- Task detail page ---- */
 .task-detail {
   width: 100%;
-  /* Fill the scroll area's height (plus app-main's 32px bottom padding, pulled
-     back with a negative margin so it doesn't add scroll) so the sidebar's
-     divider and centered actions reach the canvas bottom. */
-  min-height: calc(100% + 32px);
-  margin-bottom: -32px;
+  /* Fill the canvas height; the page itself doesn't scroll on the task detail
+     page — only the main column's middle section does (sidebar + activity stay
+     fixed). */
+  height: 100%;
   display: flex;
   flex-direction: column;
+}
+/* Task detail page: lock the page scroll and let the main column scroll
+   internally, so the sidebar and the Activity block stay fixed. */
+.app-main:has(.task-detail) {
+  overflow: hidden;
+  padding-bottom: 5px;
 }
 .crumbs {
   display: flex;
@@ -585,6 +590,24 @@
   align-items: stretch;
   /* grow to fill .task-detail so the divider reaches the bottom of the page */
   flex: 1;
+  min-height: 0;
+}
+/* Main column: fixed title (top) + scrolling middle + fixed Activity (bottom). */
+.td-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.td-main-scroll {
+  flex: 1;
+  /* Never collapse below this — keeps the Description/Sub Task/Attachments
+     headers visible even when the Activity section below has a large margin. */
+  min-height: 120px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.td-main-scroll::-webkit-scrollbar {
+  display: none;
 }
 .td-label {
   display: block;
@@ -877,8 +900,20 @@
 
 /* ---- Activity section (Activity / Comments / Time Entry tabs) ---- */
 .td-activity {
-  margin-top: 28px;
-  padding-top: 20px;
+  /* Pinned to the bottom of the main column (doesn't scroll). The scroll area
+     above fills the gap, so the activity already sits at the bottom — no large
+     margins (they'd squeeze the scroll area and hide its content). */
+  flex-shrink: 0;
+  margin-top: 100px;
+  padding-top: 16px;
+  padding-bottom: 24px;
+  /* Stretch the divider left into app-main's padding so it reaches the canvas
+     edge, and right across the grid gap so it meets the vertical divider;
+     padding keeps the content aligned. */
+  margin-left: -32px;
+  margin-right: -24px;
+  padding-left: 32px;
+  padding-right: 24px;
   border-top: 1px solid var(--border);
 }
 .td-activity-title {
@@ -912,6 +947,16 @@
 }
 .td-tab-panel {
   margin-top: 16px;
+  /* Fixed height so switching tabs never resizes the section; content scrolls
+     internally once it grows past it. */
+  height: 200px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  /* Breathing room so the last item isn't flush against the bottom edge. */
+  padding-bottom: 16px;
+}
+.td-tab-panel::-webkit-scrollbar {
+  display: none;
 }
 .td-tab-empty {
   font-size: 11.375px;
@@ -963,14 +1008,25 @@
 .td-activity-text strong {
   font-weight: 600;
 }
+/* Inline status/priority value (icon + label) inside an activity entry. */
+.td-activity-val {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+  vertical-align: middle;
+}
+.td-activity-val svg {
+  flex-shrink: 0;
+}
 .td-activity-time {
   font-size: 10.5px;
   color: var(--text-dim);
 }
 .td-comment-input {
   width: 100%;
-  min-height: 76px;
-  resize: vertical;
+  height: 100%;
+  resize: none;
   padding: 10px 12px;
   font-size: 11.375px;
   line-height: 1.5;
@@ -1192,6 +1248,12 @@
   width: 14px;
   height: 14px;
   color: var(--text-dim);
+}
+.td-sprint-ic {
+  width: 14px;
+  height: 14px;
+  color: var(--text-dim);
+  flex-shrink: 0;
 }
 .sp-val {
   font-weight: 500;
