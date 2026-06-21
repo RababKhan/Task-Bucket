@@ -600,8 +600,8 @@
 }
 .td-main-scroll {
   flex: 1;
-  /* Never collapse below this — keeps the Description/Sub Task/Attachments
-     headers visible even when the Activity section below has a large margin. */
+  /* Never collapse below this — keeps the section headers visible even when the
+     Activity section below has a large margin. */
   min-height: 120px;
   overflow-y: auto;
   scrollbar-width: none;
@@ -652,16 +652,78 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0;
 }
 .subtask {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: var(--surface);
+  padding: 4px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.subtask:last-child {
+  border-bottom: none;
+}
+/* Unlinking: dim + disable the row while the request runs. */
+.subtask.is-unlinking {
+  opacity: 0.55;
+  pointer-events: none;
+}
+/* Entrance animation for a newly added/linked row. */
+.subtask.is-entering {
+  animation: subtaskIn 0.35s ease;
+}
+@keyframes subtaskIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+/* Soft collapse + fade when the row is removed. */
+.subtask.is-exiting {
+  overflow: hidden;
+  animation: subtaskOut 0.28s ease forwards;
+}
+@keyframes subtaskOut {
+  from {
+    opacity: 0.55;
+    max-height: 48px;
+  }
+  to {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-bottom-color: transparent;
+    transform: translateX(10px);
+  }
+}
+/* 3-dot loader shown in place of the unlink ✕. */
+.sub-spinner {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  width: 24px;
+  height: 24px;
+  justify-content: center;
+}
+.sub-spinner span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  animation: tlAddDot 1s ease-in-out infinite;
+}
+.sub-spinner span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.sub-spinner span:nth-child(3) {
+  animation-delay: 0.3s;
 }
 .subtask.done .sub-title {
   text-decoration: line-through;
@@ -685,43 +747,125 @@
   width: 13px;
   height: 13px;
 }
+.sub-id {
+  flex-shrink: 0;
+  font-size: 11.375px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+/* Brief pop when a row's status/priority value changes. */
+.sf-flash {
+  display: inline-flex;
+}
+.sf-flash.flash {
+  animation: sfFlash 0.5s ease;
+}
+@keyframes sfFlash {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+/* Icon-only status dropdown trigger (used on linked task rows). */
+.status-dd-inline.sf-icon-only {
+  flex-shrink: 0;
+  padding: 2px;
+  margin-left: 0;
+  border-radius: 8px;
+  gap: 0;
+  transition: background 0.12s;
+}
+.sf-icon-only:hover {
+  background: var(--surface-2);
+}
+/* Right-side meta on a linked task/bug row: priority, due date, assignee. */
+.sub-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.sub-due {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.375px;
+  color: var(--text);
+}
+.sub-due svg {
+  width: 18px;
+  height: 18px;
+  color: var(--text-dim);
+}
+.sub-assignee {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 8px;
+  font-weight: 600;
+}
 .sub-title {
   flex: 1;
   color: var(--text);
-  font-size: 13.5px;
+  font-size: 11.375px;
+  text-decoration: none;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .sub-title:hover {
-  text-decoration: underline;
+  color: var(--accent);
+  text-decoration: none;
 }
 .sub-del {
   flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
   color: var(--text-dim);
-  padding: 2px;
+  opacity: 0;
+  transition: opacity 0.12s, background 0.12s, color 0.12s;
+}
+.subtask:hover .sub-del,
+.sub-del:focus-visible {
+  opacity: 1;
 }
 .sub-del:hover {
   color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
 }
 .sub-del svg {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
 }
 .subtask-add {
   display: flex;
   gap: 8px;
-  margin-top: 10px;
+  /* Small left inset so the input's rounded border isn't clipped by the
+     scroll container's edge. */
+  margin: 10px 0 2px 2px;
 }
 .subtask-add input {
   flex: 1;
-  height: 36px;
+  height: 28px;
   padding: 0 11px;
   border: 1px solid var(--border);
   border-radius: 9px;
   background: var(--surface);
   color: var(--text);
-  font-size: 13.5px;
+  font-size: 11.375px;
 }
 .subtask-add input:focus {
   outline: none;
@@ -769,7 +913,7 @@
   color: var(--text);
 }
 .td-desc-view:hover {
-  background: var(--surface-2);
+  border-color: transparent;
 }
 .td-desc-placeholder {
   color: var(--text-dim);
@@ -783,6 +927,11 @@
 }
 .td-desc-edit {
   position: relative;
+}
+/* Taller content area so the editor fills more space; the content scrolls
+   inside it while the bottom toolbar stays pinned below. */
+.td-desc-edit .rte-content {
+  max-height: 30vh;
 }
 /* Cancel/Save sit in the empty right side of the bottom toolbar row. */
 .td-desc-actions {
@@ -852,7 +1001,13 @@
   gap: 10px;
   /* Negative left pulls the caret chevron flush with the task title's text
      (the caret SVG has ~6px of internal left whitespace). */
-  margin: 22px 0 8px -6px;
+  margin: 10px 0 0 -6px;
+  /* Stay pinned while the section content scrolls underneath. */
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: 4px 0 6px;
+  background: var(--canvas-bg);
 }
 .td-section-toggle {
   display: inline-flex;
@@ -883,6 +1038,103 @@
   font-size: 10.5px;
   font-weight: 600;
 }
+/* Search-box picker for linking an existing task/bug. */
+.td-link-picker {
+  margin: 0 0 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.td-link-search {
+  width: 100%;
+  height: 34px;
+  padding: 0 12px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  font-size: 11.375px;
+  background: var(--surface);
+}
+.td-link-search:focus {
+  outline: none;
+  border-bottom: 1px solid var(--border);
+  box-shadow: none;
+}
+.td-link-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  /* Fits ~4 options; the rest scroll. */
+  max-height: 124px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.td-link-list::-webkit-scrollbar {
+  display: none;
+}
+.td-link-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  border-radius: 6px;
+  font-size: 11.375px;
+  color: var(--text);
+  text-align: left;
+  transition: background 0.12s;
+}
+.td-link-option:hover {
+  background: var(--surface-2);
+}
+.td-link-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.td-link-empty {
+  padding: 10px 8px;
+  font-size: 11.375px;
+  color: var(--text-dim);
+}
+/* "Add \"…\"" row to create a new task from the search query. */
+.td-link-create {
+  color: var(--accent);
+  font-weight: 500;
+}
+.td-link-create svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.td-link-create .sub-spinner {
+  width: 14px;
+  height: 14px;
+}
+/* "+" add button on the right of a section heading. */
+.td-section-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  color: var(--text-dim);
+  transition: background 0.12s, color 0.12s;
+}
+.td-section-add:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.td-section-add svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
 .td-att-empty {
   display: flex;
   align-items: center;
@@ -904,7 +1156,6 @@
      above fills the gap, so the activity already sits at the bottom — no large
      margins (they'd squeeze the scroll area and hide its content). */
   flex-shrink: 0;
-  margin-top: 100px;
   padding-top: 16px;
   padding-bottom: 24px;
   /* Stretch the divider left into app-main's padding so it reaches the canvas
@@ -1155,10 +1406,6 @@
 .td-props {
   display: flex;
   flex-direction: column;
-  /* Bottom divider, stretched to both edges like the progress section. */
-  margin: 0 -32px 0 -24px;
-  padding: 0 32px 14px 24px;
-  border-bottom: 1px solid var(--border);
 }
 .td-prop {
   display: grid;
@@ -1180,6 +1427,26 @@
 .td-prop-ro {
   font-size: 11.375px;
   color: var(--text);
+}
+/* Item ID — click to copy. */
+.td-id-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.375px;
+  color: var(--text);
+  cursor: pointer;
+}
+.td-id-copy:hover {
+  color: var(--accent);
+}
+.td-id-copied {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  padding: 1px 6px;
+  border-radius: 999px;
 }
 /* Sidebar action buttons (Add Attachment / Add Link) below the properties. */
 .td-actions {
@@ -1219,6 +1486,37 @@
   margin-right: 8px;
   color: var(--text-dim);
   flex-shrink: 0;
+}
+/* Created-by value: small avatar + name. */
+.td-creator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.td-creator-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  font-weight: 600;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.td-creator-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* Normalize all property icons to 14px so their stroke weight matches (the
+   date/assignee icons are 18px elsewhere). */
+.td-prop-v .dp-cal-ic,
+.td-prop-v .mp-empty-ic {
+  width: 14px;
+  height: 14px;
 }
 /* Match the date value color to the other property values (not dimmed). */
 .td-prop-v .dp-inline-date {
@@ -2988,10 +3286,11 @@ select,
   flex: 1;
   white-space: nowrap;
 }
-/* Inline (table) selects: let the menu grow wider than the narrow trigger. */
+/* Inline (table) selects: let the menu grow to its content (not the narrow
+   trigger), but no fixed floor so short options sit snug to the check. */
 .sf-inline .status-dd-menu {
   right: auto;
-  min-width: 200px;
+  width: max-content;
 }
 .status-dd-check {
   width: 16px;
@@ -3804,7 +4103,7 @@ textarea::placeholder {
   align-items: center;
   padding: 2px;
   margin-left: -2px;
-  border-radius: 6px;
+  border-radius: 50%;
   color: var(--text-dim);
   transition: background 0.12s;
 }

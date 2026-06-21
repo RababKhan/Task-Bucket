@@ -167,6 +167,9 @@ export type Task = {
   position: number;
   seq: number | null;
   progress: number | null;
+  created_by: string | null;
+  story_id: number | null;
+  linked_to: number | null;
   created_at: string;
 };
 

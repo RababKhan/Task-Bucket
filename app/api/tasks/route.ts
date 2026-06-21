@@ -135,8 +135,8 @@ export async function POST(request: Request) {
   const seq = seqRow?.task_seq ?? 1;
 
   const info = await dbRun(
-    `INSERT INTO tasks (project_id, parent_id, title, description, type, status, priority, severity, story_points, start_date, due_date, labels, position, seq)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO tasks (project_id, parent_id, title, description, type, status, priority, severity, story_points, start_date, due_date, labels, position, seq, created_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       projectId,
       parentId,
@@ -152,6 +152,7 @@ export async function POST(request: Request) {
       JSON.stringify(labels),
       maxPos + 1,
       seq,
+      userId,
     ]
   );
   const taskId = info.lastInsertRowid;

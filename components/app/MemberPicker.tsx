@@ -71,7 +71,7 @@ export default function MemberPicker({
         position: "fixed",
         left: rect.left,
         right: "auto",
-        minWidth: Math.max(rect.width, 240),
+        minWidth: Math.max(rect.width, 180),
         ...(openUp
           ? { top: "auto", bottom: window.innerHeight - rect.top + 4 }
           : { bottom: "auto", top: rect.bottom + 4 }),

@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import type {
@@ -9,6 +16,7 @@ import type {
   TaskStatus,
   TaskPriority,
   TaskType,
+  TaskSeverity,
   Sprint,
   CustomFieldWithValue,
 } from "@/lib/types";
@@ -19,6 +27,8 @@ import {
   PRIORITY_ORDER,
   TASK_TYPE_LABELS,
   TASK_TYPE_ORDER,
+  TASK_SEVERITY_LABELS,
+  TASK_SEVERITY_ORDER,
 } from "@/lib/types";
 import Spinner from "@/components/Spinner";
 import DatePicker from "@/components/app/DatePicker";
@@ -48,18 +58,17 @@ type ActivityItem = {
 
 type Detail = Task & {
   project_name: string;
+  created_by_name?: string | null;
+  created_by_image?: string | null;
   assignees?: string[];
-  subtasks: Task[];
+  subtasks: LinkedItem[];
+  linked_tasks?: LinkedItem[];
+  linked_bugs?: LinkedItem[];
   custom_fields: CustomFieldWithValue[];
   activity?: ActivityItem[];
 };
 
-const PRIO_COLOR: Record<string, string> = {
-  critical: "var(--prio-critical)",
-  high: "var(--prio-high)",
-  medium: "var(--prio-medium)",
-  low: "var(--prio-low)",
-};
+type LinkedItem = Task & { assignees?: string[] };
 
 const STATUS_OPTS: SelectOption[] = STATUS_ORDER.map((s) => ({
   value: s,
@@ -75,6 +84,40 @@ const TYPE_OPTS: SelectOption[] = TASK_TYPE_ORDER.map((t) => ({
   value: t,
   label: TASK_TYPE_LABELS[t],
   icon: <TaskTypeIcon type={t} size={15} />,
+}));
+// Three ascending bars (matches the create-item modal's severity icon).
+function SeverityBars({ level, color }: { level: number; color: string }) {
+  const bars = [
+    { x: 2, h: 5 },
+    { x: 7, h: 9 },
+    { x: 12, h: 13 },
+  ];
+  return (
+    <svg className="status-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+      {bars.map((b, i) => (
+        <rect
+          key={i}
+          x={b.x}
+          y={15 - b.h}
+          width="3"
+          height={b.h}
+          rx="1"
+          fill={i < level ? color : "var(--border)"}
+        />
+      ))}
+    </svg>
+  );
+}
+const SEVERITY_ICONS: Record<TaskSeverity, ReactNode> = {
+  critical: <SeverityBars level={3} color="#e5484d" />,
+  major: <SeverityBars level={3} color="#f97316" />,
+  moderate: <SeverityBars level={2} color="#38bdf8" />,
+  low: <SeverityBars level={1} color="#16a34a" />,
+};
+const SEVERITY_OPTS: SelectOption[] = TASK_SEVERITY_ORDER.map((s) => ({
+  value: s,
+  label: TASK_SEVERITY_LABELS[s],
+  icon: SEVERITY_ICONS[s],
 }));
 
 // Description has content if there's text OR embedded media (image/table/etc.),
@@ -120,11 +163,16 @@ function fmtDateTime(iso: string | null | undefined) {
   });
 }
 
-// Sprint icon (custom filled gear/cycle glyph).
+// Sprint icon (getflow — concentric spiral with goal marker).
 function SprintIcon() {
   return (
-    <svg className="td-sprint-ic" viewBox="0 0 14 14" fill="none" aria-hidden>
-      <path d="M12.7235 7.93333L10.5301 6.66667L12.7235 5.4C13.0435 5.21333 13.1501 4.80667 12.9701 4.48667L11.6368 2.18C11.4501 1.86 11.0435 1.75333 10.7235 1.93333L8.53015 3.2V0.666667C8.53015 0.3 8.23015 0 7.86348 0H5.19681C4.83015 0 4.53015 0.3 4.53015 0.666667V3.2L2.33681 1.93333C2.01681 1.75333 1.61015 1.86 1.42348 2.18L0.0901479 4.48667C-0.0965188 4.80667 0.0168146 5.21333 0.336815 5.4L2.53015 6.66667L0.336815 7.93333C0.0168146 8.12 -0.0898521 8.52667 0.0901479 8.84667L1.42348 11.1533C1.61015 11.4733 2.01681 11.58 2.33681 11.4L4.53015 10.1333V12.6667C4.53015 13.0333 4.83015 13.3333 5.19681 13.3333H7.86348C8.23015 13.3333 8.53015 13.0333 8.53015 12.6667V10.1333L10.7235 11.4C11.0435 11.5867 11.4501 11.4733 11.6368 11.1533L12.9701 8.84667C13.1568 8.52667 13.0435 8.12 12.7235 7.93333ZM10.8168 9.91333L7.69682 8.11333C7.47682 7.98 7.19682 8.14 7.19682 8.4V12H5.86348V8.4C5.86348 8.14667 5.58348 7.98 5.36348 8.11333L2.24348 9.91333L1.57681 8.76L4.69681 6.96C4.91681 6.83333 4.91681 6.51333 4.69681 6.38L1.57681 4.58L2.24348 3.42667L5.36348 5.22667C5.58348 5.35333 5.86348 5.19333 5.86348 4.93333V1.33333H7.19682V4.93333C7.19682 5.18667 7.47682 5.35333 7.69682 5.22L10.8168 3.42L11.4835 4.57333L8.36348 6.37333C8.14348 6.5 8.14348 6.82 8.36348 6.95333L11.4835 8.75333L10.8168 9.91333Z" fill="currentColor" />
+    <svg className="td-sprint-ic" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M43.8643,15.954A21.4516,21.4516,0,1,1,32.4875,4.3209" />
+      <path d="M33.2708,19.1921a10.4785,10.4785,0,1,1-4.4539-4.4582" />
+      <path d="M27.0579,24.032a3.09,3.09,0,1,1-3.09-3.09" />
+      <path d="M23.968,24.032,39.3741,8.6259" />
+      <path d="M32.7052,15.2193v-6.05L39.3741,2.5V8.6259" />
+      <path d="M32.7807,15.2948h6.05L45.5,8.6259H39.3741" />
     </svg>
   );
 }
@@ -168,16 +216,20 @@ function renderActivityText(text: string) {
   );
 }
 
+function fmtDateShort(iso: string | null | undefined) {
+  if (!iso) return "";
+  const d = new Date(iso.includes("T") ? iso : iso.replace(" ", "T") + "Z");
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 function initials(name: string | null | undefined) {
   if (!name) return "?";
-  return (
-    name
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((w) => w[0]?.toUpperCase() ?? "")
-      .join("") || "?"
-  );
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  // Single word → first two letters; otherwise first + last initial.
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 export default function TaskDetailPage() {
@@ -199,15 +251,41 @@ export default function TaskDetailPage() {
   const [dragProgress, setDragProgress] = useState<number | null>(null);
   // Story Point is click-to-edit so its resting state shows just an icon/value.
   const [editingSP, setEditingSP] = useState(false);
+  // Brief "Copied" feedback after clicking the Item ID.
+  const [copiedId, setCopiedId] = useState(false);
   // Activity section tabs.
   const [activityTab, setActivityTab] = useState<
     "activity" | "comments" | "time"
   >("activity");
   const [newSub, setNewSub] = useState("");
   const [addingSub, setAddingSub] = useState(false);
+  const [addSubOpen, setAddSubOpen] = useState(false);
+  const subPickerRef = useRef<HTMLDivElement>(null);
   // Collapsible left-column sections — persisted so they survive a refresh.
   const [openSub, setOpenSub] = useState(() => readOpen("sub", true));
   const [openAtt, setOpenAtt] = useState(() => readOpen("att", true));
+  // Linked-tasks section (only shown for Story items).
+  const [openTasks, setOpenTasks] = useState(() => readOpen("tasks", true));
+  const [linkTaskOpen, setLinkTaskOpen] = useState(false);
+  const [taskSearch, setTaskSearch] = useState("");
+  const [creatingTask, setCreatingTask] = useState(false);
+  const linkPickerRef = useRef<HTMLDivElement>(null);
+  const [linkBugOpen, setLinkBugOpen] = useState(false);
+  const [bugSearch, setBugSearch] = useState("");
+  const [creatingBug, setCreatingBug] = useState(false);
+  const bugPickerRef = useRef<HTMLDivElement>(null);
+  // Row being unlinked: shows a loader, then animates out before refresh.
+  const [unlinkingId, setUnlinkingId] = useState<number | null>(null);
+  const [exitingId, setExitingId] = useState<number | null>(null);
+  // Newly added/linked row: plays an entrance animation.
+  const [enteringId, setEnteringId] = useState<number | null>(null);
+  // Briefly pops the just-changed status/priority value.
+  const [flash, setFlash] = useState<{ id: number; field: string } | null>(
+    null
+  );
+  // Linked-bugs section (shown for Story/Task items).
+  const [openBugs, setOpenBugs] = useState(() => readOpen("bugs", true));
+  const [projectTasks, setProjectTasks] = useState<LinkedItem[]>([]);
   // Description is collapsible + click-to-edit (editor + Save while editing).
   const [openDesc, setOpenDesc] = useState(() => readOpen("desc", true));
   const [editingDesc, setEditingDesc] = useState(false);
@@ -217,6 +295,55 @@ export default function TaskDetailPage() {
   useEffect(() => writeOpen("desc", openDesc), [openDesc]);
   useEffect(() => writeOpen("sub", openSub), [openSub]);
   useEffect(() => writeOpen("att", openAtt), [openAtt]);
+  useEffect(() => writeOpen("tasks", openTasks), [openTasks]);
+  useEffect(() => writeOpen("bugs", openBugs), [openBugs]);
+
+  // Close the link-task search picker when clicking outside it.
+  useEffect(() => {
+    if (!linkTaskOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (
+        linkPickerRef.current &&
+        !linkPickerRef.current.contains(e.target as Node)
+      ) {
+        setLinkTaskOpen(false);
+        setTaskSearch("");
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [linkTaskOpen]);
+
+  useEffect(() => {
+    if (!linkBugOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (
+        bugPickerRef.current &&
+        !bugPickerRef.current.contains(e.target as Node)
+      ) {
+        setLinkBugOpen(false);
+        setBugSearch("");
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [linkBugOpen]);
+
+  // Close the add-subtask picker when clicking outside it.
+  useEffect(() => {
+    if (!addSubOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (
+        subPickerRef.current &&
+        !subPickerRef.current.contains(e.target as Node)
+      ) {
+        setAddSubOpen(false);
+        setNewSub("");
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [addSubOpen]);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/tasks/${id}`);
@@ -261,6 +388,149 @@ export default function TaskDetailPage() {
       .catch(() => {});
   }, [detail?.project_id]);
 
+  // Story/Task items: load the project's top-level tasks to link from.
+  useEffect(() => {
+    if (!detail || (detail.type !== "story" && detail.type !== "task")) return;
+    fetch(`/api/tasks?project_id=${detail.project_id}`)
+      .then((r) => r.json())
+      .then((d: LinkedItem[]) => setProjectTasks(Array.isArray(d) ? d : []))
+      .catch(() => {});
+  }, [
+    detail?.project_id,
+    detail?.type,
+    detail?.linked_tasks?.length,
+    detail?.linked_bugs?.length,
+  ]);
+
+  // Briefly flag a row so it plays its entrance animation after refresh.
+  function flagEntering(taskId: number) {
+    setEnteringId(taskId);
+    window.setTimeout(() => setEnteringId(null), 400);
+  }
+
+  // Link/unlink an existing task to this story, then refresh.
+  async function linkTask(taskId: number) {
+    if (!detail) return;
+    await fetch(`/api/tasks/${taskId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ story_id: detail.id }),
+    });
+    await load();
+    flagEntering(taskId);
+  }
+  async function unlinkTask(taskId: number) {
+    setUnlinkingId(taskId);
+    await fetch(`/api/tasks/${taskId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ story_id: null }),
+    });
+    // Soft fade/collapse out, then refresh the list.
+    setExitingId(taskId);
+    await new Promise((r) => window.setTimeout(r, 280));
+    await load();
+    setUnlinkingId(null);
+    setExitingId(null);
+  }
+
+  // Create a brand-new task with the typed title and link it to this story.
+  async function createAndLinkTask(title: string) {
+    if (!detail || !title.trim() || creatingTask) return;
+    setCreatingTask(true);
+    const res = await fetch("/api/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        project_id: detail.project_id,
+        title: title.trim(),
+        type: "task",
+      }),
+    });
+    let createdId: number | null = null;
+    if (res.ok) {
+      const created: Task = await res.json();
+      createdId = created.id;
+      await fetch(`/api/tasks/${created.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ story_id: detail.id }),
+      });
+    }
+    await load();
+    setCreatingTask(false);
+    setLinkTaskOpen(false);
+    setTaskSearch("");
+    if (createdId != null) flagEntering(createdId);
+  }
+
+  // Update a field on a linked task/bug from its row, then refresh + pop it.
+  async function updateLinkedField(taskId: number, body: Partial<Task>) {
+    await fetch(`/api/tasks/${taskId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    await load();
+    setFlash({ id: taskId, field: Object.keys(body)[0] });
+    window.setTimeout(() => setFlash(null), 600);
+  }
+
+  // Link/unlink an existing bug to this story/task, then refresh.
+  async function linkBug(bugId: number) {
+    if (!detail) return;
+    await fetch(`/api/tasks/${bugId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ linked_to: detail.id }),
+    });
+    await load();
+    flagEntering(bugId);
+  }
+  async function unlinkBug(bugId: number) {
+    setUnlinkingId(bugId);
+    await fetch(`/api/tasks/${bugId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ linked_to: null }),
+    });
+    setExitingId(bugId);
+    await new Promise((r) => window.setTimeout(r, 280));
+    await load();
+    setUnlinkingId(null);
+    setExitingId(null);
+  }
+
+  // Create a brand-new bug with the typed title and link it to this item.
+  async function createAndLinkBug(title: string) {
+    if (!detail || !title.trim() || creatingBug) return;
+    setCreatingBug(true);
+    const res = await fetch("/api/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        project_id: detail.project_id,
+        title: title.trim(),
+        type: "bug",
+      }),
+    });
+    let createdId: number | null = null;
+    if (res.ok) {
+      const created: Task = await res.json();
+      createdId = created.id;
+      await fetch(`/api/tasks/${created.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ linked_to: detail.id }),
+      });
+    }
+    await load();
+    setCreatingBug(false);
+    setLinkBugOpen(false);
+    setBugSearch("");
+    if (createdId != null) flagEntering(createdId);
+  }
+
   // Feed the topbar breadcrumb: Project Name › Item ID.
   useEffect(() => {
     if (!detail) return;
@@ -302,9 +572,9 @@ export default function TaskDetailPage() {
     }
   }
 
-  async function addSubtask(e: React.FormEvent) {
-    e.preventDefault();
-    const t = newSub.trim();
+  // Create a brand-new subtask under this item, then refresh + pop it.
+  async function createSubtask(title: string) {
+    const t = title.trim();
     if (!t || !detail || addingSub) return;
     setAddingSub(true);
     const res = await fetch("/api/tasks", {
@@ -316,38 +586,27 @@ export default function TaskDetailPage() {
         title: t,
       }),
     });
-    setAddingSub(false);
+    let createdId: number | null = null;
     if (res.ok) {
       const created: Task = await res.json();
-      setDetail((d) => (d ? { ...d, subtasks: [...d.subtasks, created] } : d));
-      setNewSub("");
+      createdId = created.id;
     }
+    await load();
+    setAddingSub(false);
+    setNewSub("");
+    setAddSubOpen(false);
+    if (createdId != null) flagEntering(createdId);
   }
 
-  async function toggleSub(sub: Task) {
-    const next: TaskStatus = sub.status === "done" ? "backlog" : "done";
-    setDetail((d) =>
-      d
-        ? {
-            ...d,
-            subtasks: d.subtasks.map((s) =>
-              s.id === sub.id ? { ...s, status: next } : s
-            ),
-          }
-        : d
-    );
-    await fetch(`/api/tasks/${sub.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: next }),
-    });
-  }
-
-  async function deleteSub(sub: Task) {
-    setDetail((d) =>
-      d ? { ...d, subtasks: d.subtasks.filter((s) => s.id !== sub.id) } : d
-    );
+  async function deleteSub(sub: LinkedItem) {
+    setUnlinkingId(sub.id);
     await fetch(`/api/tasks/${sub.id}`, { method: "DELETE" });
+    // Soft fade/collapse out, then refresh the list.
+    setExitingId(sub.id);
+    await new Promise((r) => window.setTimeout(r, 280));
+    await load();
+    setUnlinkingId(null);
+    setExitingId(null);
   }
 
   async function deleteTask() {
@@ -382,15 +641,14 @@ export default function TaskDetailPage() {
   }
 
   // Human item id, e.g. DEV-001 (3-char project prefix + zero-padded seq).
-  const itemId =
-    detail.seq != null
-      ? `${
-          detail.project_name
-            .replace(/[^a-zA-Z0-9]/g, "")
-            .slice(0, 3)
-            .toUpperCase() || "TSK"
-        }-${String(detail.seq).padStart(3, "0")}`
-      : null;
+  const projectPrefix =
+    detail.project_name
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .slice(0, 3)
+      .toUpperCase() || "TSK";
+  const taskCode = (seq: number | null) =>
+    seq != null ? `${projectPrefix}-${String(seq).padStart(3, "0")}` : null;
+  const itemId = taskCode(detail.seq);
 
   const subDone = detail.subtasks.filter((s) => s.status === "done").length;
   // Derived progress = completed subtasks; a Done task counts as 100%.
@@ -544,6 +802,478 @@ export default function TaskDetailPage() {
             </div>
           )}
 
+          {detail.type === "story" && (
+            <>
+              <div className="td-section-head">
+                <button
+                  type="button"
+                  className="td-section-toggle"
+                  onClick={() => setOpenTasks((o) => !o)}
+                >
+                  <svg className={`td-caret${openTasks ? " open" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="m9 18 6-6-6-6" />
+                  </svg>
+                  Task
+                  <span className="td-section-count">
+                    {detail.linked_tasks?.length ?? 0}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="td-section-add"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={() => {
+                    setOpenTasks(true);
+                    setLinkTaskOpen((o) => !o);
+                  }}
+                  aria-label="Link a task"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </button>
+              </div>
+              {openTasks && (
+                <>
+                  {linkTaskOpen && (
+                    <div className="td-link-picker" ref={linkPickerRef}>
+                      <input
+                        className="td-link-search"
+                        autoFocus
+                        placeholder="Search task…"
+                        value={taskSearch}
+                        onChange={(e) => setTaskSearch(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && taskSearch.trim()) {
+                            e.preventDefault();
+                            createAndLinkTask(taskSearch);
+                          } else if (e.key === "Escape") {
+                            setLinkTaskOpen(false);
+                            setTaskSearch("");
+                          }
+                        }}
+                      />
+                      <ul className="td-link-list">
+                        {projectTasks
+                          .filter(
+                            (t) =>
+                              t.type === "task" &&
+                              t.story_id !== detail.id &&
+                              t.title
+                                .toLowerCase()
+                                .includes(taskSearch.toLowerCase())
+                          )
+                          .map((t) => (
+                            <li key={t.id}>
+                              <button
+                                type="button"
+                                className="td-link-option"
+                                onClick={() => {
+                                  linkTask(t.id);
+                                  setLinkTaskOpen(false);
+                                  setTaskSearch("");
+                                }}
+                              >
+                                <TaskStatusIcon status={t.status} size={14} />
+                                <span className="td-link-title">{t.title}</span>
+                                <span className="sub-meta">
+                                  {t.due_date && (
+                                    <span className="sub-due">
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                                        <rect x="3" y="6" width="13" height="13" rx="2.5" />
+                                        <path d="M3 10h13" />
+                                      </svg>
+                                      {fmtDateShort(t.due_date)}
+                                    </span>
+                                  )}
+                                  {t.assignees?.[0] && (
+                                    <span className="sub-assignee">
+                                      {initials(
+                                        members.find(
+                                          (m) => m.user_id === t.assignees![0]
+                                        )?.name
+                                      )}
+                                    </span>
+                                  )}
+                                  <PriorityIcon priority={t.priority} size={14} />
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                        {taskSearch.trim() && (
+                          <li>
+                            <button
+                              type="button"
+                              className="td-link-option td-link-create"
+                              disabled={creatingTask}
+                              onClick={() => createAndLinkTask(taskSearch)}
+                            >
+                              {creatingTask ? (
+                                <span className="sub-spinner" aria-label="Adding">
+                                  <span />
+                                  <span />
+                                  <span />
+                                </span>
+                              ) : (
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                                  <path d="M12 5v14M5 12h14" />
+                                </svg>
+                              )}
+                              <span className="td-link-title">
+                                {creatingTask
+                                  ? "Adding…"
+                                  : `Add "${taskSearch.trim()}"`}
+                              </span>
+                            </button>
+                          </li>
+                        )}
+                        {!taskSearch.trim() &&
+                          projectTasks.filter(
+                            (t) =>
+                              t.type === "task" && t.story_id !== detail.id
+                          ).length === 0 && (
+                            <li className="td-link-empty">No tasks found</li>
+                          )}
+                      </ul>
+                    </div>
+                  )}
+                  <ul className="subtask-list">
+                    {(detail.linked_tasks ?? []).map((t) => (
+                      <li
+                        key={t.id}
+                        className={`subtask${
+                          unlinkingId === t.id ? " is-unlinking" : ""
+                        }${exitingId === t.id ? " is-exiting" : ""}${
+                          enteringId === t.id ? " is-entering" : ""
+                        }`}
+                      >
+                        <span
+                          className={`sf-flash${
+                            flash?.id === t.id && flash.field === "status"
+                              ? " flash"
+                              : ""
+                          }`}
+                        >
+                          <SelectField
+                            inline
+                            iconOnly
+                            value={t.status}
+                            options={STATUS_OPTS}
+                            onChange={(v) =>
+                              updateLinkedField(t.id, {
+                                status: v as TaskStatus,
+                              })
+                            }
+                          />
+                        </span>
+                        {taskCode(t.seq) && (
+                          <span className="sub-id">{taskCode(t.seq)}</span>
+                        )}
+                        <Link href={`/task/${t.id}`} className="sub-title">
+                          {t.title}
+                        </Link>
+                        <span className="sub-meta">
+                          <DatePicker
+                            inline
+                            quick
+                            value={t.due_date ?? ""}
+                            onChange={(v) =>
+                              updateLinkedField(t.id, { due_date: v || null })
+                            }
+                          />
+                          <MemberPicker
+                            inline
+                            multiple
+                            members={members}
+                            value={t.assignees ?? []}
+                            onChange={(ids) =>
+                              updateLinkedField(t.id, {
+                                assignees: ids,
+                              } as Partial<Task>)
+                            }
+                            placeholder="Assign"
+                          />
+                          <span
+                            className={`sf-flash${
+                              flash?.id === t.id && flash.field === "priority"
+                                ? " flash"
+                                : ""
+                            }`}
+                          >
+                            <SelectField
+                              inline
+                              iconOnly
+                              value={t.priority}
+                              options={PRIORITY_OPTS}
+                              onChange={(v) =>
+                                updateLinkedField(t.id, {
+                                  priority: v as TaskPriority,
+                                })
+                              }
+                            />
+                          </span>
+                        </span>
+                        {unlinkingId === t.id ? (
+                          <span className="sub-spinner" aria-label="Removing">
+                            <span />
+                            <span />
+                            <span />
+                          </span>
+                        ) : (
+                          <button
+                            className="sub-del"
+                            onClick={() => unlinkTask(t.id)}
+                            aria-label="Unlink task"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                              <path d="M18 6 6 18M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </>
+          )}
+
+          {(detail.type === "story" || detail.type === "task") && (
+            <>
+              <div className="td-section-head">
+                <button
+                  type="button"
+                  className="td-section-toggle"
+                  onClick={() => setOpenBugs((o) => !o)}
+                >
+                  <svg className={`td-caret${openBugs ? " open" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="m9 18 6-6-6-6" />
+                  </svg>
+                  Bug
+                  <span className="td-section-count">
+                    {detail.linked_bugs?.length ?? 0}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="td-section-add"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={() => {
+                    setOpenBugs(true);
+                    setLinkBugOpen((o) => !o);
+                  }}
+                  aria-label="Link a bug"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </button>
+              </div>
+              {openBugs && (
+                <>
+                  {linkBugOpen && (
+                    <div className="td-link-picker" ref={bugPickerRef}>
+                      <input
+                        className="td-link-search"
+                        autoFocus
+                        placeholder="Search bug…"
+                        value={bugSearch}
+                        onChange={(e) => setBugSearch(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && bugSearch.trim()) {
+                            e.preventDefault();
+                            createAndLinkBug(bugSearch);
+                          } else if (e.key === "Escape") {
+                            setLinkBugOpen(false);
+                            setBugSearch("");
+                          }
+                        }}
+                      />
+                      <ul className="td-link-list">
+                        {projectTasks
+                          .filter(
+                            (t) =>
+                              t.type === "bug" &&
+                              t.linked_to !== detail.id &&
+                              t.title
+                                .toLowerCase()
+                                .includes(bugSearch.toLowerCase())
+                          )
+                          .map((t) => (
+                            <li key={t.id}>
+                              <button
+                                type="button"
+                                className="td-link-option"
+                                onClick={() => {
+                                  linkBug(t.id);
+                                  setLinkBugOpen(false);
+                                  setBugSearch("");
+                                }}
+                              >
+                                <TaskStatusIcon status={t.status} size={14} />
+                                <span className="td-link-title">{t.title}</span>
+                                <span className="sub-meta">
+                                  {t.due_date && (
+                                    <span className="sub-due">
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                                        <rect x="3" y="6" width="13" height="13" rx="2.5" />
+                                        <path d="M3 10h13" />
+                                      </svg>
+                                      {fmtDateShort(t.due_date)}
+                                    </span>
+                                  )}
+                                  {t.assignees?.[0] && (
+                                    <span className="sub-assignee">
+                                      {initials(
+                                        members.find(
+                                          (m) => m.user_id === t.assignees![0]
+                                        )?.name
+                                      )}
+                                    </span>
+                                  )}
+                                  <PriorityIcon priority={t.priority} size={14} />
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                        {bugSearch.trim() && (
+                          <li>
+                            <button
+                              type="button"
+                              className="td-link-option td-link-create"
+                              disabled={creatingBug}
+                              onClick={() => createAndLinkBug(bugSearch)}
+                            >
+                              {creatingBug ? (
+                                <span className="sub-spinner" aria-label="Adding">
+                                  <span />
+                                  <span />
+                                  <span />
+                                </span>
+                              ) : (
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                                  <path d="M12 5v14M5 12h14" />
+                                </svg>
+                              )}
+                              <span className="td-link-title">
+                                {creatingBug
+                                  ? "Adding…"
+                                  : `Add "${bugSearch.trim()}"`}
+                              </span>
+                            </button>
+                          </li>
+                        )}
+                        {!bugSearch.trim() &&
+                          projectTasks.filter(
+                            (t) =>
+                              t.type === "bug" && t.linked_to !== detail.id
+                          ).length === 0 && (
+                            <li className="td-link-empty">No bugs found</li>
+                          )}
+                      </ul>
+                    </div>
+                  )}
+                  <ul className="subtask-list">
+                    {(detail.linked_bugs ?? []).map((b) => (
+                      <li
+                        key={b.id}
+                        className={`subtask${
+                          unlinkingId === b.id ? " is-unlinking" : ""
+                        }${exitingId === b.id ? " is-exiting" : ""}${
+                          enteringId === b.id ? " is-entering" : ""
+                        }`}
+                      >
+                        <span
+                          className={`sf-flash${
+                            flash?.id === b.id && flash.field === "status"
+                              ? " flash"
+                              : ""
+                          }`}
+                        >
+                          <SelectField
+                            inline
+                            iconOnly
+                            value={b.status}
+                            options={STATUS_OPTS}
+                            onChange={(v) =>
+                              updateLinkedField(b.id, {
+                                status: v as TaskStatus,
+                              })
+                            }
+                          />
+                        </span>
+                        {taskCode(b.seq) && (
+                          <span className="sub-id">{taskCode(b.seq)}</span>
+                        )}
+                        <Link href={`/task/${b.id}`} className="sub-title">
+                          {b.title}
+                        </Link>
+                        <span className="sub-meta">
+                          <DatePicker
+                            inline
+                            quick
+                            value={b.due_date ?? ""}
+                            onChange={(v) =>
+                              updateLinkedField(b.id, { due_date: v || null })
+                            }
+                          />
+                          <MemberPicker
+                            inline
+                            multiple
+                            members={members}
+                            value={b.assignees ?? []}
+                            onChange={(ids) =>
+                              updateLinkedField(b.id, {
+                                assignees: ids,
+                              } as Partial<Task>)
+                            }
+                            placeholder="Assign"
+                          />
+                          <span
+                            className={`sf-flash${
+                              flash?.id === b.id && flash.field === "priority"
+                                ? " flash"
+                                : ""
+                            }`}
+                          >
+                            <SelectField
+                              inline
+                              iconOnly
+                              value={b.priority}
+                              options={PRIORITY_OPTS}
+                              onChange={(v) =>
+                                updateLinkedField(b.id, {
+                                  priority: v as TaskPriority,
+                                })
+                              }
+                            />
+                          </span>
+                        </span>
+                        {unlinkingId === b.id ? (
+                          <span className="sub-spinner" aria-label="Removing">
+                            <span />
+                            <span />
+                            <span />
+                          </span>
+                        ) : (
+                          <button
+                            className="sub-del"
+                            onClick={() => unlinkBug(b.id)}
+                            aria-label="Unlink bug"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                              <path d="M18 6 6 18M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </>
+          )}
+
           <div className="td-section-head">
             <button
               type="button"
@@ -556,56 +1286,168 @@ export default function TaskDetailPage() {
               Sub Task
               <span className="td-section-count">{detail.subtasks.length}</span>
             </button>
-            {detail.subtasks.length > 0 && (
-              <span className="td-subcount">{subDone}/{detail.subtasks.length} done</span>
-            )}
+            <button
+              type="button"
+              className="td-section-add"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={() => {
+                setOpenSub(true);
+                setAddSubOpen((o) => !o);
+              }}
+              aria-label="Add a subtask"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
           </div>
 
           {openSub && (
-          <>
-          <ul className="subtask-list">
-            {detail.subtasks.map((s) => (
-              <li key={s.id} className={`subtask ${s.status === "done" ? "done" : ""}`}>
-                <button
-                  className="sub-check"
-                  onClick={() => toggleSub(s)}
-                  aria-label={s.status === "done" ? "Mark not done" : "Mark done"}
-                >
-                  {s.status === "done" && (
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                      <path d="M5 12l4 4 10-10" />
-                    </svg>
+            <>
+              {addSubOpen && (
+                <div className="td-link-picker" ref={subPickerRef}>
+                  <input
+                    className="td-link-search"
+                    autoFocus
+                    placeholder="Add a subtask…"
+                    value={newSub}
+                    onChange={(e) => setNewSub(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && newSub.trim()) {
+                        e.preventDefault();
+                        createSubtask(newSub);
+                      } else if (e.key === "Escape") {
+                        setAddSubOpen(false);
+                        setNewSub("");
+                      }
+                    }}
+                  />
+                  {newSub.trim() && (
+                    <ul className="td-link-list">
+                      <li>
+                        <button
+                          type="button"
+                          className="td-link-option td-link-create"
+                          disabled={addingSub}
+                          onClick={() => createSubtask(newSub)}
+                        >
+                          {addingSub ? (
+                            <span className="sub-spinner" aria-label="Adding">
+                              <span />
+                              <span />
+                              <span />
+                            </span>
+                          ) : (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                              <path d="M12 5v14M5 12h14" />
+                            </svg>
+                          )}
+                          <span className="td-link-title">
+                            {addingSub ? "Adding…" : `Add "${newSub.trim()}"`}
+                          </span>
+                        </button>
+                      </li>
+                    </ul>
                   )}
-                </button>
-                <Link href={`/task/${s.id}`} className="sub-title">
-                  {s.title}
-                </Link>
-                <span
-                  className="badge"
-                  style={{ color: PRIO_COLOR[s.priority], borderColor: PRIO_COLOR[s.priority] }}
-                >
-                  {s.priority}
-                </span>
-                <button className="sub-del" onClick={() => deleteSub(s)} aria-label="Delete subtask">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <path d="M18 6 6 18M6 6l12 12" />
-                  </svg>
-                </button>
-              </li>
-            ))}
-          </ul>
-
-          <form className="subtask-add" onSubmit={addSubtask}>
-            <input
-              value={newSub}
-              onChange={(e) => setNewSub(e.target.value)}
-              placeholder="Add a subtask…"
-            />
-            <button type="submit" className="btn btn-sm btn-primary" disabled={addingSub || !newSub.trim()}>
-              {addingSub ? <Spinner /> : "Add"}
-            </button>
-          </form>
-          </>
+                </div>
+              )}
+              <ul className="subtask-list">
+                {detail.subtasks.map((s) => (
+                  <li
+                    key={s.id}
+                    className={`subtask${
+                      unlinkingId === s.id ? " is-unlinking" : ""
+                    }${exitingId === s.id ? " is-exiting" : ""}${
+                      enteringId === s.id ? " is-entering" : ""
+                    }`}
+                  >
+                    <span
+                      className={`sf-flash${
+                        flash?.id === s.id && flash.field === "status"
+                          ? " flash"
+                          : ""
+                      }`}
+                    >
+                      <SelectField
+                        inline
+                        iconOnly
+                        value={s.status}
+                        options={STATUS_OPTS}
+                        onChange={(v) =>
+                          updateLinkedField(s.id, {
+                            status: v as TaskStatus,
+                          })
+                        }
+                      />
+                    </span>
+                    {taskCode(s.seq) && (
+                      <span className="sub-id">{taskCode(s.seq)}</span>
+                    )}
+                    <Link href={`/task/${s.id}`} className="sub-title">
+                      {s.title}
+                    </Link>
+                    <span className="sub-meta">
+                      <DatePicker
+                        inline
+                        quick
+                        value={s.due_date ?? ""}
+                        onChange={(v) =>
+                          updateLinkedField(s.id, { due_date: v || null })
+                        }
+                      />
+                      <MemberPicker
+                        inline
+                        multiple
+                        members={members}
+                        value={s.assignees ?? []}
+                        onChange={(ids) =>
+                          updateLinkedField(s.id, {
+                            assignees: ids,
+                          } as Partial<Task>)
+                        }
+                        placeholder="Assign"
+                      />
+                      <span
+                        className={`sf-flash${
+                          flash?.id === s.id && flash.field === "priority"
+                            ? " flash"
+                            : ""
+                        }`}
+                      >
+                        <SelectField
+                          inline
+                          iconOnly
+                          value={s.priority}
+                          options={PRIORITY_OPTS}
+                          onChange={(v) =>
+                            updateLinkedField(s.id, {
+                              priority: v as TaskPriority,
+                            })
+                          }
+                        />
+                      </span>
+                    </span>
+                    {unlinkingId === s.id ? (
+                      <span className="sub-spinner" aria-label="Removing">
+                        <span />
+                        <span />
+                        <span />
+                      </span>
+                    ) : (
+                      <button
+                        className="sub-del"
+                        onClick={() => deleteSub(s)}
+                        aria-label="Delete subtask"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <path d="M18 6 6 18M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
 
           <div className="td-section-head">
@@ -763,7 +1605,22 @@ export default function TaskDetailPage() {
                 <svg className="td-created-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18" />
                 </svg>
-                {itemId ?? "—"}
+                {itemId ? (
+                  <button
+                    type="button"
+                    className="td-id-copy"
+                    onClick={() => {
+                      navigator.clipboard?.writeText(itemId);
+                      setCopiedId(true);
+                      window.setTimeout(() => setCopiedId(false), 1400);
+                    }}
+                  >
+                    {itemId}
+                    {copiedId && <span className="td-id-copied">Copied</span>}
+                  </button>
+                ) : (
+                  "—"
+                )}
               </span>
             </div>
             <div className="td-prop">
@@ -791,13 +1648,15 @@ export default function TaskDetailPage() {
               </span>
             </div>
             <div className="td-prop">
-              <span className="td-prop-k">Priority</span>
+              <span className="td-prop-k">Assigned to</span>
               <span className="td-prop-v">
-                <SelectField
+                <MemberPicker
                   inline
-                  value={detail.priority}
-                  options={PRIORITY_OPTS}
-                  onChange={(v) => patch({ priority: v as TaskPriority })}
+                  multiple
+                  members={members}
+                  value={detail.assignees ?? []}
+                  onChange={(ids) => patch({ assignees: ids } as Partial<Task>)}
+                  placeholder="Assign"
                 />
               </span>
             </div>
@@ -813,18 +1672,33 @@ export default function TaskDetailPage() {
               </span>
             </div>
             <div className="td-prop">
-              <span className="td-prop-k">Assigned to</span>
+              <span className="td-prop-k">Priority</span>
               <span className="td-prop-v">
-                <MemberPicker
+                <SelectField
                   inline
-                  multiple
-                  members={members}
-                  value={detail.assignees ?? []}
-                  onChange={(ids) => patch({ assignees: ids } as Partial<Task>)}
-                  placeholder="Assign"
+                  value={detail.priority}
+                  options={PRIORITY_OPTS}
+                  onChange={(v) => patch({ priority: v as TaskPriority })}
                 />
               </span>
             </div>
+            {detail.type === "bug" && (
+              <div className="td-prop">
+                <span className="td-prop-k">Severity</span>
+                <span className="td-prop-v">
+                  <SelectField
+                    inline
+                    value={detail.severity ?? ""}
+                    placeholder="Set severity"
+                    options={SEVERITY_OPTS}
+                    onChange={(v) =>
+                      patch({ severity: (v || null) as TaskSeverity | null })
+                    }
+                  />
+                </span>
+              </div>
+            )}
+            {detail.type !== "bug" && (
             <div className="td-prop">
               <span className="td-prop-k">Story Point</span>
               <span className="td-prop-v">
@@ -853,10 +1727,8 @@ export default function TaskDetailPage() {
                     className="sp-inline-trigger"
                     onClick={() => setEditingSP(true)}
                   >
-                    <svg className="sp-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                      <path d="M6 3h12l4 6-10 13L2 9Z" />
-                      <path d="M11 3 8 9l4 13 4-13-3-6" />
-                      <path d="M2 9h20" />
+                    <svg className="sp-ic" viewBox="0 0 14 14" fill="none" aria-hidden>
+                      <path d="M12.7235 7.93333L10.5301 6.66667L12.7235 5.4C13.0435 5.21333 13.1501 4.80667 12.9701 4.48667L11.6368 2.18C11.4501 1.86 11.0435 1.75333 10.7235 1.93333L8.53015 3.2V0.666667C8.53015 0.3 8.23015 0 7.86348 0H5.19681C4.83015 0 4.53015 0.3 4.53015 0.666667V3.2L2.33681 1.93333C2.01681 1.75333 1.61015 1.86 1.42348 2.18L0.0901479 4.48667C-0.0965188 4.80667 0.0168146 5.21333 0.336815 5.4L2.53015 6.66667L0.336815 7.93333C0.0168146 8.12 -0.0898521 8.52667 0.0901479 8.84667L1.42348 11.1533C1.61015 11.4733 2.01681 11.58 2.33681 11.4L4.53015 10.1333V12.6667C4.53015 13.0333 4.83015 13.3333 5.19681 13.3333H7.86348C8.23015 13.3333 8.53015 13.0333 8.53015 12.6667V10.1333L10.7235 11.4C11.0435 11.5867 11.4501 11.4733 11.6368 11.1533L12.9701 8.84667C13.1568 8.52667 13.0435 8.12 12.7235 7.93333ZM10.8168 9.91333L7.69682 8.11333C7.47682 7.98 7.19682 8.14 7.19682 8.4V12H5.86348V8.4C5.86348 8.14667 5.58348 7.98 5.36348 8.11333L2.24348 9.91333L1.57681 8.76L4.69681 6.96C4.91681 6.83333 4.91681 6.51333 4.69681 6.38L1.57681 4.58L2.24348 3.42667L5.36348 5.22667C5.58348 5.35333 5.86348 5.19333 5.86348 4.93333V1.33333H7.19682V4.93333C7.19682 5.18667 7.47682 5.35333 7.69682 5.22L10.8168 3.42L11.4835 4.57333L8.36348 6.37333C8.14348 6.5 8.14348 6.82 8.36348 6.95333L11.4835 8.75333L10.8168 9.91333Z" fill="currentColor" />
                     </svg>
                     {detail.story_points != null && (
                       <span className="sp-val">{detail.story_points}</span>
@@ -865,6 +1737,7 @@ export default function TaskDetailPage() {
                 )}
               </span>
             </div>
+            )}
             <div className="td-prop">
               <span className="td-prop-k">Time Logged</span>
               <span className="td-prop-v td-prop-ro">
@@ -880,7 +1753,7 @@ export default function TaskDetailPage() {
                 <SelectField
                   inline
                   value={String(detail.sprint_id ?? "")}
-                  placeholder="Add sprint"
+                  placeholder=""
                   placeholderIcon={<SprintIcon />}
                   options={sprints.map((s) => ({
                     value: String(s.id),
@@ -912,25 +1785,27 @@ export default function TaskDetailPage() {
                 {fmtDate(detail.created_at)}
               </span>
             </div>
+            <div className="td-prop">
+              <span className="td-prop-k">Created by</span>
+              <span className="td-prop-v td-prop-ro">
+                {detail.created_by_name ? (
+                  <span className="td-creator">
+                    <span className="td-creator-avatar">
+                      {detail.created_by_image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={detail.created_by_image} alt="" />
+                      ) : (
+                        initials(detail.created_by_name)
+                      )}
+                    </span>
+                    {detail.created_by_name}
+                  </span>
+                ) : (
+                  "—"
+                )}
+              </span>
+            </div>
           </div>
-
-          <div className="td-actions">
-            <button type="button" className="td-action">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
-                <path d="M14 3v6h6M12 12v6M9 15h6" />
-              </svg>
-              Add Attachment
-            </button>
-            <button type="button" className="td-action">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1" />
-                <path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" />
-              </svg>
-              Add Link
-            </button>
-          </div>
-
         </aside>
       </div>
     </div>

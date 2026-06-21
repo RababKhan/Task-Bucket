@@ -85,12 +85,20 @@ export async function GET(_request: Request, { params }: Ctx) {
   }
   const { id } = await params;
 
-  const task = await dbGet<TaskRow & { project_name: string }>(
+  const task = await dbGet<
+    TaskRow & {
+      project_name: string;
+      created_by_name: string | null;
+      created_by_image: string | null;
+    }
+  >(
     `SELECT t.*, p.name AS project_name,
+       cu.name AS created_by_name, cu.image AS created_by_image,
        (SELECT group_concat(ta.user_id) FROM task_assignees ta WHERE ta.task_id = t.id) AS assignees_raw
      FROM tasks t
      JOIN projects p ON p.id = t.project_id
      JOIN workspace_members m ON m.workspace_id = p.workspace_id
+     LEFT JOIN users cu ON cu.id = t.created_by
      WHERE t.id = ? AND m.user_id = ?`,
     [id, userId]
   );
@@ -99,10 +107,31 @@ export async function GET(_request: Request, { params }: Ctx) {
   }
   const shaped = shapeTask(task);
 
-  const subtasks = await dbAll<Task>(
-    "SELECT * FROM tasks WHERE parent_id = ? ORDER BY position ASC, id ASC",
+  const subtaskRows = await dbAll<TaskRow>(
+    `SELECT t.*,
+       (SELECT group_concat(ta.user_id) FROM task_assignees ta WHERE ta.task_id = t.id) AS assignees_raw
+     FROM tasks t WHERE t.parent_id = ? ORDER BY t.position ASC, t.id ASC`,
     [id]
   );
+  const subtasks = subtaskRows.map(shapeTask);
+
+  // Tasks linked to this story (only meaningful when this item is a story).
+  const linkedRows = await dbAll<TaskRow>(
+    `SELECT t.*,
+       (SELECT group_concat(ta.user_id) FROM task_assignees ta WHERE ta.task_id = t.id) AS assignees_raw
+     FROM tasks t WHERE t.story_id = ? ORDER BY t.position ASC, t.id ASC`,
+    [id]
+  );
+  const linked_tasks = linkedRows.map(shapeTask);
+
+  // Bugs linked to this story/task.
+  const bugRows = await dbAll<TaskRow>(
+    `SELECT t.*,
+       (SELECT group_concat(ta.user_id) FROM task_assignees ta WHERE ta.task_id = t.id) AS assignees_raw
+     FROM tasks t WHERE t.linked_to = ? AND t.type = 'bug' ORDER BY t.position ASC, t.id ASC`,
+    [id]
+  );
+  const linked_bugs = bugRows.map(shapeTask);
 
   // Project's custom fields with this task's values (if any).
   const fieldRows = await dbAll<{
@@ -132,7 +161,14 @@ export async function GET(_request: Request, { params }: Ctx) {
 
   const activity = await fetchActivity(id);
 
-  return NextResponse.json({ ...shaped, subtasks, custom_fields, activity });
+  return NextResponse.json({
+    ...shaped,
+    subtasks,
+    linked_tasks,
+    linked_bugs,
+    custom_fields,
+    activity,
+  });
 }
 
 export async function PATCH(request: Request, { params }: Ctx) {
@@ -213,9 +249,39 @@ export async function PATCH(request: Request, { params }: Ctx) {
         ? Math.min(100, Math.max(0, Math.round(Number(body.progress))))
         : null
       : existing.progress;
+  // Link to a story (a Story item links existing project tasks). Validate the
+  // target is a story in the same project and not the task itself.
+  let storyId = existing.story_id;
+  if (body.story_id !== undefined) {
+    if (body.story_id == null) {
+      storyId = null;
+    } else {
+      const sid = Number(body.story_id);
+      const story = await dbGet(
+        "SELECT 1 AS x FROM tasks WHERE id = ? AND project_id = ? AND type = 'story' AND id <> ?",
+        [sid, existing.project_id, id]
+      );
+      storyId = story ? sid : existing.story_id;
+    }
+  }
+  // Link a bug to a story/task. Validate the target is a story or task (not a
+  // bug) in the same project and not the bug itself.
+  let linkedTo = existing.linked_to;
+  if (body.linked_to !== undefined) {
+    if (body.linked_to == null) {
+      linkedTo = null;
+    } else {
+      const lid = Number(body.linked_to);
+      const parent = await dbGet(
+        "SELECT 1 AS x FROM tasks WHERE id = ? AND project_id = ? AND type IN ('story','task') AND id <> ?",
+        [lid, existing.project_id, id]
+      );
+      linkedTo = parent ? lid : existing.linked_to;
+    }
+  }
 
   await dbRun(
-    `UPDATE tasks SET title = ?, description = ?, type = ?, status = ?, priority = ?, severity = ?, story_points = ?, start_date = ?, due_date = ?, labels = ?, sprint_id = ?, progress = ? WHERE id = ?`,
+    `UPDATE tasks SET title = ?, description = ?, type = ?, status = ?, priority = ?, severity = ?, story_points = ?, start_date = ?, due_date = ?, labels = ?, sprint_id = ?, progress = ?, story_id = ?, linked_to = ? WHERE id = ?`,
     [
       title,
       description,
@@ -229,6 +295,8 @@ export async function PATCH(request: Request, { params }: Ctx) {
       JSON.stringify(labels),
       sprintId,
       progress,
+      storyId,
+      linkedTo,
       id,
     ]
   );

@@ -18,6 +18,7 @@ export default function SelectField({
   placeholder = "Select",
   placeholderIcon,
   inline = false,
+  iconOnly = false,
 }: {
   value: string;
   options: SelectOption[];
@@ -25,6 +26,7 @@ export default function SelectField({
   placeholder?: string;
   placeholderIcon?: ReactNode; // leading icon shown when nothing is selected
   inline?: boolean;
+  iconOnly?: boolean; // trigger shows only the icon (no label)
 }) {
   const [open, setOpen] = useState(false);
   const [maxH, setMaxH] = useState(260);
@@ -47,7 +49,9 @@ export default function SelectField({
         position: "fixed",
         left: rect.left,
         right: "auto",
-        minWidth: Math.max(rect.width, inline ? 200 : 160),
+        // Inline menus size to their content (so short options don't leave a
+        // gap before the check).
+        minWidth: inline ? rect.width : Math.max(rect.width, 160),
         ...(openUp
           ? { top: "auto", bottom: window.innerHeight - rect.top + 4 }
           : { bottom: "auto", top: rect.bottom + 4 }),
@@ -64,8 +68,11 @@ export default function SelectField({
       <button
         ref={triggerRef}
         type="button"
-        className={inline ? "status-dd-inline" : "status-dd-btn"}
+        className={`${inline ? "status-dd-inline" : "status-dd-btn"}${
+          iconOnly ? " sf-icon-only" : ""
+        }`}
         onClick={toggle}
+        aria-label={iconOnly ? current?.label ?? placeholder : undefined}
       >
         {current?.icon
           ? current.icon
@@ -74,9 +81,11 @@ export default function SelectField({
           : !current && placeholderIcon
           ? placeholderIcon
           : null}
-        <span className="status-dd-current">
-          {current ? current.label : placeholder}
-        </span>
+        {!iconOnly && (
+          <span className="status-dd-current">
+            {current ? current.label : placeholder}
+          </span>
+        )}
         {!inline && (
           <svg
             className={`status-dd-chevron${open ? " open" : ""}`}
