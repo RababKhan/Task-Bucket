@@ -223,6 +223,72 @@
   font-weight: 600;
   letter-spacing: -0.01em;
 }
+/* On the task detail page, line the breadcrumb up with the main column content
+   (topbar pads 20px, main column pads 32px → +12px). */
+.topbar-crumb-task {
+  margin-left: 12px;
+}
+/* Copy-link button shown after the task code in the breadcrumb. */
+.topbar-crumb-copy {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-left: 4px;
+  border-radius: 6px;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.topbar-crumb-copy:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+/* Custom tooltip (replaces the browser default), shown below the button. */
+.topbar-crumb-copy::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-2px);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--text);
+  color: var(--canvas-bg);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  letter-spacing: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  z-index: 50;
+}
+/* Little arrow pointing up at the button. */
+.topbar-crumb-copy::before {
+  content: "";
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-2px);
+  border: 5px solid transparent;
+  border-bottom-color: var(--text);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  z-index: 50;
+}
+.topbar-crumb-copy:hover::after,
+.topbar-crumb-copy:focus-visible::after,
+.topbar-crumb-copy.is-copied::after,
+.topbar-crumb-copy:hover::before,
+.topbar-crumb-copy:focus-visible::before,
+.topbar-crumb-copy.is-copied::before {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
 .topbar-crumb-link {
   color: var(--text-dim);
   text-decoration: none;

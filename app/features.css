@@ -560,16 +560,45 @@
   color: var(--text);
 }
 .td-title {
+  display: block;
   width: 100%;
+  font-family: inherit;
   font-size: 18px;
   font-weight: 600;
+  line-height: 1.4;
   letter-spacing: -0.02em;
   color: var(--text);
   background: transparent;
   border: 1px solid transparent;
   border-radius: 8px;
   padding: 6px 8px;
-  margin: 0 0 0 -8px;
+  /* Box edge aligns with the section carets / breadcrumb below. */
+  margin: 0;
+  /* Wrap onto a second line; auto-sized by JS, never user-resized.
+     Override the global textarea min-height (72px) so it starts at one line. */
+  resize: none;
+  overflow: hidden;
+  min-height: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.td-title-wrap {
+  position: relative;
+}
+/* Character counter shown while editing the title — pinned inside the box's
+   bottom-right corner, with a small backing so it stays readable over text. */
+.td-title-count {
+  position: absolute;
+  right: 6px;
+  bottom: 5px;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--surface);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-dim);
+  pointer-events: none;
+  z-index: 1;
 }
 .td-title::placeholder {
   font-size: 18px;
@@ -850,6 +879,42 @@
   width: 14px;
   height: 14px;
 }
+/* Drag handle — hover-revealed grip for reordering rows. */
+.sub-drag {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 24px;
+  margin: 0 -4px 0 -2px;
+  color: var(--text-dim);
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.12s, color 0.12s;
+}
+.subtask:hover .sub-drag,
+.sub-drag:focus-visible {
+  opacity: 0.55;
+}
+.sub-drag:hover {
+  opacity: 1;
+  color: var(--text);
+}
+.sub-drag:active {
+  cursor: grabbing;
+}
+.sub-drag svg {
+  width: 13px;
+  height: 13px;
+}
+/* The row currently being dragged. */
+.subtask.is-dragging {
+  opacity: 0.4;
+}
+/* Highlight where the dragged row will drop. */
+.subtask.is-drop-target {
+  box-shadow: inset 0 2px 0 0 var(--accent);
+}
 .subtask-add {
   display: flex;
   gap: 8px;
@@ -927,6 +992,9 @@
 }
 .td-desc-edit {
   position: relative;
+  /* Left edge aligns with the "D" of the Description heading
+     (section margin -6 + caret 15 + gap 7 = 16px in from the column edge). */
+  margin-left: 16px;
 }
 /* Taller content area so the editor fills more space; the content scrolls
    inside it while the bottom toolbar stays pinned below. */
@@ -937,14 +1005,19 @@
 .td-desc-actions {
   position: absolute;
   right: 8px;
-  bottom: 8px;
+  /* Span the bottom toolbar row and center vertically so the buttons line up
+     with the toolbar buttons (equal space above and below). */
+  bottom: 0;
+  height: 40px;
   display: flex;
+  align-items: center;
   gap: 8px;
 }
 .td-desc-actions .btn {
-  height: 20px;
-  min-height: 20px;
+  height: 26px;
+  min-height: 26px;
   padding: 0 10px;
+  border-radius: 6px;
   font-size: 10.5px;
 }
 
@@ -1885,7 +1958,8 @@
 .rte-toolbar {
   display: flex;
   align-items: center;
-  gap: 2px;
+  flex-wrap: wrap;
+  gap: 8px;
   padding: 3px 6px;
   border-bottom: 1px solid var(--border);
   background: transparent;
@@ -1969,6 +2043,20 @@
   margin: 0 4px;
   background: var(--border);
   flex-shrink: 0;
+}
+/* H1/H2/H3 text buttons sit a touch wider than icon buttons. */
+.rte-h {
+  font-size: 12px;
+  font-weight: 700;
+}
+/* Bordered group (inline code + code block). */
+.rte-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
 }
 /* Heading dropdown */
 .rte-heading {

@@ -66,6 +66,7 @@ type Detail = Task & {
   linked_bugs?: LinkedItem[];
   custom_fields: CustomFieldWithValue[];
   activity?: ActivityItem[];
+  parent?: { id: number; seq: number | null } | null;
 };
 
 type LinkedItem = Task & { assignees?: string[] };
@@ -238,6 +239,9 @@ export default function TaskDetailPage() {
   const router = useRouter();
 
   const [detail, setDetail] = useState<Detail | null>(null);
+  // Mirror of `detail` so drag handlers can read the latest order on drop.
+  const detailRef = useRef<Detail | null>(null);
+  detailRef.current = detail;
   const [sprints, setSprints] = useState<Sprint[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [fieldVals, setFieldVals] = useState<Record<number, string>>({});
@@ -259,8 +263,9 @@ export default function TaskDetailPage() {
   >("activity");
   const [newSub, setNewSub] = useState("");
   const [addingSub, setAddingSub] = useState(false);
-  const [addSubOpen, setAddSubOpen] = useState(false);
-  const subPickerRef = useRef<HTMLDivElement>(null);
+  const subInputRef = useRef<HTMLInputElement>(null);
+  const titleRef = useRef<HTMLTextAreaElement>(null);
+  const [titleFocused, setTitleFocused] = useState(false);
   // Collapsible left-column sections — persisted so they survive a refresh.
   const [openSub, setOpenSub] = useState(() => readOpen("sub", true));
   const [openAtt, setOpenAtt] = useState(() => readOpen("att", true));
@@ -283,6 +288,9 @@ export default function TaskDetailPage() {
   const [flash, setFlash] = useState<{ id: number; field: string } | null>(
     null
   );
+  // Drag-to-reorder: ids of the row being dragged and the current drop target.
+  const [dragId, setDragId] = useState<number | null>(null);
+  const [dragOverId, setDragOverId] = useState<number | null>(null);
   // Linked-bugs section (shown for Story/Task items).
   const [openBugs, setOpenBugs] = useState(() => readOpen("bugs", true));
   const [projectTasks, setProjectTasks] = useState<LinkedItem[]>([]);
@@ -329,21 +337,14 @@ export default function TaskDetailPage() {
     return () => document.removeEventListener("mousedown", onDown);
   }, [linkBugOpen]);
 
-  // Close the add-subtask picker when clicking outside it.
+  // Auto-size the title textarea to its content (grows to a second line).
+  function autoGrowTitle(el: HTMLTextAreaElement) {
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }
   useEffect(() => {
-    if (!addSubOpen) return;
-    const onDown = (e: MouseEvent) => {
-      if (
-        subPickerRef.current &&
-        !subPickerRef.current.contains(e.target as Node)
-      ) {
-        setAddSubOpen(false);
-        setNewSub("");
-      }
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [addSubOpen]);
+    if (titleRef.current) autoGrowTitle(titleRef.current);
+  }, [title]);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/tasks/${id}`);
@@ -531,31 +532,42 @@ export default function TaskDetailPage() {
     if (createdId != null) flagEntering(createdId);
   }
 
-  // Feed the topbar breadcrumb: Project Name › Item ID.
+  // Feed the topbar breadcrumb: Project › [Parent Item] › Item ID.
   useEffect(() => {
     if (!detail) return;
-    const crumbId =
-      detail.seq != null
-        ? `${
-            detail.project_name
-              .replace(/[^a-zA-Z0-9]/g, "")
-              .slice(0, 3)
-              .toUpperCase() || "TSK"
-          }-${String(detail.seq).padStart(3, "0")}`
-        : detail.title;
+    const prefix =
+      detail.project_name
+        .replace(/[^a-zA-Z0-9]/g, "")
+        .slice(0, 3)
+        .toUpperCase() || "TSK";
+    const code = (seq: number | null) =>
+      seq != null ? `${prefix}-${String(seq).padStart(3, "0")}` : null;
+    const crumbId = code(detail.seq) ?? detail.title;
+    const parent =
+      detail.parent && code(detail.parent.seq)
+        ? { id: detail.parent.id, task: code(detail.parent.seq)! }
+        : null;
     window.dispatchEvent(
       new CustomEvent("tb:task-crumb", {
         detail: {
           project: detail.project_name,
           projectId: detail.project_id,
           task: crumbId,
+          parent,
         },
       })
     );
     return () => {
       window.dispatchEvent(new CustomEvent("tb:task-crumb", { detail: null }));
     };
-  }, [detail?.project_name, detail?.project_id, detail?.title, detail?.seq]);
+  }, [
+    detail?.project_name,
+    detail?.project_id,
+    detail?.title,
+    detail?.seq,
+    detail?.parent?.id,
+    detail?.parent?.seq,
+  ]);
 
   // Patch the main task and merge the result back.
   async function patch(fields: Partial<Task>) {
@@ -594,8 +606,36 @@ export default function TaskDetailPage() {
     await load();
     setAddingSub(false);
     setNewSub("");
-    setAddSubOpen(false);
     if (createdId != null) flagEntering(createdId);
+  }
+
+  // --- Drag-to-reorder for the linked-task/bug/subtask lists ---
+  type ListKey = "linked_tasks" | "linked_bugs" | "subtasks";
+
+  // Live (optimistic) reorder while dragging — moves `fromId` to `overId`'s slot.
+  function moveRow(key: ListKey, fromId: number, overId: number) {
+    if (fromId === overId) return;
+    setDetail((d) => {
+      if (!d) return d;
+      const list = [...((d[key] as LinkedItem[] | undefined) ?? [])];
+      const from = list.findIndex((x) => x.id === fromId);
+      const to = list.findIndex((x) => x.id === overId);
+      if (from === -1 || to === -1 || from === to) return d;
+      const [moved] = list.splice(from, 1);
+      list.splice(to, 0, moved);
+      return { ...d, [key]: list } as Detail;
+    });
+  }
+
+  // Persist the current order of a list once the drop completes.
+  function persistOrder(key: ListKey) {
+    const list = (detailRef.current?.[key] as LinkedItem[] | undefined) ?? [];
+    if (!list.length) return;
+    fetch("/api/tasks/reorder", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: list.map((x) => x.id) }),
+    }).catch(() => {});
   }
 
   async function deleteSub(sub: LinkedItem) {
@@ -671,23 +711,36 @@ export default function TaskDetailPage() {
     <div className="task-detail">
       <div className="td-grid">
         <div className="td-main">
-          <input
-            className="td-title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                e.currentTarget.blur();
-              }
-            }}
-            onBlur={() => {
-              const v = title.trim();
-              if (v && v !== detail.title) patch({ title: v });
-              else setTitle(detail.title);
-            }}
-            placeholder="Enter your item title"
-          />
+          <div className="td-title-wrap">
+            <textarea
+              ref={titleRef}
+              className="td-title"
+              value={title}
+              rows={1}
+              maxLength={128}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                autoGrowTitle(e.currentTarget);
+              }}
+              onFocus={() => setTitleFocused(true)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  e.currentTarget.blur();
+                }
+              }}
+              onBlur={() => {
+                setTitleFocused(false);
+                const v = title.trim();
+                if (v && v !== detail.title) patch({ title: v });
+                else setTitle(detail.title);
+              }}
+              placeholder="Enter your item title"
+            />
+            {titleFocused && (
+              <span className="td-title-count">{title.length}/128</span>
+            )}
+          </div>
           <div className="td-main-scroll">
           <div className="td-section-head">
             <button
@@ -945,8 +998,46 @@ export default function TaskDetailPage() {
                           unlinkingId === t.id ? " is-unlinking" : ""
                         }${exitingId === t.id ? " is-exiting" : ""}${
                           enteringId === t.id ? " is-entering" : ""
+                        }${dragId === t.id ? " is-dragging" : ""}${
+                          dragOverId === t.id && dragId !== t.id
+                            ? " is-drop-target"
+                            : ""
                         }`}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          if (dragId !== null && dragId !== t.id)
+                            setDragOverId(t.id);
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (dragId !== null) moveRow("linked_tasks", dragId, t.id);
+                          setDragOverId(null);
+                        }}
                       >
+                        <button
+                          type="button"
+                          className="sub-drag"
+                          draggable
+                          onDragStart={(e) => {
+                            setDragId(t.id);
+                            e.dataTransfer.effectAllowed = "move";
+                          }}
+                          onDragEnd={() => {
+                            persistOrder("linked_tasks");
+                            setDragId(null);
+                            setDragOverId(null);
+                          }}
+                          aria-label="Drag to reorder"
+                        >
+                          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                            <circle cx="9" cy="6" r="1.6" />
+                            <circle cx="15" cy="6" r="1.6" />
+                            <circle cx="9" cy="12" r="1.6" />
+                            <circle cx="15" cy="12" r="1.6" />
+                            <circle cx="9" cy="18" r="1.6" />
+                            <circle cx="15" cy="18" r="1.6" />
+                          </svg>
+                        </button>
                         <span
                           className={`sf-flash${
                             flash?.id === t.id && flash.field === "status"
@@ -1181,8 +1272,46 @@ export default function TaskDetailPage() {
                           unlinkingId === b.id ? " is-unlinking" : ""
                         }${exitingId === b.id ? " is-exiting" : ""}${
                           enteringId === b.id ? " is-entering" : ""
+                        }${dragId === b.id ? " is-dragging" : ""}${
+                          dragOverId === b.id && dragId !== b.id
+                            ? " is-drop-target"
+                            : ""
                         }`}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          if (dragId !== null && dragId !== b.id)
+                            setDragOverId(b.id);
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (dragId !== null) moveRow("linked_bugs", dragId, b.id);
+                          setDragOverId(null);
+                        }}
                       >
+                        <button
+                          type="button"
+                          className="sub-drag"
+                          draggable
+                          onDragStart={(e) => {
+                            setDragId(b.id);
+                            e.dataTransfer.effectAllowed = "move";
+                          }}
+                          onDragEnd={() => {
+                            persistOrder("linked_bugs");
+                            setDragId(null);
+                            setDragOverId(null);
+                          }}
+                          aria-label="Drag to reorder"
+                        >
+                          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                            <circle cx="9" cy="6" r="1.6" />
+                            <circle cx="15" cy="6" r="1.6" />
+                            <circle cx="9" cy="12" r="1.6" />
+                            <circle cx="15" cy="12" r="1.6" />
+                            <circle cx="9" cy="18" r="1.6" />
+                            <circle cx="15" cy="18" r="1.6" />
+                          </svg>
+                        </button>
                         <span
                           className={`sf-flash${
                             flash?.id === b.id && flash.field === "status"
@@ -1292,7 +1421,7 @@ export default function TaskDetailPage() {
               onMouseDown={(e) => e.stopPropagation()}
               onClick={() => {
                 setOpenSub(true);
-                setAddSubOpen((o) => !o);
+                requestAnimationFrame(() => subInputRef.current?.focus());
               }}
               aria-label="Add a subtask"
             >
@@ -1304,53 +1433,6 @@ export default function TaskDetailPage() {
 
           {openSub && (
             <>
-              {addSubOpen && (
-                <div className="td-link-picker" ref={subPickerRef}>
-                  <input
-                    className="td-link-search"
-                    autoFocus
-                    placeholder="Add a subtask…"
-                    value={newSub}
-                    onChange={(e) => setNewSub(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && newSub.trim()) {
-                        e.preventDefault();
-                        createSubtask(newSub);
-                      } else if (e.key === "Escape") {
-                        setAddSubOpen(false);
-                        setNewSub("");
-                      }
-                    }}
-                  />
-                  {newSub.trim() && (
-                    <ul className="td-link-list">
-                      <li>
-                        <button
-                          type="button"
-                          className="td-link-option td-link-create"
-                          disabled={addingSub}
-                          onClick={() => createSubtask(newSub)}
-                        >
-                          {addingSub ? (
-                            <span className="sub-spinner" aria-label="Adding">
-                              <span />
-                              <span />
-                              <span />
-                            </span>
-                          ) : (
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                              <path d="M12 5v14M5 12h14" />
-                            </svg>
-                          )}
-                          <span className="td-link-title">
-                            {addingSub ? "Adding…" : `Add "${newSub.trim()}"`}
-                          </span>
-                        </button>
-                      </li>
-                    </ul>
-                  )}
-                </div>
-              )}
               <ul className="subtask-list">
                 {detail.subtasks.map((s) => (
                   <li
@@ -1359,8 +1441,45 @@ export default function TaskDetailPage() {
                       unlinkingId === s.id ? " is-unlinking" : ""
                     }${exitingId === s.id ? " is-exiting" : ""}${
                       enteringId === s.id ? " is-entering" : ""
+                    }${dragId === s.id ? " is-dragging" : ""}${
+                      dragOverId === s.id && dragId !== s.id
+                        ? " is-drop-target"
+                        : ""
                     }`}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      if (dragId !== null && dragId !== s.id) setDragOverId(s.id);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (dragId !== null) moveRow("subtasks", dragId, s.id);
+                      setDragOverId(null);
+                    }}
                   >
+                    <button
+                      type="button"
+                      className="sub-drag"
+                      draggable
+                      onDragStart={(e) => {
+                        setDragId(s.id);
+                        e.dataTransfer.effectAllowed = "move";
+                      }}
+                      onDragEnd={() => {
+                        persistOrder("subtasks");
+                        setDragId(null);
+                        setDragOverId(null);
+                      }}
+                      aria-label="Drag to reorder"
+                    >
+                      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                        <circle cx="9" cy="6" r="1.6" />
+                        <circle cx="15" cy="6" r="1.6" />
+                        <circle cx="9" cy="12" r="1.6" />
+                        <circle cx="15" cy="12" r="1.6" />
+                        <circle cx="9" cy="18" r="1.6" />
+                        <circle cx="15" cy="18" r="1.6" />
+                      </svg>
+                    </button>
                     <span
                       className={`sf-flash${
                         flash?.id === s.id && flash.field === "status"
@@ -1447,6 +1566,27 @@ export default function TaskDetailPage() {
                   </li>
                 ))}
               </ul>
+              <form
+                className="subtask-add"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  createSubtask(newSub);
+                }}
+              >
+                <input
+                  ref={subInputRef}
+                  value={newSub}
+                  onChange={(e) => setNewSub(e.target.value)}
+                  placeholder="Add a subtask…"
+                />
+                <button
+                  type="submit"
+                  className="btn btn-sm btn-primary"
+                  disabled={addingSub || !newSub.trim()}
+                >
+                  {addingSub ? <Spinner /> : "Add"}
+                </button>
+              </form>
             </>
           )}
 

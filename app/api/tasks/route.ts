@@ -162,6 +162,10 @@ export async function POST(request: Request) {
     userId,
     parentId ? "added this subtask" : "created this item"
   );
+  // Mirror onto the parent's activity feed so it shows the subtask was added.
+  if (parentId) {
+    await logActivity(Number(parentId), userId, `added a subtask "${title}"`);
+  }
 
   for (const uid of validAssignees) {
     await dbRun(

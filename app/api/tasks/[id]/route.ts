@@ -110,7 +110,7 @@ export async function GET(_request: Request, { params }: Ctx) {
   const subtaskRows = await dbAll<TaskRow>(
     `SELECT t.*,
        (SELECT group_concat(ta.user_id) FROM task_assignees ta WHERE ta.task_id = t.id) AS assignees_raw
-     FROM tasks t WHERE t.parent_id = ? ORDER BY t.position ASC, t.id ASC`,
+     FROM tasks t WHERE t.parent_id = ? ORDER BY t.position DESC, t.id DESC`,
     [id]
   );
   const subtasks = subtaskRows.map(shapeTask);
@@ -119,7 +119,7 @@ export async function GET(_request: Request, { params }: Ctx) {
   const linkedRows = await dbAll<TaskRow>(
     `SELECT t.*,
        (SELECT group_concat(ta.user_id) FROM task_assignees ta WHERE ta.task_id = t.id) AS assignees_raw
-     FROM tasks t WHERE t.story_id = ? ORDER BY t.position ASC, t.id ASC`,
+     FROM tasks t WHERE t.story_id = ? ORDER BY t.position DESC, t.id DESC`,
     [id]
   );
   const linked_tasks = linkedRows.map(shapeTask);
@@ -128,7 +128,7 @@ export async function GET(_request: Request, { params }: Ctx) {
   const bugRows = await dbAll<TaskRow>(
     `SELECT t.*,
        (SELECT group_concat(ta.user_id) FROM task_assignees ta WHERE ta.task_id = t.id) AS assignees_raw
-     FROM tasks t WHERE t.linked_to = ? AND t.type = 'bug' ORDER BY t.position ASC, t.id ASC`,
+     FROM tasks t WHERE t.linked_to = ? AND t.type = 'bug' ORDER BY t.position DESC, t.id DESC`,
     [id]
   );
   const linked_bugs = bugRows.map(shapeTask);
@@ -161,6 +161,18 @@ export async function GET(_request: Request, { params }: Ctx) {
 
   const activity = await fetchActivity(id);
 
+  // Parent item (story for a task, story/task for a bug, parent for a subtask)
+  // so the breadcrumb can show project › parent › this item.
+  const parentId = task.story_id ?? task.linked_to ?? task.parent_id ?? null;
+  let parent: { id: number; seq: number | null } | null = null;
+  if (parentId != null) {
+    const p = await dbGet<{ id: number; seq: number | null }>(
+      "SELECT id, seq FROM tasks WHERE id = ?",
+      [parentId]
+    );
+    if (p) parent = { id: p.id, seq: p.seq };
+  }
+
   return NextResponse.json({
     ...shaped,
     subtasks,
@@ -168,6 +180,7 @@ export async function GET(_request: Request, { params }: Ctx) {
     linked_bugs,
     custom_fields,
     activity,
+    parent,
   });
 }
 
@@ -437,6 +450,21 @@ export async function PATCH(request: Request, { params }: Ctx) {
   for (const e of events)
     await logActivity(Number(id), userId, e.text, e.meta);
 
+  // Mirror add/remove of linked items onto the *main* item's activity feed.
+  const childLabel = `"${title}"`;
+  if (body.story_id !== undefined && storyId !== existing.story_id) {
+    if (storyId != null)
+      await logActivity(storyId, userId, `added a task ${childLabel}`);
+    if (existing.story_id != null)
+      await logActivity(existing.story_id, userId, `removed a task ${childLabel}`);
+  }
+  if (body.linked_to !== undefined && linkedTo !== existing.linked_to) {
+    if (linkedTo != null)
+      await logActivity(linkedTo, userId, `added a bug ${childLabel}`);
+    if (existing.linked_to != null)
+      await logActivity(existing.linked_to, userId, `removed a bug ${childLabel}`);
+  }
+
   const updated = await fetchShaped(id);
   const activity = await fetchActivity(id);
   return NextResponse.json(
@@ -455,6 +483,15 @@ export async function DELETE(_request: Request, { params }: Ctx) {
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+
+  // Mirror the removal onto the main item's activity feed before deleting.
+  const childLabel = `"${existing.title}"`;
+  if (existing.parent_id != null)
+    await logActivity(existing.parent_id, userId, `removed a subtask ${childLabel}`);
+  if (existing.story_id != null)
+    await logActivity(existing.story_id, userId, `removed a task ${childLabel}`);
+  if (existing.linked_to != null)
+    await logActivity(existing.linked_to, userId, `removed a bug ${childLabel}`);
 
   await dbRun("DELETE FROM tasks WHERE id = ?", [id]);
   return NextResponse.json({ ok: true });

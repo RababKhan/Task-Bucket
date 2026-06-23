@@ -15,6 +15,7 @@ import Image from "@tiptap/extension-image";
 import CodeBlock from "@tiptap/extension-code-block";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
+import Highlight from "@tiptap/extension-highlight";
 import { Table } from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
 import TableHeader from "@tiptap/extension-table-header";
@@ -87,64 +88,6 @@ function ToolBtn({
   );
 }
 
-function HeadingMenu({ editor }: { editor: Editor }) {
-  const [open, setOpen] = useState(false);
-  const current = editor.isActive("heading", { level: 1 })
-    ? "H1"
-    : editor.isActive("heading", { level: 2 })
-    ? "H2"
-    : editor.isActive("heading", { level: 3 })
-    ? "H3"
-    : "T";
-
-  const items: { label: string; run: () => void }[] = [
-    { label: "Normal text", run: () => editor.chain().focus().setParagraph().run() },
-    { label: "Heading 1", run: () => editor.chain().focus().toggleHeading({ level: 1 }).run() },
-    { label: "Heading 2", run: () => editor.chain().focus().toggleHeading({ level: 2 }).run() },
-    { label: "Heading 3", run: () => editor.chain().focus().toggleHeading({ level: 3 }).run() },
-  ];
-
-  return (
-    <div className="rte-heading">
-      <button
-        type="button"
-        className={`rte-tool rte-heading-btn${current !== "T" ? " active" : ""}`}
-        title="Text style"
-        onMouseDown={(e) => {
-          e.preventDefault();
-          setOpen((o) => !o);
-        }}
-      >
-        <span className="rte-heading-cur">{current}</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="m6 9 6 6 6-6" />
-        </svg>
-      </button>
-      {open && (
-        <>
-          <div className="rte-heading-backdrop" onMouseDown={() => setOpen(false)} />
-          <div className="rte-heading-menu">
-            {items.map((it) => (
-              <button
-                key={it.label}
-                type="button"
-                className="rte-heading-item"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  it.run();
-                  setOpen(false);
-                }}
-              >
-                {it.label}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
 export default function RichTextEditor({
   value,
   onChange,
@@ -197,6 +140,7 @@ export default function RichTextEditor({
       // allowBase64 so pasted/uploaded data-URL images survive HTML round-trips
       // (they're stripped on parse otherwise, disappearing after save/reload).
       Image.configure({ inline: false, allowBase64: true }),
+      Highlight,
       TaskList,
       TaskItem.configure({ nested: true }),
       Table.configure({ resizable: true, cellMinWidth: 40 }),
@@ -281,52 +225,75 @@ export default function RichTextEditor({
   return (
     <div className={`rte${toolbarBottom ? " rte-bottom" : ""}`}>
       <div className="rte-toolbar">
-        <HeadingMenu editor={editor} />
-        <span className="rte-sep" />
-        <ToolBtn active={editor.isActive("bold")} title="Bold" onClick={() => editor.chain().focus().toggleBold().run()}>
-          <span style={{ fontWeight: 700 }}>B</span>
-        </ToolBtn>
-        <ToolBtn active={editor.isActive("italic")} title="Italic" onClick={() => editor.chain().focus().toggleItalic().run()}>
-          <span style={{ fontStyle: "italic" }}>I</span>
-        </ToolBtn>
-        <ToolBtn active={editor.isActive("underline")} title="Underline" onClick={() => editor.chain().focus().toggleUnderline().run()}>
-          <span style={{ textDecoration: "underline" }}>U</span>
-        </ToolBtn>
-        <span className="rte-sep" />
-        <ToolBtn active={editor.isActive("orderedList")} title="Numbered list" onClick={() => editor.chain().focus().toggleOrderedList().run()}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M10 6h11M10 12h11M10 18h11M4 6h1v4M4 10h2M6 16H4l2 2-2 2h2" />
-          </svg>
-        </ToolBtn>
-        <ToolBtn active={editor.isActive("bulletList")} title="Bullet list" onClick={() => editor.chain().focus().toggleBulletList().run()}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
-          </svg>
-        </ToolBtn>
-        <span className="rte-sep" />
-        <ToolBtn active={editor.isActive("taskList")} title="Checklist" onClick={() => editor.chain().focus().toggleTaskList().run()}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <rect x="3" y="3" width="18" height="18" rx="3" />
-            <path d="m8 12 3 3 5-6" />
-          </svg>
-        </ToolBtn>
-        <ToolBtn title="Table" onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <path d="M3 9h18M3 15h18M9 3v18M15 3v18" />
-          </svg>
-        </ToolBtn>
-        <ToolBtn active={editor.isActive("codeBlock")} title="Code block" onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="m8 16-4-4 4-4M16 8l4 4-4 4" />
-          </svg>
-        </ToolBtn>
-        <ToolBtn active={editor.isActive("link") || linkOpen} title="Link" onClick={() => (linkOpen ? setLinkOpen(false) : openLink())}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1" />
-            <path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" />
-          </svg>
-        </ToolBtn>
+        <span className="rte-group">
+          <ToolBtn active={editor.isActive("bold")} title="Bold" onClick={() => editor.chain().focus().toggleBold().run()}>
+            <span style={{ fontWeight: 700 }}>B</span>
+          </ToolBtn>
+          <ToolBtn active={editor.isActive("italic")} title="Italic" onClick={() => editor.chain().focus().toggleItalic().run()}>
+            <span style={{ fontStyle: "italic" }}>I</span>
+          </ToolBtn>
+          <ToolBtn active={editor.isActive("underline")} title="Underline" onClick={() => editor.chain().focus().toggleUnderline().run()}>
+            <span style={{ textDecoration: "underline" }}>U</span>
+          </ToolBtn>
+          <ToolBtn active={editor.isActive("strike")} title="Strikethrough" onClick={() => editor.chain().focus().toggleStrike().run()}>
+            <span style={{ textDecoration: "line-through" }}>S</span>
+          </ToolBtn>
+          <ToolBtn active={editor.isActive("highlight")} title="Highlight" onClick={() => editor.chain().focus().toggleHighlight().run()}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="m9 11-6 6v3h3l6-6" />
+              <path d="m13 7 4 4" />
+              <path d="m15 5 4 4-7 7-4-4Z" />
+            </svg>
+          </ToolBtn>
+          <ToolBtn active={editor.isActive("code")} title="Inline code" onClick={() => editor.chain().focus().toggleCode().run()}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="m8 16-4-4 4-4M16 8l4 4-4 4" />
+            </svg>
+          </ToolBtn>
+          <ToolBtn active={editor.isActive("codeBlock")} title="Code block" onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="3" y="4" width="18" height="16" rx="2" />
+              <path d="m9.5 10-2 2 2 2M14.5 10l2 2-2 2" />
+            </svg>
+          </ToolBtn>
+        </span>
+        <span className="rte-group">
+          <ToolBtn active={editor.isActive("heading", { level: 1 })} title="Heading 1" onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
+            <span className="rte-h">H1</span>
+          </ToolBtn>
+          <ToolBtn active={editor.isActive("heading", { level: 2 })} title="Heading 2" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
+            <span className="rte-h">H2</span>
+          </ToolBtn>
+          <ToolBtn active={editor.isActive("heading", { level: 3 })} title="Heading 3" onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
+            <span className="rte-h">H3</span>
+          </ToolBtn>
+        </span>
+        <span className="rte-group">
+          <ToolBtn active={editor.isActive("bulletList")} title="Bullet list" onClick={() => editor.chain().focus().toggleBulletList().run()}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+            </svg>
+          </ToolBtn>
+          <ToolBtn active={editor.isActive("orderedList")} title="Numbered list" onClick={() => editor.chain().focus().toggleOrderedList().run()}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M10 6h11M10 12h11M10 18h11M4 6h1v4M4 10h2M6 16H4l2 2-2 2h2" />
+            </svg>
+          </ToolBtn>
+          <ToolBtn active={editor.isActive("taskList")} title="Checklist" onClick={() => editor.chain().focus().toggleTaskList().run()}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="3" y="3" width="18" height="18" rx="3" />
+              <path d="m8 12 3 3 5-6" />
+            </svg>
+          </ToolBtn>
+        </span>
+        <span className="rte-group">
+          <ToolBtn active={editor.isActive("link") || linkOpen} title="Link" onClick={() => (linkOpen ? setLinkOpen(false) : openLink())}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1" />
+              <path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" />
+            </svg>
+          </ToolBtn>
+        </span>
       </div>
 
       {linkOpen && (

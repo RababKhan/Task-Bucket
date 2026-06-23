@@ -191,7 +191,16 @@ function Topbar() {
     project: string;
     projectId: number;
     task: string;
+    parent?: { id: number; task: string } | null;
   } | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  function copyTaskLink() {
+    navigator.clipboard?.writeText(window.location.href).then(() => {
+      setLinkCopied(true);
+      window.setTimeout(() => setLinkCopied(false), 1500);
+    });
+  }
 
   useEffect(() => {
     function onActive(e: Event) {
@@ -200,8 +209,14 @@ function Topbar() {
     }
     function onTaskCrumb(e: Event) {
       setTaskCrumb(
-        (e as CustomEvent<{ project: string; projectId: number; task: string } | null>)
-          .detail ?? null
+        (
+          e as CustomEvent<{
+            project: string;
+            projectId: number;
+            task: string;
+            parent?: { id: number; task: string } | null;
+          } | null>
+        ).detail ?? null
       );
     }
     window.addEventListener("tb:active-project", onActive as EventListener);
@@ -224,7 +239,7 @@ function Topbar() {
     <header className="app-topbar">
       <div className="topbar-lead">
         {showTaskCrumb ? (
-          <nav className="topbar-crumb" aria-label="Breadcrumb">
+          <nav className="topbar-crumb topbar-crumb-task" aria-label="Breadcrumb">
             <Link
               href={`/?project=${taskCrumb!.projectId}`}
               className="topbar-crumb-link"
@@ -234,7 +249,37 @@ function Topbar() {
             <svg className="topbar-crumb-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="m9 18 6-6-6-6" />
             </svg>
+            {taskCrumb!.parent && (
+              <>
+                <Link
+                  href={`/task/${taskCrumb!.parent.id}`}
+                  className="topbar-crumb-link"
+                >
+                  {taskCrumb!.parent.task}
+                </Link>
+                <svg className="topbar-crumb-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </>
+            )}
             <span className="topbar-crumb-current">{taskCrumb!.task}</span>
+            <button
+              type="button"
+              className={`topbar-crumb-copy${linkCopied ? " is-copied" : ""}`}
+              onClick={copyTaskLink}
+              aria-label={linkCopied ? "Link copied" : "Copy link"}
+              data-tip={linkCopied ? "Link copied" : "Copy link"}
+            >
+              {linkCopied ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M5 12l4 4 10-10" />
+                </svg>
+              ) : (
+                <svg width="14" height="7" viewBox="0 0 14 7" fill="none" aria-hidden>
+                  <path d="M10 0H8C7.63333 0 7.33333 0.3 7.33333 0.666667C7.33333 1.03333 7.63333 1.33333 8 1.33333H10C11.1 1.33333 12 2.23333 12 3.33333C12 4.43333 11.1 5.33333 10 5.33333H8C7.63333 5.33333 7.33333 5.63333 7.33333 6C7.33333 6.36667 7.63333 6.66667 8 6.66667H10C11.84 6.66667 13.3333 5.17333 13.3333 3.33333C13.3333 1.49333 11.84 0 10 0ZM4 3.33333C4 3.7 4.3 4 4.66667 4H8.66667C9.03333 4 9.33333 3.7 9.33333 3.33333C9.33333 2.96667 9.03333 2.66667 8.66667 2.66667H4.66667C4.3 2.66667 4 2.96667 4 3.33333ZM5.33333 5.33333H3.33333C2.23333 5.33333 1.33333 4.43333 1.33333 3.33333C1.33333 2.23333 2.23333 1.33333 3.33333 1.33333H5.33333C5.7 1.33333 6 1.03333 6 0.666667C6 0.3 5.7 0 5.33333 0H3.33333C1.49333 0 0 1.49333 0 3.33333C0 5.17333 1.49333 6.66667 3.33333 6.66667H5.33333C5.7 6.66667 6 6.36667 6 6C6 5.63333 5.7 5.33333 5.33333 5.33333Z" fill="currentColor" />
+                </svg>
+              )}
+            </button>
           </nav>
         ) : showCrumb ? (
           <nav className="topbar-crumb" aria-label="Breadcrumb">
