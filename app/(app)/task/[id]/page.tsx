@@ -33,6 +33,7 @@ import {
 import Spinner from "@/components/Spinner";
 import DatePicker from "@/components/app/DatePicker";
 import RichTextEditor from "@/components/app/RichTextEditor";
+import Comments from "@/components/app/Comments";
 import SelectField, { type SelectOption } from "@/components/app/SelectField";
 import MemberPicker from "@/components/app/MemberPicker";
 import LabelsField from "@/components/app/LabelsField";
@@ -261,8 +262,12 @@ export default function TaskDetailPage() {
   const [activityTab, setActivityTab] = useState<
     "activity" | "comments" | "time"
   >("activity");
+  // Newest-first vs oldest-first for the Activity / Comments feeds.
+  const [sortNewest, setSortNewest] = useState(true);
   const [newSub, setNewSub] = useState("");
   const [addingSub, setAddingSub] = useState(false);
+  const [addSubOpen, setAddSubOpen] = useState(false);
+  const subPickerRef = useRef<HTMLDivElement>(null);
   const subInputRef = useRef<HTMLInputElement>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const [titleFocused, setTitleFocused] = useState(false);
@@ -336,6 +341,22 @@ export default function TaskDetailPage() {
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, [linkBugOpen]);
+
+  // Close the add-subtask picker when clicking outside it.
+  useEffect(() => {
+    if (!addSubOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (
+        subPickerRef.current &&
+        !subPickerRef.current.contains(e.target as Node)
+      ) {
+        setAddSubOpen(false);
+        setNewSub("");
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [addSubOpen]);
 
   // Auto-size the title textarea to its content (grows to a second line).
   function autoGrowTitle(el: HTMLTextAreaElement) {
@@ -606,6 +627,8 @@ export default function TaskDetailPage() {
     await load();
     setAddingSub(false);
     setNewSub("");
+    // Keep the picker open and refocus so multiple subtasks can be added.
+    requestAnimationFrame(() => subInputRef.current?.focus());
     if (createdId != null) flagEntering(createdId);
   }
 
@@ -890,22 +913,30 @@ export default function TaskDetailPage() {
                 <>
                   {linkTaskOpen && (
                     <div className="td-link-picker" ref={linkPickerRef}>
-                      <input
-                        className="td-link-search"
-                        autoFocus
-                        placeholder="Search task…"
-                        value={taskSearch}
-                        onChange={(e) => setTaskSearch(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && taskSearch.trim()) {
-                            e.preventDefault();
-                            createAndLinkTask(taskSearch);
-                          } else if (e.key === "Escape") {
-                            setLinkTaskOpen(false);
-                            setTaskSearch("");
-                          }
-                        }}
-                      />
+                      <div className="td-link-search-wrap">
+                        <input
+                          className="td-link-search"
+                          autoFocus
+                          maxLength={128}
+                          placeholder="Search task…"
+                          value={taskSearch}
+                          onChange={(e) => setTaskSearch(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && taskSearch.trim()) {
+                              e.preventDefault();
+                              createAndLinkTask(taskSearch);
+                            } else if (e.key === "Escape") {
+                              setLinkTaskOpen(false);
+                              setTaskSearch("");
+                            }
+                          }}
+                        />
+                        {taskSearch.trim() && (
+                          <span className="td-link-count">
+                            {taskSearch.length}/128
+                          </span>
+                        )}
+                      </div>
                       <ul className="td-link-list">
                         {projectTasks
                           .filter(
@@ -1164,22 +1195,30 @@ export default function TaskDetailPage() {
                 <>
                   {linkBugOpen && (
                     <div className="td-link-picker" ref={bugPickerRef}>
-                      <input
-                        className="td-link-search"
-                        autoFocus
-                        placeholder="Search bug…"
-                        value={bugSearch}
-                        onChange={(e) => setBugSearch(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && bugSearch.trim()) {
-                            e.preventDefault();
-                            createAndLinkBug(bugSearch);
-                          } else if (e.key === "Escape") {
-                            setLinkBugOpen(false);
-                            setBugSearch("");
-                          }
-                        }}
-                      />
+                      <div className="td-link-search-wrap">
+                        <input
+                          className="td-link-search"
+                          autoFocus
+                          maxLength={128}
+                          placeholder="Search bug…"
+                          value={bugSearch}
+                          onChange={(e) => setBugSearch(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && bugSearch.trim()) {
+                              e.preventDefault();
+                              createAndLinkBug(bugSearch);
+                            } else if (e.key === "Escape") {
+                              setLinkBugOpen(false);
+                              setBugSearch("");
+                            }
+                          }}
+                        />
+                        {bugSearch.trim() && (
+                          <span className="td-link-count">
+                            {bugSearch.length}/128
+                          </span>
+                        )}
+                      </div>
                       <ul className="td-link-list">
                         {projectTasks
                           .filter(
@@ -1421,7 +1460,7 @@ export default function TaskDetailPage() {
               onMouseDown={(e) => e.stopPropagation()}
               onClick={() => {
                 setOpenSub(true);
-                requestAnimationFrame(() => subInputRef.current?.focus());
+                setAddSubOpen((o) => !o);
               }}
               aria-label="Add a subtask"
             >
@@ -1433,6 +1472,58 @@ export default function TaskDetailPage() {
 
           {openSub && (
             <>
+              {addSubOpen && (
+                <div className="td-link-picker" ref={subPickerRef}>
+                  <div className="td-link-search-wrap">
+                    <input
+                      ref={subInputRef}
+                      className="td-link-search"
+                      autoFocus
+                      maxLength={128}
+                      placeholder="Add a subtask…"
+                      value={newSub}
+                      onChange={(e) => setNewSub(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && newSub.trim()) {
+                          e.preventDefault();
+                          createSubtask(newSub);
+                        } else if (e.key === "Escape") {
+                          setAddSubOpen(false);
+                          setNewSub("");
+                        }
+                      }}
+                    />
+                    <span className="td-link-count">{newSub.length}/128</span>
+                  </div>
+                  {newSub.trim() && (
+                    <ul className="td-link-list">
+                      <li>
+                        <button
+                          type="button"
+                          className="td-link-option td-link-create"
+                          disabled={addingSub}
+                          onClick={() => createSubtask(newSub)}
+                        >
+                          {addingSub ? (
+                            <span className="sub-spinner" aria-label="Adding">
+                              <span />
+                              <span />
+                              <span />
+                            </span>
+                          ) : (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                              <path d="M12 5v14M5 12h14" />
+                            </svg>
+                          )}
+                          <span className="td-link-title">
+                            {addingSub ? "Adding…" : `Add "${newSub.trim()}"`}
+                          </span>
+                        </button>
+                      </li>
+                    </ul>
+                  )}
+                </div>
+              )}
               <ul className="subtask-list">
                 {detail.subtasks.map((s) => (
                   <li
@@ -1566,27 +1657,6 @@ export default function TaskDetailPage() {
                   </li>
                 ))}
               </ul>
-              <form
-                className="subtask-add"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  createSubtask(newSub);
-                }}
-              >
-                <input
-                  ref={subInputRef}
-                  value={newSub}
-                  onChange={(e) => setNewSub(e.target.value)}
-                  placeholder="Add a subtask…"
-                />
-                <button
-                  type="submit"
-                  className="btn btn-sm btn-primary"
-                  disabled={addingSub || !newSub.trim()}
-                >
-                  {addingSub ? <Spinner /> : "Add"}
-                </button>
-              </form>
             </>
           )}
 
@@ -1614,34 +1684,59 @@ export default function TaskDetailPage() {
           </div>
 
           <div className="td-activity">
-            <div className="td-tabs">
-              <button
-                type="button"
-                className={`td-tab${activityTab === "activity" ? " active" : ""}`}
-                onClick={() => setActivityTab("activity")}
-              >
-                Activity
-              </button>
-              <button
-                type="button"
-                className={`td-tab${activityTab === "comments" ? " active" : ""}`}
-                onClick={() => setActivityTab("comments")}
-              >
-                Comments
-              </button>
-              <button
-                type="button"
-                className={`td-tab${activityTab === "time" ? " active" : ""}`}
-                onClick={() => setActivityTab("time")}
-              >
-                Time Entry
-              </button>
+            <div className="td-tabs-row">
+              <div className="td-tabs">
+                <button
+                  type="button"
+                  className={`td-tab${activityTab === "activity" ? " active" : ""}`}
+                  onClick={() => setActivityTab("activity")}
+                >
+                  Activity
+                </button>
+                <button
+                  type="button"
+                  className={`td-tab${activityTab === "comments" ? " active" : ""}`}
+                  onClick={() => setActivityTab("comments")}
+                >
+                  Comments
+                </button>
+                <button
+                  type="button"
+                  className={`td-tab${activityTab === "time" ? " active" : ""}`}
+                  onClick={() => setActivityTab("time")}
+                >
+                  Time Entry
+                </button>
+              </div>
+              {activityTab !== "time" && (
+                <button
+                  type="button"
+                  className="td-sort"
+                  onClick={() => setSortNewest((s) => !s)}
+                  title={sortNewest ? "Showing newest first" : "Showing oldest first"}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M4 6h13M4 12h9M4 18h5" />
+                  </svg>
+                  {sortNewest ? "Newest First" : "Oldest First"}
+                </button>
+              )}
             </div>
             <div className="td-tab-panel">
               {activityTab === "activity" &&
                 (detail.activity && detail.activity.length ? (
                   <ul className="td-activity-list">
-                    {detail.activity.map((a) => (
+                    {[...detail.activity]
+                      .sort((a, b) => {
+                        const d =
+                          a.created_at < b.created_at
+                            ? -1
+                            : a.created_at > b.created_at
+                            ? 1
+                            : a.id - b.id;
+                        return sortNewest ? -d : d;
+                      })
+                      .map((a) => (
                       <li key={a.id} className="td-activity-item">
                         <span className="td-activity-avatar">
                           {a.actor_image ? (
@@ -1682,9 +1777,10 @@ export default function TaskDetailPage() {
                   <div className="td-tab-empty">No activity yet</div>
                 ))}
               {activityTab === "comments" && (
-                <textarea
-                  className="td-comment-input"
-                  placeholder="Add a comment…"
+                <Comments
+                  taskId={id}
+                  members={members}
+                  sortNewest={sortNewest}
                 />
               )}
               {activityTab === "time" && (

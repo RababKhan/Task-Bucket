@@ -182,7 +182,7 @@ function sectionTitle(pathname: string) {
   return "Task Bucket";
 }
 
-function Topbar() {
+function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [menu, setMenu] = useState<null | "notif" | "account">(null);
@@ -237,6 +237,16 @@ function Topbar() {
 
   return (
     <header className="app-topbar">
+      <button
+        type="button"
+        className="topbar-hamburger"
+        aria-label="Open menu"
+        onClick={onMenuClick}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M3 6h18M3 12h18M3 18h18" />
+        </svg>
+      </button>
       <div className="topbar-lead">
         {showTaskCrumb ? (
           <nav className="topbar-crumb topbar-crumb-task" aria-label="Breadcrumb">
@@ -391,10 +401,18 @@ function Topbar() {
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
+  // Mobile drawer: the sidebar slides in over the content on small screens.
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     setCollapsed(localStorage.getItem("tb-sidebar-collapsed") === "1");
   }, []);
+
+  // Close the mobile drawer whenever the route changes.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   function toggleSidebar() {
     setCollapsed((c) => {
@@ -405,10 +423,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className={`app-shell${collapsed ? " collapsed" : ""}`}>
+    <div
+      className={`app-shell${collapsed ? " collapsed" : ""}${
+        mobileOpen ? " mobile-open" : ""
+      }`}
+    >
       <Sidebar collapsed={collapsed} onToggle={toggleSidebar} />
+      {mobileOpen && (
+        <div
+          className="app-sidebar-backdrop"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
       <div className="app-body">
-        <Topbar />
+        <Topbar onMenuClick={() => setMobileOpen(true)} />
         <main className="app-main">{children}</main>
       </div>
     </div>

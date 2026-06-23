@@ -1008,14 +1008,14 @@
   /* Span the bottom toolbar row and center vertically so the buttons line up
      with the toolbar buttons (equal space above and below). */
   bottom: 0;
-  height: 40px;
+  height: 28px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 .td-desc-actions .btn {
-  height: 26px;
-  min-height: 26px;
+  height: 22px;
+  min-height: 22px;
   padding: 0 10px;
   border-radius: 6px;
   font-size: 10.5px;
@@ -1113,7 +1113,9 @@
 }
 /* Search-box picker for linking an existing task/bug. */
 .td-link-picker {
-  margin: 0 0 4px;
+  /* Left edge aligns with the section heading text (caret 15 + gap 7 − 6);
+     right edge lines up with the "+" button glyph (centered in its 26px box). */
+  margin: 0 5px 4px 16px;
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
@@ -1124,20 +1126,36 @@
   height: 34px;
   padding: 0 12px;
   border: none;
-  border-bottom: 1px solid var(--border);
   border-radius: 0;
   font-size: 11.375px;
   background: var(--surface);
 }
 .td-link-search:focus {
   outline: none;
-  border-bottom: 1px solid var(--border);
   box-shadow: none;
+}
+.td-link-search-wrap {
+  position: relative;
+}
+.td-link-search-wrap .td-link-search {
+  padding-right: 52px;
+}
+.td-link-count {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  color: var(--text-dim);
+  pointer-events: none;
 }
 .td-link-list {
   list-style: none;
   margin: 0;
   padding: 4px;
+  /* Divider between the search box and the list (only shown when a list
+     exists, so an empty picker keeps a uniform 1px border on all sides). */
+  border-top: 1px solid var(--border);
   /* Fits ~4 options; the rest scroll. */
   max-height: 124px;
   overflow-y: auto;
@@ -1230,7 +1248,7 @@
      margins (they'd squeeze the scroll area and hide its content). */
   flex-shrink: 0;
   padding-top: 16px;
-  padding-bottom: 24px;
+  padding-bottom: 10px;
   /* Stretch the divider left into app-main's padding so it reaches the canvas
      edge, and right across the grid gap so it meets the vertical divider;
      padding keeps the content aligned. */
@@ -1246,12 +1264,40 @@
   color: var(--text);
   margin: 0 0 12px;
 }
+.td-tabs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
 .td-tabs {
   display: inline-flex;
   gap: 2px;
   padding: 3px;
   background: var(--surface-2);
   border-radius: 8px;
+}
+/* Newest/Oldest sort toggle for the Activity & Comments feeds. */
+.td-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 5px 9px;
+  border-radius: 7px;
+  font-size: 11.375px;
+  font-weight: 500;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.td-sort:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.td-sort svg {
+  width: 15px;
+  height: 15px;
 }
 .td-tab {
   padding: 6px 14px;
@@ -1277,7 +1323,7 @@
   overflow-y: auto;
   scrollbar-width: none;
   /* Breathing room so the last item isn't flush against the bottom edge. */
-  padding-bottom: 16px;
+  padding-bottom: 4px;
 }
 .td-tab-panel::-webkit-scrollbar {
   display: none;
@@ -1296,11 +1342,30 @@
   gap: 14px;
 }
 .td-activity-item {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 10px;
 }
+/* Timeline connector — runs from this avatar's center down to the next one's
+   center (the opaque avatars cover the overlap, so the line reads as continuous
+   with no gap below each avatar). Offsets: avatar center 13px, list gap 14px. */
+.td-activity-item::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 13px;
+  bottom: -27px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--border);
+}
+.td-activity-item:last-child::before {
+  display: none;
+}
 .td-activity-avatar {
+  position: relative;
+  z-index: 1;
   flex-shrink: 0;
   width: 26px;
   height: 26px;
@@ -1354,6 +1419,658 @@
   padding: 10px 12px;
   font-size: 11.375px;
   line-height: 1.5;
+}
+
+/* ---- Comments: Slack-style chat center ---- */
+.cm-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.cm-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: 2px;
+}
+.cm-list::-webkit-scrollbar {
+  display: none;
+}
+.cm-list > .cm-item:not(.cm-grouped) {
+  margin-top: 12px;
+}
+.cm-list > .cm-item:first-child {
+  margin-top: 0;
+}
+.cm-empty {
+  font-size: 11.375px;
+  color: var(--text-dim);
+  padding: 8px 0;
+}
+.cm-item {
+  position: relative;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+/* Avatar / hover-time column. */
+.cm-gutter {
+  flex-shrink: 0;
+  width: 32px;
+  display: flex;
+  justify-content: center;
+}
+.cm-gtime {
+  font-size: 9.5px;
+  line-height: 20px;
+  color: var(--text-dim);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.cm-item:hover .cm-gtime {
+  opacity: 1;
+}
+.cm-avatar {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  overflow: hidden;
+}
+.cm-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cm-main {
+  flex: 1;
+  min-width: 0;
+}
+.cm-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.cm-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.cm-time {
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+/* Floating hover toolbar pinned to the message's top-right. */
+.cm-float {
+  position: absolute;
+  top: -10px;
+  right: 4px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 4px 14px -4px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.cm-item:hover > .cm-float,
+.cm-float:has(.cm-emoji-pop) {
+  opacity: 1;
+}
+.cm-action {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.cm-action:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.cm-action-danger:hover {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+.cm-action svg {
+  width: 15px;
+  height: 15px;
+}
+.cm-body {
+  margin-top: 1px;
+  font-size: 11.875px;
+  color: var(--text);
+  line-height: 1.5;
+  white-space: normal;
+  word-break: break-word;
+}
+.cm-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 5px;
+}
+.cm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 11px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.cm-chip:hover {
+  border-color: var(--accent);
+}
+.cm-chip.mine {
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  border-color: var(--accent);
+}
+.cm-chip-n {
+  font-weight: 600;
+  color: var(--text-dim);
+}
+.cm-chip.mine .cm-chip-n {
+  color: var(--accent);
+}
+.cm-react-wrap {
+  position: relative;
+}
+.cm-emoji-pop {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 30;
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.3);
+}
+.cm-emoji-up {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+.cm-emoji-opt {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  font-size: 15px;
+  cursor: pointer;
+}
+.cm-emoji-opt:hover {
+  background: var(--surface-2);
+}
+.cm-thread {
+  margin-top: 8px;
+  padding-left: 8px;
+  border-left: 2px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cm-thread > .cm-item:not(.cm-grouped) {
+  margin-top: 8px;
+}
+.cm-thread > .cm-item:first-child {
+  margin-top: 0;
+}
+.cm-reply .cm-gutter {
+  width: 26px;
+}
+.cm-reply .cm-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  font-size: 9px;
+}
+.cm-reply-box {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+/* Slack-style composer box. */
+.cm-composer {
+  flex-shrink: 0;
+  margin-top: 30px;
+}
+.cm-box {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  transition: border-color 0.12s;
+}
+.cm-box:focus-within {
+  border-color: var(--accent);
+}
+/* Formatting toolbar (toggled by the Aa button). */
+.cm-format {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+}
+.cm-fbtn {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.cm-fbtn:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.cm-fbtn svg {
+  width: 15px;
+  height: 15px;
+}
+.cm-fsep {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: var(--border);
+}
+.cm-aa {
+  font-size: 12px;
+  font-weight: 600;
+}
+.cm-tool.active {
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  color: var(--accent);
+}
+/* Rich message content. */
+.cm-body strong {
+  font-weight: 700;
+}
+.cm-body em {
+  font-style: italic;
+}
+.cm-body s {
+  text-decoration: line-through;
+}
+.cm-body u {
+  text-decoration: underline;
+}
+.cm-para {
+  display: block;
+}
+.cm-ic {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+.cm-code {
+  margin: 4px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-x: auto;
+  white-space: pre;
+}
+.cm-ul,
+.cm-ol {
+  margin: 3px 0;
+  padding-left: 18px;
+}
+.cm-ul li,
+.cm-ol li {
+  margin: 1px 0;
+}
+.cm-link {
+  color: var(--accent);
+  text-decoration: underline;
+}
+/* Message attachments. */
+.cm-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 5px;
+}
+.cm-att-img {
+  display: block;
+  max-width: 180px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.cm-att-img img {
+  display: block;
+  max-width: 100%;
+  max-height: 140px;
+  object-fit: cover;
+}
+.cm-att-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 220px;
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 11px;
+}
+.cm-att-file:hover {
+  border-color: var(--accent);
+}
+.cm-att-file svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--text-dim);
+}
+.cm-att-fname {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Pending attachments in the composer (before sending). */
+.cm-attach-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 10px 0;
+}
+.cm-attach-pending {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 180px;
+  padding: 4px 6px 4px 7px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: 10.5px;
+}
+.cm-attach-pending img {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+.cm-attach-pending svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-dim);
+}
+.cm-attach-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cm-attach-x {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  color: var(--text-dim);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.cm-attach-x:hover {
+  background: var(--surface);
+  color: var(--danger);
+}
+.cm-attach-x svg {
+  width: 12px;
+  height: 12px;
+}
+.cm-box .cm-mention-wrap {
+  width: 100%;
+}
+.cm-box-input {
+  width: 100%;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  resize: none;
+  padding: 7px 12px 2px;
+  min-height: 24px;
+  max-height: 110px;
+  font-family: inherit;
+  font-size: 11.875px;
+  line-height: 1.45;
+  color: var(--text);
+}
+.cm-box-input:focus {
+  outline: none;
+  border: none;
+  box-shadow: none;
+}
+.cm-box-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 6px 4px;
+}
+.cm-tool {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.cm-tool:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.cm-tool svg {
+  width: 17px;
+  height: 17px;
+}
+.cm-box-send {
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.12s, opacity 0.12s;
+}
+.cm-box-send:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.cm-box-send:disabled {
+  background: transparent;
+  color: var(--text-dim);
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.cm-box-send svg {
+  width: 16px;
+  height: 16px;
+}
+.cm-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 34px;
+  max-height: 110px;
+  resize: none;
+  padding: 8px 11px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 11.875px;
+  line-height: 1.45;
+}
+.cm-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: none;
+}
+.cm-send {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.12s, opacity 0.12s;
+}
+.cm-send:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.cm-send:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.cm-send svg {
+  width: 16px;
+  height: 16px;
+}
+.cm-edit {
+  margin-top: 4px;
+}
+.cm-edit-input {
+  width: 100%;
+  min-height: 50px;
+  resize: vertical;
+  padding: 8px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 11.875px;
+  line-height: 1.45;
+}
+.cm-edit-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+.cm-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+.cm-edit-actions .btn {
+  height: 24px;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 10.5px;
+}
+/* @mention autocomplete + highlighting */
+.cm-mention-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.cm-mention-wrap .cm-input,
+.cm-mention-wrap .cm-edit-input {
+  width: 100%;
+}
+.cm-mention-menu {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  z-index: 40;
+  min-width: 190px;
+  max-height: 172px;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 10px 28px -8px rgba(0, 0, 0, 0.35);
+}
+.cm-mention-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.cm-mention-opt.active,
+.cm-mention-opt:hover {
+  background: var(--surface-2);
+}
+.cm-mention-av {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  font-weight: 600;
+}
+.cm-mention-nm {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cm-mention {
+  color: var(--accent);
+  font-weight: 600;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 4px;
+  padding: 0 2px;
 }
 
 /* ---- Task detail: Properties panel ---- */
@@ -1691,6 +2408,38 @@
   justify-content: center;
 }
 
+/* Task detail: stack the properties sidebar under the main column and switch
+   from the fixed-height internal scroll to natural page scrolling. */
+@media (max-width: 900px) {
+  .app-main:has(.task-detail) {
+    overflow: auto;
+  }
+  .task-detail {
+    height: auto;
+  }
+  .td-grid {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 16px;
+  }
+  .td-main-scroll {
+    overflow: visible;
+    min-height: 0;
+  }
+  .td-side {
+    padding: 20px 0 0;
+  }
+  /* Divider moves from the left edge to a line above the properties block. */
+  .td-side::before {
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: auto;
+    width: auto;
+    height: 1px;
+  }
+}
+
 @media (max-width: 720px) {
   .td-grid {
     grid-template-columns: 1fr;
@@ -1701,6 +2450,19 @@
   .tl-row {
     grid-template-columns: 1fr auto;
     grid-auto-flow: row;
+  }
+}
+
+/* Title + editor breathing room on very small screens. */
+@media (max-width: 560px) {
+  .td-title {
+    font-size: 16px;
+  }
+  .td-desc-edit {
+    margin-left: 0;
+  }
+  .td-link-picker {
+    margin-left: 0;
   }
 }
 
@@ -1960,7 +2722,8 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 3px 6px;
+  min-height: 28px;
+  padding: 0 6px;
   border-bottom: 1px solid var(--border);
   background: transparent;
 }
@@ -2016,24 +2779,79 @@
   bottom: 44px;
 }
 .rte-tool {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: none;
   border-radius: 6px;
   color: var(--text-dim);
   font-size: 13px;
-  transition: background 0.12s ease, color 0.12s ease;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.13s ease, color 0.13s ease, box-shadow 0.13s ease;
+}
+.rte-tool > * {
+  pointer-events: none;
+}
+/* Custom tooltip (replaces the native title), shown above the button. */
+.rte-tool::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%) translateY(2px);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--text);
+  color: var(--canvas-bg);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  z-index: 60;
+}
+.rte-tool::before {
+  content: "";
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%) translateY(2px);
+  border: 5px solid transparent;
+  border-top-color: var(--text);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  z-index: 60;
+}
+.rte-tool:hover::after,
+.rte-tool:hover::before,
+.rte-tool:focus-visible::after,
+.rte-tool:focus-visible::before {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 .rte-tool:hover {
-  background: var(--nav-hover);
+  background: var(--surface-2);
   color: var(--text);
 }
+/* Active formatting reads clearly with an accent tint. */
 .rte-tool.active {
-  background: var(--nav-active);
-  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  color: var(--accent);
+}
+.rte-tool.active:hover {
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface));
 }
 .rte-tool svg {
+  display: block;
   width: 15px;
   height: 15px;
 }
@@ -2050,13 +2868,12 @@
   font-weight: 700;
 }
 /* Bordered group (inline code + code block). */
+/* Flat groups — no pill container; related actions are clustered by the
+   toolbar's gap between groups. */
 .rte-group {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  padding: 2px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  gap: 1px;
 }
 /* Heading dropdown */
 .rte-heading {
@@ -3924,6 +4741,16 @@ textarea::placeholder {
   overflow: visible;
   background: var(--surface);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+/* On small screens the wide table scrolls horizontally instead of breaking. */
+@media (max-width: 760px) {
+  .pv-table {
+    overflow-x: auto;
+  }
+  .pv-head,
+  .pv-row {
+    min-width: 680px;
+  }
 }
 .pv-head,
 .pv-row {

@@ -208,6 +208,25 @@
   align-items: center;
   gap: 10px;
 }
+/* Hamburger — only shown on small screens to open the sidebar drawer. */
+.topbar-hamburger {
+  display: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-right: 4px;
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.topbar-hamburger:hover {
+  background: var(--surface-2);
+}
+.topbar-hamburger svg {
+  width: 20px;
+  height: 20px;
+}
 .topbar-title {
   margin: 0;
   font-size: 11.375px;
@@ -963,10 +982,40 @@
   .app-shell {
     grid-template-columns: 1fr;
   }
-  .app-sidebar {
-    display: none;
+  /* Sidebar becomes a slide-in drawer over the content. */
+  .app-shell .app-sidebar {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 268px;
+    max-width: 84vw;
+    z-index: 200;
+    background: var(--bg);
+    border-right: 1px solid var(--canvas-border);
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    overflow-y: auto;
   }
-  /* Keep the canvas off all four edges when the sidebar is hidden. */
+  .app-shell.mobile-open .app-sidebar {
+    transform: translateX(0);
+    box-shadow: 0 16px 48px -12px rgba(0, 0, 0, 0.4);
+  }
+  /* The collapse toggle is irrelevant in drawer mode — keep it full width. */
+  .app-shell.collapsed .app-sidebar {
+    width: 268px;
+  }
+  .app-sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    background: rgba(0, 0, 0, 0.45);
+  }
+  .topbar-hamburger {
+    display: grid;
+  }
+  /* Keep the canvas off all four edges; drawer overlays on top. */
   .app-body {
     margin: 12px;
     height: calc(100vh - 24px);
@@ -976,6 +1025,12 @@
   }
   .settings-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .app-sidebar {
+    transition: none;
   }
 }
 

@@ -76,7 +76,7 @@ function ToolBtn({
     <button
       type="button"
       className={`rte-tool${active ? " active" : ""}`}
-      title={title}
+      data-tip={title}
       aria-label={title}
       onMouseDown={(e) => {
         e.preventDefault();

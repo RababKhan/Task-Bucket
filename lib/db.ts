@@ -198,6 +198,38 @@ CREATE TABLE IF NOT EXISTS task_activity (
 );
 
 CREATE INDEX IF NOT EXISTS idx_task_activity_task ON task_activity(task_id);
+
+CREATE TABLE IF NOT EXISTS task_comments (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  task_id    INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  parent_id  INTEGER REFERENCES task_comments(id) ON DELETE CASCADE,
+  user_id    TEXT REFERENCES users(id) ON DELETE SET NULL,
+  body       TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_task_comments_task ON task_comments(task_id);
+CREATE INDEX IF NOT EXISTS idx_task_comments_parent ON task_comments(parent_id);
+
+CREATE TABLE IF NOT EXISTS comment_reactions (
+  comment_id INTEGER NOT NULL REFERENCES task_comments(id) ON DELETE CASCADE,
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  emoji      TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (comment_id, user_id, emoji)
+);
+
+CREATE TABLE IF NOT EXISTS comment_attachments (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  comment_id INTEGER NOT NULL REFERENCES task_comments(id) ON DELETE CASCADE,
+  name       TEXT NOT NULL,
+  type       TEXT NOT NULL DEFAULT '',
+  data       TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_comment_attachments_comment ON comment_attachments(comment_id);
 `;
 
 // Lightweight migration for databases created before auth was added.
