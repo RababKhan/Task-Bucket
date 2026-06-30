@@ -1,41 +1,40 @@
 :root {
-  /* Dark = default. Deep slate with proper elevation layers. */
-  --bg: #0a0c10;
-  --surface: #14161c;
-  --surface-2: #1b1e26;
-  --border: #262a33;
-  --text: #e9ebf1;
-  --text-dim: #98a1b2;
-  --accent: #52525b;
-  --accent-hover: #63636d;
-  /* Text links — the gray accent is too dark to read on the dark surface, so
-     links get their own readable tone. */
-  --link: #c4cad6;
-  --link-hover: #e9ebf1;
-  --danger: #e5484d;
+  /* Dark = default — GitHub Dark palette (Primer). */
+  --bg: #010409; /* canvas-inset, behind the floating workspace */
+  --surface: #161b22; /* canvas-subtle / cards */
+  --surface-2: #21262d; /* elevated / hover */
+  --border: #30363d; /* border-default */
+  --text: #e6edf3; /* fg-default */
+  --text-dim: #8b949e; /* fg-muted */
+  --accent: #1f6feb; /* accent-emphasis (primary buttons) */
+  --accent-hover: #388bfd;
+  /* Links use GitHub's readable accent blue. */
+  --link: #58a6ff;
+  --link-hover: #79c0ff;
+  --danger: #f85149; /* danger-fg */
   --radius: 12px;
   --radius-control: 8px;
-  --card-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset,
-    0 12px 40px -12px rgba(0, 0, 0, 0.65), 0 4px 12px -6px rgba(0, 0, 0, 0.5);
+  --card-shadow: 0 1px 0 rgba(255, 255, 255, 0.02) inset,
+    0 12px 40px -12px rgba(0, 0, 0, 0.7), 0 4px 12px -6px rgba(0, 0, 0, 0.55);
 
-  /* Layered workspace (Linear-style floating canvas over the app background) */
-  --canvas-bg: #101218;
+  /* Layered workspace (floating canvas over the app background) */
+  --canvas-bg: #0d1117; /* canvas-default */
   --canvas-border: var(--border);
-  --canvas-shadow: 0 1px 2px rgba(0, 0, 0, 0.4),
-    0 16px 40px -12px rgba(0, 0, 0, 0.55);
-  --nav-hover: rgba(255, 255, 255, 0.05);
-  --nav-active: rgba(255, 255, 255, 0.08);
+  --canvas-shadow: 0 1px 2px rgba(0, 0, 0, 0.5),
+    0 16px 40px -12px rgba(0, 0, 0, 0.6);
+  --nav-hover: rgba(177, 186, 196, 0.08);
+  --nav-active: rgba(177, 186, 196, 0.12);
 
-  --todo: #6b7280;
-  --in_progress: #d9a441;
-  --done: #16A34A;
-  --prio-low: #16A34A;
-  --prio-medium: #38bdf8;
-  --prio-high: #e5484d;
-  --prio-critical: #b91c1c;
+  --todo: #6e7681;
+  --in_progress: #d29922; /* attention-fg */
+  --done: #3fb950; /* success-fg */
+  --prio-low: #3fb950;
+  --prio-medium: #58a6ff;
+  --prio-high: #db6d28; /* severe-fg (orange) */
+  --prio-critical: #f85149;
 
-  /* focus ring */
-  --ring: rgba(130, 130, 140, 0.3);
+  /* focus ring — GitHub's accent focus */
+  --ring: rgba(56, 139, 253, 0.4);
 }
 
 * {
@@ -66,8 +65,8 @@ body {
 }
 
 :root {
-  --glow-1: rgba(130, 130, 140, 0.1);
-  --glow-2: rgba(130, 130, 140, 0.05);
+  --glow-1: rgba(56, 139, 253, 0.08);
+  --glow-2: rgba(56, 139, 253, 0.04);
 }
 [data-theme="light"] {
   --glow-1: rgba(63, 63, 70, 0.06);
@@ -1846,9 +1845,9 @@ select:-webkit-autofill:focus {
   border-color: var(--accent);
 }
 
-/* Plain field background — white in light mode, deep slate in dark mode. */
+/* Plain field background — white in light mode, GitHub canvas in dark mode. */
 :root {
-  --input-bg: var(--surface-2);
+  --input-bg: var(--canvas-bg);
 }
 [data-theme="light"] {
   --input-bg: #ffffff;

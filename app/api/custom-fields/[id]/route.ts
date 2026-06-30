@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { dbGet, dbRun, type CustomField } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
+import { canAccessProjectScoped } from "@/lib/membership";
+import { requirePermission, ERR } from "@/lib/rbac";
 
 type Ctx = { params: Promise<{ id: string }> };
 type FieldRow = Omit<CustomField, "options"> & { options: string };
@@ -26,6 +28,11 @@ export async function PATCH(request: Request, { params }: Ctx) {
   const existing = await ownedField(id, userId);
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  const denied = await requirePermission(userId, "projects", "edit");
+  if (denied) return denied;
+  if (!(await canAccessProjectScoped(existing.project_id, userId))) {
+    return NextResponse.json({ error: ERR.NO_PROJECT_ACCESS }, { status: 403 });
   }
 
   const name =
@@ -59,6 +66,11 @@ export async function DELETE(_request: Request, { params }: Ctx) {
   const existing = await ownedField(id, userId);
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  const denied = await requirePermission(userId, "projects", "edit");
+  if (denied) return denied;
+  if (!(await canAccessProjectScoped(existing.project_id, userId))) {
+    return NextResponse.json({ error: ERR.NO_PROJECT_ACCESS }, { status: 403 });
   }
   await dbRun("DELETE FROM custom_field_values WHERE field_id = ?", [id]);
   await dbRun("DELETE FROM custom_fields WHERE id = ?", [id]);

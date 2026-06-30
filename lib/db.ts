@@ -6,6 +6,7 @@ import {
 } from "@libsql/client";
 import fs from "node:fs";
 import path from "node:path";
+import { DEFAULT_PERMISSIONS } from "@/lib/permissions";
 
 // Database connection.
 //   - Local dev:  file:data/pm.db   (no env needed)
@@ -89,22 +90,31 @@ CREATE TABLE IF NOT EXISTS workspaces (
 );
 
 CREATE TABLE IF NOT EXISTS workspace_members (
-  workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-  user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  role         TEXT NOT NULL DEFAULT 'assignee' CHECK (role IN ('admin','manager','assignee')),
-  created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  workspace_id   TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  user_id        TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role           TEXT NOT NULL DEFAULT 'assignee',
+  active         INTEGER NOT NULL DEFAULT 1,
+  last_active_at TEXT,
+  created_at     TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (workspace_id, user_id)
 );
 
 CREATE TABLE IF NOT EXISTS workspace_invites (
-  id           INTEGER PRIMARY KEY AUTOINCREMENT,
-  workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-  email        TEXT NOT NULL,
-  role         TEXT NOT NULL DEFAULT 'assignee' CHECK (role IN ('admin','manager','assignee')),
-  token_hash   TEXT NOT NULL,
-  invited_by   TEXT,
-  expires_at   TEXT NOT NULL,
-  created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  workspace_id   TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  email          TEXT NOT NULL,
+  role           TEXT NOT NULL DEFAULT 'assignee',
+  token_hash     TEXT NOT NULL,
+  invited_by     TEXT,
+  status         TEXT NOT NULL DEFAULT 'pending'
+                 CHECK (status IN ('pending','accepted','expired','cancelled')),
+  project_access TEXT NOT NULL DEFAULT '[]',
+  message        TEXT,
+  expires_at     TEXT NOT NULL,
+  accepted_at    TEXT,
+  cancelled_at   TEXT,
+  updated_at     TEXT,
+  created_at     TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS projects (
@@ -124,6 +134,10 @@ CREATE TABLE IF NOT EXISTS projects (
 CREATE TABLE IF NOT EXISTS project_members (
   project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role_id    INTEGER REFERENCES roles(id) ON DELETE SET NULL,
+  status     TEXT NOT NULL DEFAULT 'active',
+  added_by   TEXT REFERENCES users(id) ON DELETE SET NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (project_id, user_id)
 );
 
@@ -230,6 +244,30 @@ CREATE TABLE IF NOT EXISTS comment_attachments (
 );
 
 CREATE INDEX IF NOT EXISTS idx_comment_attachments_comment ON comment_attachments(comment_id);
+
+CREATE TABLE IF NOT EXISTS roles (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  key          TEXT NOT NULL,
+  name         TEXT NOT NULL,
+  description  TEXT NOT NULL DEFAULT '',
+  is_system    INTEGER NOT NULL DEFAULT 0,
+  active       INTEGER NOT NULL DEFAULT 1,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (workspace_id, key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_roles_workspace ON roles(workspace_id);
+
+CREATE TABLE IF NOT EXISTS role_permissions (
+  role_id      INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  module       TEXT NOT NULL,
+  action       TEXT NOT NULL,
+  PRIMARY KEY (role_id, module, action)
+);
+
+CREATE INDEX IF NOT EXISTS idx_role_permissions_ws ON role_permissions(workspace_id);
 `;
 
 // Lightweight migration for databases created before auth was added.
@@ -454,6 +492,189 @@ async function migrate(): Promise<void> {
   // UPDATEs suffice; these are idempotent.
   await client.execute("UPDATE tasks SET severity = 'moderate' WHERE severity IN ('medium','minor')");
   await client.execute("UPDATE tasks SET severity = 'major' WHERE severity = 'high'");
+
+  await migrateRbac();
+}
+
+// RBAC migration: relaxes the role CHECK constraints so custom role keys are
+// allowed, adds the per-member `active` flag, and backfills the system roles +
+// their default permissions for every existing workspace. Idempotent — each
+// table rebuild is gated on the live DDL, and seeding uses INSERT OR IGNORE.
+async function migrateRbac(): Promise<void> {
+  // 1. Rebuild workspace_members to drop the role CHECK and add `active`.
+  //    SQLite can't ALTER a CHECK constraint, so the table is rebuilt (same
+  //    pattern as the tasks rebuild above).
+  const wmDdl = String(
+    (
+      await client.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='workspace_members'"
+      )
+    ).rows[0]?.sql ?? ""
+  );
+  if (wmDdl.includes("CHECK") || !wmDdl.includes("active")) {
+    await client.execute("PRAGMA foreign_keys=OFF");
+    await client.execute(`
+      CREATE TABLE workspace_members_new (
+        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+        user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role         TEXT NOT NULL DEFAULT 'assignee',
+        active       INTEGER NOT NULL DEFAULT 1,
+        created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+        PRIMARY KEY (workspace_id, user_id)
+      )
+    `);
+    await client.execute(`
+      INSERT INTO workspace_members_new (workspace_id, user_id, role, active, created_at)
+      SELECT workspace_id, user_id, role, 1, created_at FROM workspace_members
+    `);
+    await client.execute("DROP TABLE workspace_members");
+    await client.execute(
+      "ALTER TABLE workspace_members_new RENAME TO workspace_members"
+    );
+    await client.execute("PRAGMA foreign_keys=ON");
+    await client.execute(
+      "CREATE INDEX IF NOT EXISTS idx_members_user ON workspace_members(user_id)"
+    );
+  }
+
+  // 2. Rebuild workspace_invites to the invitation-lifecycle schema: drops the
+  //    legacy role CHECK AND adds status/project_access/message/timestamps in a
+  //    single rebuild. Gated on the new `status` column so it runs exactly once
+  //    (this also supersedes the earlier role-CHECK-only rebuild).
+  const wiDdl = String(
+    (
+      await client.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='workspace_invites'"
+      )
+    ).rows[0]?.sql ?? ""
+  );
+  if (!wiDdl.includes("status")) {
+    await client.execute("PRAGMA foreign_keys=OFF");
+    await client.execute(`
+      CREATE TABLE workspace_invites_new (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        workspace_id   TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+        email          TEXT NOT NULL,
+        role           TEXT NOT NULL DEFAULT 'assignee',
+        token_hash     TEXT NOT NULL,
+        invited_by     TEXT,
+        status         TEXT NOT NULL DEFAULT 'pending'
+                       CHECK (status IN ('pending','accepted','expired','cancelled')),
+        project_access TEXT NOT NULL DEFAULT '[]',
+        message        TEXT,
+        expires_at     TEXT NOT NULL,
+        accepted_at    TEXT,
+        cancelled_at   TEXT,
+        updated_at     TEXT,
+        created_at     TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
+    // Legacy rows are all pending invitations.
+    await client.execute(`
+      INSERT INTO workspace_invites_new (id, workspace_id, email, role, token_hash, invited_by, status, expires_at, created_at)
+      SELECT id, workspace_id, email, role, token_hash, invited_by, 'pending', expires_at, created_at FROM workspace_invites
+    `);
+    await client.execute("DROP TABLE workspace_invites");
+    await client.execute(
+      "ALTER TABLE workspace_invites_new RENAME TO workspace_invites"
+    );
+    await client.execute("PRAGMA foreign_keys=ON");
+  }
+  // Ensure the status index exists for both fresh DBs (where the rebuild above
+  // is skipped) and migrated ones. Runs only once the status column exists.
+  await client.execute(
+    "CREATE INDEX IF NOT EXISTS idx_invites_ws_status ON workspace_invites(workspace_id, status)"
+  );
+
+  // 3. Seed the three system roles for every workspace (idempotent on the
+  //    UNIQUE(workspace_id, key) constraint).
+  await client.execute(
+    `INSERT OR IGNORE INTO roles (workspace_id, key, name, description, is_system, active)
+     SELECT id, 'admin', 'Admin', 'Full access to everything.', 1, 1 FROM workspaces`
+  );
+  await client.execute(
+    `INSERT OR IGNORE INTO roles (workspace_id, key, name, description, is_system, active)
+     SELECT id, 'manager', 'Project Manager', 'Manages assigned projects, tasks, members, and reports.', 1, 1 FROM workspaces`
+  );
+  await client.execute(
+    `INSERT OR IGNORE INTO roles (workspace_id, key, name, description, is_system, active)
+     SELECT id, 'assignee', 'Member', 'Views assigned projects and works on assigned tasks.', 1, 1 FROM workspaces`
+  );
+
+  // 4. Seed default permissions for each system role across all workspaces
+  //    (idempotent on the role_permissions primary key). Done directly against
+  //    the client here (not via lib/seed-roles.ts) to avoid a circular import.
+  const sysRoles = await client.execute(
+    "SELECT id, workspace_id, key FROM roles WHERE is_system = 1"
+  );
+  for (const r of sysRoles.rows) {
+    const key = String((r as Row).key) as "admin" | "manager" | "assignee";
+    const grants = DEFAULT_PERMISSIONS[key];
+    if (!grants) continue;
+    for (const [module, action] of grants) {
+      await client.execute({
+        sql: `INSERT OR IGNORE INTO role_permissions (role_id, workspace_id, module, action) VALUES (?, ?, ?, ?)`,
+        args: [
+          Number((r as Row).id),
+          String((r as Row).workspace_id),
+          module,
+          action,
+        ],
+      });
+    }
+  }
+
+  await migrateTeamMembers();
+}
+
+// Team Member Management migration: adds the per-member last_active_at column,
+// the project_members metadata columns, and carries the old `members`-module
+// permission grants over to the new `team_member` module. Idempotent.
+async function migrateTeamMembers(): Promise<void> {
+  // last_active_at on workspace_members.
+  const wmInfo = await client.execute("PRAGMA table_info(workspace_members)");
+  if (!wmInfo.rows.some((r) => (r as Row).name === "last_active_at")) {
+    await client.execute(
+      "ALTER TABLE workspace_members ADD COLUMN last_active_at TEXT"
+    );
+  }
+
+  // project_members metadata (role_id, status, added_by, created_at). ADD COLUMN
+  // can't use a non-constant default, so created_at is added nullable then
+  // backfilled.
+  const pmInfo = await client.execute("PRAGMA table_info(project_members)");
+  const pmCols = pmInfo.rows.map((r) => (r as Row).name);
+  if (!pmCols.includes("role_id")) {
+    await client.execute("ALTER TABLE project_members ADD COLUMN role_id INTEGER");
+  }
+  if (!pmCols.includes("status")) {
+    await client.execute(
+      "ALTER TABLE project_members ADD COLUMN status TEXT NOT NULL DEFAULT 'active'"
+    );
+  }
+  if (!pmCols.includes("added_by")) {
+    await client.execute("ALTER TABLE project_members ADD COLUMN added_by TEXT");
+  }
+  if (!pmCols.includes("created_at")) {
+    await client.execute("ALTER TABLE project_members ADD COLUMN created_at TEXT");
+    await client.execute(
+      "UPDATE project_members SET created_at = datetime('now') WHERE created_at IS NULL"
+    );
+  }
+
+  // Carry over any existing `members`-module grants to the new `team_member`
+  // module so custom roles don't silently lose member-management access.
+  // UPDATE OR IGNORE avoids PK collisions if the target row already exists.
+  await client.execute(
+    "UPDATE OR IGNORE role_permissions SET module = 'team_member', action = 'view' WHERE module = 'members' AND action = 'view'"
+  );
+  await client.execute(
+    "UPDATE OR IGNORE role_permissions SET module = 'team_member', action = 'invite' WHERE module = 'members' AND action = 'invite_member'"
+  );
+  await client.execute(
+    "UPDATE OR IGNORE role_permissions SET module = 'team_member', action = 'remove' WHERE module = 'members' AND action = 'remove_member'"
+  );
+  await client.execute("DELETE FROM role_permissions WHERE module = 'members'");
 }
 
 // Seed an unowned sample project the first account claims on sign-up.
@@ -536,6 +757,7 @@ export type {
   CustomFieldType,
   CustomFieldWithValue,
   Role,
+  RoleRow,
   Member,
   PendingInvite,
 } from "@/lib/types";

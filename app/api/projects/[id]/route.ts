@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { dbGet, dbRun, dbAll, type Project } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
-import { projectRole } from "@/lib/membership";
+import { canAccessProjectScoped } from "@/lib/membership";
+import { requirePermission, ERR } from "@/lib/rbac";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -13,15 +14,11 @@ export async function PATCH(request: Request, { params }: Ctx) {
   const { id } = await params;
   const body = await request.json().catch(() => ({}));
 
-  const role = await projectRole(id, userId);
-  if (!role) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-  if (role === "assignee") {
-    return NextResponse.json(
-      { error: "You don't have permission to edit this project." },
-      { status: 403 }
-    );
+  // Must hold projects:edit and have access to this specific project.
+  const denied = await requirePermission(userId, "projects", "edit");
+  if (denied) return denied;
+  if (!(await canAccessProjectScoped(id, userId))) {
+    return NextResponse.json({ error: ERR.NO_PROJECT_ACCESS }, { status: 403 });
   }
 
   const existing = await dbGet<Project & { workspace_id: string }>(
@@ -107,15 +104,11 @@ export async function DELETE(_request: Request, { params }: Ctx) {
   }
   const { id } = await params;
 
-  const role = await projectRole(id, userId);
-  if (!role) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-  if (role !== "admin") {
-    return NextResponse.json(
-      { error: "Only admins can delete projects." },
-      { status: 403 }
-    );
+  // Must hold projects:delete and have access to this specific project.
+  const denied = await requirePermission(userId, "projects", "delete");
+  if (denied) return denied;
+  if (!(await canAccessProjectScoped(id, userId))) {
+    return NextResponse.json({ error: ERR.NO_PROJECT_ACCESS }, { status: 403 });
   }
 
   // Remove tasks explicitly (don't rely on FK cascade across drivers).

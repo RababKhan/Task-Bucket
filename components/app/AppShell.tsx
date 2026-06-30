@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import ThemeToggle from "@/components/ThemeToggle";
+import { useCan } from "@/components/app/PermissionProvider";
 
 function initials(text: string) {
   const parts = text.trim().split(/\s+/).filter(Boolean);
@@ -120,6 +121,9 @@ function Sidebar({
     pathname.startsWith("/project/") ||
     pathname.startsWith("/task/");
 
+  // The Employee Directory requires team_member:view.
+  const canViewDirectory = useCan("team_member", "view");
+
   return (
     <aside className="app-sidebar">
       <div className="sidebar-logo">
@@ -149,13 +153,20 @@ function Sidebar({
         <NavLink href="/dashboard" label="Dashboard" icon={DashboardIcon} active={isActive("/dashboard")} />
         <NavLink href="/projects" label="Project" icon={ProjectsIcon} active={projectsActive} />
         <NavLink href="/tasks" label="Tasks" icon={TasksIcon} active={isActive("/tasks")} />
-        <NavLink href="/directory" label="Employee Directory" icon={DirectoryIcon} active={isActive("/directory")} />
+        {canViewDirectory && (
+          <NavLink href="/directory" label="Employee Directory" icon={DirectoryIcon} active={isActive("/directory")} />
+        )}
         <NavLink href="/timesheet" label="Time Sheet" icon={TimeSheetIcon} active={isActive("/timesheet")} />
       </nav>
 
       <div className="sidebar-bottom">
         <NavLink href="/profile" label="Profile" icon={ProfileIcon} active={isActive("/profile")} />
-        <NavLink href="/settings" label="Settings" icon={SettingsIcon} active={isActive("/settings")} />
+        <NavLink
+          href="/settings"
+          label="Settings"
+          icon={SettingsIcon}
+          active={isActive("/settings") && !pathname.startsWith("/settings/roles")}
+        />
         <NavLink
           href="https://github.com/RababKhan/Task-Bucket"
           label="Help & Support"
@@ -176,6 +187,7 @@ function sectionTitle(pathname: string) {
   if (pathname.startsWith("/tasks")) return "Tasks";
   if (pathname.startsWith("/directory")) return "Employee Directory";
   if (pathname.startsWith("/timesheet")) return "Time Sheet";
+  if (pathname.startsWith("/settings/roles")) return "Roles & Permissions";
   if (pathname.startsWith("/settings")) return "Settings";
   if (pathname.startsWith("/profile")) return "Profile";
   if (pathname.startsWith("/task")) return "Task";
@@ -232,7 +244,8 @@ function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const email = user?.email || "";
   const title = sectionTitle(pathname);
   const showAdd = pathname.startsWith("/projects");
-  const showCrumb = pathname === "/" && !!boardProject;
+  const showCrumb =
+    (pathname === "/" || pathname.startsWith("/project/")) && !!boardProject;
   const showTaskCrumb = pathname.startsWith("/task/") && !!taskCrumb;
 
   return (

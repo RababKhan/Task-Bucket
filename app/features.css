@@ -1436,7 +1436,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding-right: 2px;
+  padding: 0 6px;
 }
 .cm-list::-webkit-scrollbar {
   display: none;
@@ -1444,8 +1444,10 @@
 .cm-list > .cm-item:not(.cm-grouped) {
   margin-top: 12px;
 }
+/* Push the message block to the bottom (chat-style) when the thread is short;
+   the auto margin collapses when content overflows, so scrolling still works. */
 .cm-list > .cm-item:first-child {
-  margin-top: 0;
+  margin-top: auto;
 }
 .cm-empty {
   font-size: 11.375px;
@@ -1457,11 +1459,19 @@
   display: flex;
   gap: 8px;
   align-items: flex-start;
+  padding: 4px 6px;
+  margin: 0 -6px;
+  border-radius: 8px;
+  transition: background 0.13s ease;
+}
+/* Slack-style row highlight on hover. */
+.cm-item:hover {
+  background: var(--surface-2);
 }
 /* Avatar / hover-time column. */
 .cm-gutter {
   flex-shrink: 0;
-  width: 32px;
+  width: 26px;
   display: flex;
   justify-content: center;
 }
@@ -1477,14 +1487,14 @@
 }
 .cm-avatar {
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
   background: var(--accent);
   color: #fff;
   display: grid;
   place-items: center;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   overflow: hidden;
 }
@@ -1511,11 +1521,12 @@
   font-size: 10.5px;
   color: var(--text-dim);
 }
-/* Floating hover toolbar pinned to the message's top-right. */
+/* Floating hover toolbar — kept inside the row so the list's overflow doesn't
+   clip it (top-right of the message). */
 .cm-float {
   position: absolute;
-  top: -10px;
-  right: 4px;
+  top: 2px;
+  right: 10px;
   z-index: 5;
   display: inline-flex;
   align-items: center;
@@ -1524,7 +1535,7 @@
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
-  box-shadow: 0 4px 14px -4px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 2px 8px -3px rgba(0, 0, 0, 0.22);
   opacity: 0;
   transition: opacity 0.12s ease;
 }
@@ -1533,26 +1544,92 @@
   opacity: 1;
 }
 .cm-action {
+  position: relative;
   display: grid;
   place-items: center;
   width: 22px;
   height: 22px;
+  padding: 0;
+  border: none;
+  background: none;
   border-radius: 6px;
   color: var(--text-dim);
   cursor: pointer;
   transition: background 0.12s, color 0.12s;
 }
+.cm-action > * {
+  pointer-events: none;
+}
 .cm-action:hover {
   background: var(--surface-2);
   color: var(--text);
+}
+/* Custom tooltip for the floating action buttons (shown below, right-anchored
+   so it never clips past the list's right edge). */
+.cm-action[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 7px);
+  right: 0;
+  transform: translateY(2px);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--text);
+  color: var(--canvas-bg);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  z-index: 70;
+}
+.cm-action[data-tip]::before {
+  content: "";
+  position: absolute;
+  bottom: calc(100% + 2px);
+  right: 7px;
+  transform: translateY(2px);
+  border: 5px solid transparent;
+  border-top-color: var(--text);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  z-index: 70;
+}
+.cm-action[data-tip]:hover::after,
+.cm-action[data-tip]:hover::before {
+  opacity: 1;
+  transform: translateY(0);
 }
 .cm-action-danger:hover {
   color: var(--danger);
   background: color-mix(in srgb, var(--danger) 12%, transparent);
 }
 .cm-action svg {
+  display: block;
   width: 15px;
   height: 15px;
+}
+/* Quick one-click reaction buttons in the hover toolbar. */
+.cm-quick {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s, transform 0.08s;
+}
+.cm-quick:hover {
+  background: var(--surface-2);
+  transform: scale(1.12);
 }
 .cm-body {
   margin-top: 1px;
@@ -1561,6 +1638,26 @@
   line-height: 1.5;
   white-space: normal;
   word-break: break-word;
+}
+/* Twemoji images (so emojis match Slack's look). */
+img.cm-tw-emoji {
+  height: 1.2em;
+  width: 1.2em;
+  margin: 0 0.04em;
+  vertical-align: -0.22em;
+  display: inline-block;
+}
+.cm-quick img.cm-tw-emoji,
+.cm-chip img.cm-tw-emoji {
+  height: 15px;
+  width: 15px;
+  margin: 0;
+  vertical-align: middle;
+}
+.cm-emoji-opt img.cm-tw-emoji {
+  height: 18px;
+  width: 18px;
+  vertical-align: middle;
 }
 .cm-reactions {
   display: flex;
@@ -1615,6 +1712,21 @@
   top: auto;
   bottom: calc(100% + 4px);
 }
+/* Theme the emoji-mart picker (and its skin-tone dropdown) to the app's colors.
+   It reads --rgb-accent/background/color/input (comma-separated RGB) via
+   inheritance into its shadow DOM, so setting them on the portal is enough. */
+.cm-emoji-portal {
+  --rgb-accent: 82, 82, 91;
+  --rgb-background: 20, 22, 28;
+  --rgb-input: 27, 30, 38;
+  --rgb-color: 233, 235, 241;
+}
+[data-theme="light"] .cm-emoji-portal {
+  --rgb-accent: 68, 64, 60;
+  --rgb-background: 255, 255, 255;
+  --rgb-input: 240, 239, 237;
+  --rgb-color: 28, 25, 23;
+}
 .cm-emoji-opt {
   width: 26px;
   height: 26px;
@@ -1647,7 +1759,7 @@
 .cm-reply .cm-avatar {
   width: 26px;
   height: 26px;
-  border-radius: 7px;
+  border-radius: 50%;
   font-size: 9px;
 }
 .cm-reply-box {
@@ -1659,7 +1771,7 @@
 /* Slack-style composer box. */
 .cm-composer {
   flex-shrink: 0;
-  margin-top: 30px;
+  margin-top: 12px;
 }
 .cm-box {
   border: 1px solid var(--border);
@@ -1706,6 +1818,68 @@
 .cm-aa {
   font-size: 12px;
   font-weight: 600;
+}
+/* Custom tooltips for the composer / formatting buttons (shown above).
+   Left-anchored so they don't clip against the panel's left edge; the send
+   button (far right) is right-anchored. */
+.cm-tool[data-tip],
+.cm-fbtn[data-tip],
+.cm-box-send[data-tip] {
+  position: relative;
+}
+.cm-tool[data-tip]::after,
+.cm-fbtn[data-tip]::after,
+.cm-box-send[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 0;
+  transform: translateY(2px);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--text);
+  color: var(--canvas-bg);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  z-index: 60;
+}
+.cm-tool[data-tip]::before,
+.cm-fbtn[data-tip]::before,
+.cm-box-send[data-tip]::before {
+  content: "";
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 9px;
+  transform: translateY(2px);
+  border: 5px solid transparent;
+  border-top-color: var(--text);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  z-index: 60;
+}
+/* Send sits at the far right — anchor its tooltip to the right edge. */
+.cm-box-send[data-tip]::after {
+  left: auto;
+  right: 0;
+}
+.cm-box-send[data-tip]::before {
+  left: auto;
+  right: 9px;
+}
+.cm-tool[data-tip]:hover::after,
+.cm-tool[data-tip]:hover::before,
+.cm-fbtn[data-tip]:hover::after,
+.cm-fbtn[data-tip]:hover::before,
+.cm-box-send[data-tip]:hover::after,
+.cm-box-send[data-tip]:hover::before {
+  opacity: 1;
+  transform: translateY(0);
 }
 .cm-tool.active {
   background: color-mix(in srgb, var(--accent) 16%, var(--surface));
@@ -3554,6 +3728,20 @@
   outline: none;
   box-shadow: none;
 }
+.proj-search-clear {
+  display: grid;
+  place-items: center;
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--text-dim);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.12s;
+}
+.proj-search-clear:hover {
+  color: var(--text);
+}
 .proj-tool-btn {
   display: inline-flex;
   align-items: center;
@@ -3576,12 +3764,61 @@
 }
 
 /* ---- Sprints ---- */
+/* The sprint view scrolls with the page (not an internal table), so it doesn't
+   need board-view's overflow clipping — and that clipping was cutting off the
+   search input's focus ring at the left edge. */
+.board-view:has(.sprints) {
+  overflow: visible;
+}
+/* The sprint view has no toolbar under the tabs, so collapse the doubled gap
+   (tab margin + sticky padding) that would otherwise sit above the search row. */
+.board-view:has(.sprints) .proj-sticky {
+  padding-bottom: 0;
+}
+/* Keep the gap OUTSIDE the sticky header (tabs margin = 0) and put it on the
+   content instead, so the sticky's background/z-index can't paint over the
+   search input's top border / focus ring. */
+.board-view:has(.sprints) .project-tabs {
+  margin-bottom: 0;
+}
+.board-view:has(.sprints) .sprints {
+  padding-top: 8px;
+  /* Fill the board column and let the cards scroll internally (toolbar fixed). */
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.sprints-head {
+  flex-shrink: 0;
+}
+.sprints-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--canvas-border) transparent;
+}
+.sprints-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+.sprints-scroll::-webkit-scrollbar-thumb {
+  background: var(--canvas-border);
+  border-radius: 4px;
+}
+.sprints-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
+}
+
 .sprints-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
+}
+.sprints-head .pv-search {
+  flex: 0 0 192.6px;
 }
 .sprints-sub {
   margin: 0;
@@ -3593,8 +3830,8 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 16px 18px;
-  margin-bottom: 14px;
+  padding: 0;
+  margin-bottom: 8px;
 }
 .backlog-card {
   background: var(--surface-2);
@@ -3602,8 +3839,13 @@
 .sprint-card-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
+  height: 38px;
+  padding: 0 14px;
+}
+/* Expanded content lives below the 38px header. */
+.sprint-body {
+  padding: 0 14px 12px;
 }
 .sprint-card-title {
   display: flex;
@@ -3613,7 +3855,8 @@
 }
 .sprint-card-title h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 11.375px;
+  font-weight: 600;
 }
 .sprint-count {
   font-size: 12px;
@@ -3637,13 +3880,99 @@
 }
 .sprint-actions {
   display: flex;
+  align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  margin-left: auto;
 }
 .sprint-goal {
-  margin: 10px 0 0;
+  margin: 8px 0 0 30px;
   font-size: 13px;
   color: var(--text-dim);
+}
+
+/* Collapsible sprint card header bits (match the reference layout). */
+.sprint-toggle {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.sprint-toggle svg {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.15s;
+}
+.sprint-toggle.open svg {
+  transform: rotate(180deg);
+}
+.sprint-count-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  display: inline-grid;
+  place-items: center;
+}
+.sprint-dates {
+  margin: 4px 0 0 30px;
+  font-size: 11.375px;
+  color: var(--text-dim);
+}
+/* Borderless header action buttons (End Sprint, Add Item). */
+.sprint-act-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 8px;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.sprint-act-btn:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+.sprint-act-btn svg {
+  width: 14px;
+  height: 14px;
+}
+.sprint-additem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.sprint-additem svg {
+  width: 14px;
+  height: 14px;
+}
+.sprint-kebab-wrap {
+  position: relative;
+}
+.sprint-additem-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 10px 0 0;
+}
+.sprint-additem-row .cf-input {
+  flex: 1;
 }
 .sprint-tasks {
   list-style: none;
@@ -4699,6 +5028,37 @@ textarea::placeholder {
   color: var(--text);
   font-size: 11.375px;
 }
+.pv-search:has(.pv-search-clear) input {
+  padding-right: 28px;
+}
+.pv-search-clear {
+  position: absolute;
+  right: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--text-dim);
+  cursor: pointer;
+  z-index: 1;
+  transition: color 0.12s;
+}
+.pv-search-clear:hover {
+  color: var(--text);
+}
+/* Override the absolute-left positioning .pv-search svg applies to all svgs. */
+.pv-search-clear svg {
+  position: static;
+  left: auto;
+  width: 13px;
+  height: 13px;
+  color: inherit;
+}
 .pv-tool-btn {
   display: inline-flex;
   align-items: center;
@@ -5675,4 +6035,947 @@ textarea::placeholder {
 }
 .pv-filter-apply:hover {
   background: var(--accent-hover);
+}
+
+/* ====================== RBAC: roles & permissions ====================== */
+
+.btn-xs {
+  height: 24px;
+  padding: 0 8px;
+  font-size: 11px;
+  border-radius: 6px;
+}
+
+.cf-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
+/* ---- Roles list / form pages ---- */
+.roles-page {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.roles-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.roles-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.roles-sub {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin: 4px 0 0;
+  max-width: 60ch;
+}
+.roles-foot {
+  display: flex;
+  justify-content: flex-end;
+}
+.roles-head-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.role-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 640px) {
+  .role-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.roles-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.roles-table th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  font-weight: 600;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.roles-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.roles-table tr:last-child td {
+  border-bottom: none;
+}
+.roles-table tr.role-inactive {
+  opacity: 0.55;
+}
+.role-name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.role-name {
+  font-weight: 600;
+  color: var(--text);
+}
+.role-desc {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.role-badge {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+.role-badge-system {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.role-badge-custom {
+  color: var(--text-dim);
+}
+.role-status {
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.role-status-on {
+  color: var(--done);
+}
+.role-status-off {
+  color: var(--text-dim);
+}
+.roles-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+/* ---- Permission matrix ---- */
+.perm-matrix-wrap {
+  overflow-x: auto;
+  margin-top: 8px;
+}
+.perm-matrix {
+  border-collapse: collapse;
+  font-size: 12px;
+  min-width: 720px;
+}
+.perm-matrix th,
+.perm-matrix td {
+  border: 1px solid var(--border);
+  padding: 0;
+}
+.perm-matrix-corner {
+  text-align: left;
+  padding: 8px 12px;
+  background: var(--surface-2);
+  font-weight: 600;
+  color: var(--text-dim);
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+.perm-matrix-col {
+  padding: 8px 6px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-weight: 600;
+  white-space: nowrap;
+  font-size: 11px;
+  vertical-align: bottom;
+}
+.perm-matrix-row {
+  text-align: left;
+  padding: 8px 12px;
+  background: var(--surface);
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  white-space: nowrap;
+}
+.perm-matrix-row-name {
+  font-weight: 600;
+  color: var(--text);
+  margin-right: 8px;
+}
+.perm-matrix-all {
+  font-size: 10px;
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.perm-matrix-all:hover {
+  text-decoration: underline;
+}
+.perm-matrix-cell {
+  text-align: center;
+}
+.perm-matrix-na {
+  color: var(--border);
+  user-select: none;
+}
+.perm-checkbox {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 36px;
+  cursor: pointer;
+}
+.perm-checkbox input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.perm-checkbox-box {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1.5px solid var(--border);
+  display: grid;
+  place-items: center;
+  color: transparent;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.perm-checkbox-box svg {
+  width: 13px;
+  height: 13px;
+}
+.perm-checkbox input:checked + .perm-checkbox-box {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.perm-checkbox input:disabled + .perm-checkbox-box {
+  opacity: 0.55;
+  cursor: default;
+}
+.perm-checkbox input:focus-visible + .perm-checkbox-box {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---- Member active state ---- */
+.member-row.member-inactive {
+  opacity: 0.55;
+}
+.inactive-tag {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+/* ---- Access denied panel ---- */
+.access-denied {
+  max-width: 420px;
+  margin: 80px auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px;
+}
+.access-denied-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--text-dim);
+}
+.access-denied-icon svg {
+  width: 100%;
+  height: 100%;
+}
+.access-denied-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+.access-denied-msg {
+  font-size: 13.5px;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+/* ================== Team Member Management / Directory ================== */
+
+.dir-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Filter bar */
+.dir-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.dir-search {
+  flex: 1;
+  min-width: 200px;
+}
+.dir-filters .cf-input {
+  height: 34px;
+}
+
+/* Directory table */
+.dir-table-wrap {
+  overflow-x: auto;
+}
+.dir-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.dir-table th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  font-weight: 600;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.dir-table td {
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.dir-table tr:last-child td {
+  border-bottom: none;
+}
+.dir-row {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.dir-row:hover {
+  background: var(--surface-2);
+}
+.dir-member {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.dir-avatar {
+  width: 30px;
+  height: 30px;
+  font-size: 11px;
+}
+
+/* Status badge */
+.status-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+.status-active {
+  color: var(--done);
+  border-color: color-mix(in srgb, var(--done) 40%, transparent);
+  background: color-mix(in srgb, var(--done) 10%, transparent);
+}
+.status-inactive {
+  color: var(--text-dim);
+}
+.status-invited {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* Pagination */
+.dir-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 14px;
+}
+.dir-page-info {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* Invite modal project checklist */
+.invite-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.invite-project-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.invite-project-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.invite-note {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  font-style: italic;
+  text-align: center;
+  margin: 4px 0 0;
+}
+
+/* Confirm modal */
+.confirm-modal {
+  width: 400px;
+  max-width: 92vw;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.confirm-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+.confirm-body {
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin: 0;
+}
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+.btn-danger-solid {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+.btn-danger-solid:hover {
+  background: var(--danger);
+  filter: brightness(0.94);
+}
+
+/* Member detail page */
+.md-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.md-avatar {
+  width: 52px;
+  height: 52px;
+  font-size: 18px;
+}
+.md-headinfo {
+  flex: 1;
+  min-width: 180px;
+}
+.md-name {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.md-role {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.md-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.md-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 720px) {
+  .md-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.md-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 0;
+}
+.md-info > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+.md-info dt {
+  color: var(--text-dim);
+}
+.md-info dd {
+  margin: 0;
+  color: var(--text);
+  font-weight: 500;
+}
+.md-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+.md-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.md-task-status {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.md-activity {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12.5px;
+}
+.md-activity li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text);
+}
+.md-act-date {
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* Directory toolbar/table tweaks layered on the shared .pv (Projects) skin */
+.dir-pv .pv-toolbar {
+  flex-wrap: wrap;
+}
+.pv-toolbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pv-tool-select {
+  height: 28px;
+  max-width: 160px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 11.375px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.pv-tool-select:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.pv-invite-btn {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.pv-invite-btn:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: #fff;
+}
+.pv-invite-btn svg {
+  color: #fff;
+}
+/* Two-line member cell needs a touch more row height than the single-line
+   Projects rows. */
+.dir-pv .pv-row {
+  height: 52px;
+}
+.dir-name-wrap {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+.dir-sub {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dir-muted {
+  color: var(--text-dim);
+}
+
+/* ---- Create Sprint modal (built on .task-modal so fields/spacing/height
+   match the Create Task modal) ---- */
+.tm-head-x {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sprint-x {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  color: var(--text-dim);
+  transition: color 0.12s, border-color 0.12s;
+}
+.sprint-x svg {
+  width: 15px;
+  height: 15px;
+}
+.sprint-x:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+.sprint-foot {
+  justify-content: flex-end;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+.cf-select-wrap {
+  position: relative;
+}
+.cf-select-wrap select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 32px;
+  width: 100%;
+}
+.cf-select-chevron {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+.sprint-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.sprint-toggle-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.sprint-toggle-sub {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+.sw-toggle {
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--border);
+  border: none;
+  padding: 0;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.sw-toggle.on {
+  background: var(--accent);
+}
+.sw-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s;
+}
+.sw-toggle.on .sw-knob {
+  transform: translateX(18px);
+}
+
+/* Roles list reuses the .pv skin too */
+.pv-toolbar-hint {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.roles-pv .pv-row {
+  height: 56px;
+}
+
+/* ---- Role Permission matrix (functionality rows × role columns) ---- */
+.rpm-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--canvas-border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+.rpm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.rpm-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.rpm-corner {
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  font-weight: 600;
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: var(--surface-2);
+  min-width: 240px;
+}
+.rpm-col {
+  padding: 8px 10px;
+  min-width: 116px;
+}
+.rpm-colhead {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.rpm-rolename {
+  background: none;
+  border: none;
+  padding: 0;
+  font-weight: 600;
+  font-size: 12.5px;
+  color: var(--text);
+  cursor: pointer;
+}
+.rpm-rolename:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.rpm-editbtns {
+  display: inline-flex;
+  gap: 4px;
+}
+.rpm-iconbtn {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.rpm-iconbtn svg {
+  width: 13px;
+  height: 13px;
+}
+.rpm-iconbtn:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+.rpm-edit:hover {
+  color: var(--accent);
+}
+.rpm-save {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.rpm-save:hover {
+  color: #fff;
+  background: var(--accent-hover);
+}
+.rpm-cancel:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.rpm-lock {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: var(--text-dim);
+}
+.rpm-lock svg {
+  width: 13px;
+  height: 13px;
+}
+.rpm-group td {
+  background: var(--surface-2);
+  font-weight: 600;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  padding: 7px 16px;
+}
+.rpm-fn {
+  text-align: left;
+  padding: 6px 16px;
+  color: var(--text);
+  white-space: nowrap;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.rpm-cell {
+  text-align: center;
+  padding: 2px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.rpm-row:hover td {
+  background: var(--surface-2);
+}
+.rpm-row:last-child td {
+  border-bottom: none;
+}
+.rpm-cell .perm-checkbox {
+  height: 30px;
+}
+
+/* The shared task list table inside a Sprint card is its own bordered panel. */
+.sprint-card .task-list {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: none;
+  flex: none;
+  background: var(--surface);
+  margin-top: 10px;
+}
+.sprint-card .tl-head {
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+}
+.sprint-card .tl-head,
+.sprint-card .tl-row {
+  padding: 0 12px;
+}
+.sprint-card .tl-row:last-child {
+  border-bottom: none;
+}
+
+/* "Add Item" footer inside the task list table. */
+.tl-addbar {
+  border-top: 1px solid var(--border);
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+}
+.tl-addbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-size: 11.375px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: color 0.12s, background 0.12s;
+}
+.tl-addbar-btn:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+.tl-addbar-btn svg {
+  width: 14px;
+  height: 14px;
+}
+.tl-addbar-edit {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+}
+.tl-addbar-input {
+  flex: 1;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 11.375px;
 }

@@ -32,6 +32,8 @@ import {
 import Spinner from "@/components/Spinner";
 import TaskModal, { type TaskDraft } from "@/app/TaskModal";
 import ProjectTabs from "@/components/app/ProjectTabs";
+import SprintView from "@/components/app/SprintView";
+import { prefetchTaskDetail } from "@/lib/task-cache";
 import StatusIcon from "@/components/app/StatusIcon";
 import TaskStatusIcon from "@/components/app/TaskStatusIcon";
 import TaskTypeIcon from "@/components/app/TaskTypeIcon";
@@ -63,6 +65,12 @@ const PRIO_COLOR: Record<string, string> = {
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
+
+// Module-level caches so returning to the board (e.g. from the Sprint route,
+// which is a separate page) renders instantly and revalidates in the
+// background, instead of flashing a spinner on every tab switch.
+let boardProjectsCache: ProjectWithCount[] | null = null;
+const boardTasksCache = new Map<number, BoardTask[]>();
 
 const STATUS_OPTS: SelectOption[] = STATUS_ORDER.map((s) => ({
   value: s,
@@ -96,13 +104,35 @@ function nextTaskType(t: TaskType): TaskType {
 function BoardPage() {
   const params = useSearchParams();
   const router = useRouter();
-  const urlProject = params.get("project");
-  const view: "board" | "list" = params.get("view") === "list" ? "list" : "board";
+  // Warm the route chunk + detail data on hover so opening a task is instant.
+  const prefetchTask = (taskId: number) => {
+    router.prefetch(`/task/${taskId}`);
+    prefetchTaskDetail(String(taskId));
+  };
 
-  const [projects, setProjects] = useState<ProjectWithCount[]>([]);
-  const [activeId, setActiveId] = useState<number | null>(null);
-  const [tasks, setTasks] = useState<BoardTask[]>([]);
-  const [loading, setLoading] = useState(true);
+  const urlProject = params.get("project");
+  // List is the default project view; Board/Sprint shown when explicitly asked.
+  const viewParam = params.get("view");
+  const view: "board" | "list" | "sprint" =
+    viewParam === "board" ? "board" : viewParam === "sprint" ? "sprint" : "list";
+
+  // Seed the initial active project from the URL + cache so the first paint on
+  // a tab switch already has data.
+  const initialActiveId = (() => {
+    const pid = Number(urlProject);
+    if (pid && boardProjectsCache?.some((p) => p.id === pid)) return pid;
+    return boardProjectsCache?.[0]?.id ?? null;
+  })();
+
+  const [projects, setProjects] = useState<ProjectWithCount[]>(
+    boardProjectsCache ?? []
+  );
+  const [activeId, setActiveId] = useState<number | null>(initialActiveId);
+  const [tasks, setTasks] = useState<BoardTask[]>(
+    initialActiveId != null ? boardTasksCache.get(initialActiveId) ?? [] : []
+  );
+  // Spinner only on the very first load (no cached projects yet).
+  const [loading, setLoading] = useState(!boardProjectsCache);
   const [createOpen, setCreateOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [members, setMembers] = useState<Member[]>([]);
@@ -150,6 +180,7 @@ function BoardPage() {
   const loadProjects = useCallback(async () => {
     const res = await fetch("/api/projects");
     const data: ProjectWithCount[] = await res.json();
+    boardProjectsCache = data;
     setProjects(data);
     setActiveId((cur) => {
       if (cur && data.some((p) => p.id === cur)) return cur;
@@ -162,7 +193,9 @@ function BoardPage() {
 
   const loadTasks = useCallback(async (projectId: number) => {
     const res = await fetch(`/api/tasks?project_id=${projectId}`);
-    setTasks(await res.json());
+    const data: BoardTask[] = await res.json();
+    boardTasksCache.set(projectId, data);
+    setTasks(data);
   }, []);
 
   useEffect(() => {
@@ -582,9 +615,12 @@ function BoardPage() {
 
       <ProjectTabs
         projectId={activeProject.id}
-        active={view === "list" ? "list" : "board"}
+        active={
+          view === "sprint" ? "sprints" : view === "list" ? "list" : "board"
+        }
       />
 
+      {view !== "sprint" && (
       <div className="proj-toolbar">
         <div className="proj-toolbar-left">
           <button
@@ -608,6 +644,18 @@ function BoardPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
+            {query && (
+              <button
+                type="button"
+                className="proj-search-clear"
+                onClick={() => setQuery("")}
+                aria-label="Clear search"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            )}
           </div>
           <button type="button" className="proj-tool-btn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -635,9 +683,12 @@ function BoardPage() {
           View
         </button>
       </div>
+      )}
       </div>
 
-      {tasks.length === 0 ? (
+      {view === "sprint" ? (
+        <SprintView projectId={activeProject.id} />
+      ) : tasks.length === 0 ? (
         emptyState
       ) : view === "board" ? (
         <div className="board">
@@ -660,6 +711,7 @@ function BoardPage() {
                     key={task.id}
                     className="card"
                     onClick={() => router.push(`/task/${task.id}`)}
+                    onMouseEnter={() => prefetchTask(task.id)}
                   >
                     <div className="card-title">{task.title}</div>
                     <div className="card-meta">
@@ -794,6 +846,7 @@ function BoardPage() {
               <span
                 className="tl-title tl-title-link"
                 onClick={() => router.push(`/task/${task.id}`)}
+                onMouseEnter={() => prefetchTask(task.id)}
               >
                 <TaskTypeIcon type={task.type} size={15} />
                 {task.seq != null && (

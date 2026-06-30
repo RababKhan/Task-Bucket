@@ -2,14 +2,18 @@ import type { NextAuthConfig } from "next-auth";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 
-// Public auth pages (no login required).
+// Auth pages: reachable only when logged OUT (logged-in users get bounced to
+// the app).
 const AUTH_PATHS = [
   "/login",
   "/signup",
   "/forgot-password",
   "/reset-password",
-  "/invite",
 ];
+
+// Fully public pages reachable in BOTH states. Invite acceptance needs this:
+// new users open it logged out, existing users open it logged in to accept.
+const PUBLIC_PATHS = ["/invite"];
 
 export const githubEnabled =
   !!process.env.AUTH_GITHUB_ID && !!process.env.AUTH_GITHUB_SECRET;
@@ -46,11 +50,15 @@ const authConfig: NextAuthConfig = {
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
-      const isAuthRoute = AUTH_PATHS.some(
-        (p) => nextUrl.pathname === p || nextUrl.pathname.startsWith(p + "/")
-      );
+      const matches = (paths: string[]) =>
+        paths.some(
+          (p) => nextUrl.pathname === p || nextUrl.pathname.startsWith(p + "/")
+        );
 
-      if (isAuthRoute) {
+      // Fully public pages (e.g. invite acceptance) are always allowed.
+      if (matches(PUBLIC_PATHS)) return true;
+
+      if (matches(AUTH_PATHS)) {
         if (isLoggedIn) return Response.redirect(new URL("/projects", nextUrl));
         return true;
       }

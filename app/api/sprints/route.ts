@@ -1,20 +1,23 @@
 import { NextResponse } from "next/server";
 import { dbAll, dbGet, dbRun, type Sprint } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
-import { canAccessProject } from "@/lib/membership";
+import { canAccessProjectScoped } from "@/lib/membership";
+import { requirePermission, ERR } from "@/lib/rbac";
 
 export async function GET(request: Request) {
   const userId = await currentUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const denied = await requirePermission(userId, "tasks", "view");
+  if (denied) return denied;
   const { searchParams } = new URL(request.url);
   const projectId = searchParams.get("project_id");
   if (!projectId) {
     return NextResponse.json({ error: "project_id is required" }, { status: 400 });
   }
-  if (!(await canAccessProject(projectId, userId))) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!(await canAccessProjectScoped(projectId, userId))) {
+    return NextResponse.json({ error: ERR.NO_PROJECT_ACCESS }, { status: 403 });
   }
 
   const sprints = await dbAll<Sprint & { task_count: number }>(
@@ -39,6 +42,9 @@ export async function POST(request: Request) {
   const projectId = Number(body.project_id);
   const name = String(body.name ?? "").trim();
   const goal = String(body.goal ?? "").trim();
+  const startDate = body.start_date ? String(body.start_date) : null;
+  const endDate = body.end_date ? String(body.end_date) : null;
+  const autoStart = body.auto_start === true;
 
   if (!projectId || !name) {
     return NextResponse.json(
@@ -46,13 +52,21 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  if (!(await canAccessProject(projectId, userId))) {
-    return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  const denied = await requirePermission(userId, "projects", "edit");
+  if (denied) return denied;
+  if (!(await canAccessProjectScoped(projectId, userId))) {
+    return NextResponse.json({ error: ERR.NO_PROJECT_ACCESS }, { status: 403 });
   }
 
+  // Auto-start kicks the sprint to "active" if its start date has already
+  // arrived (a scheduler would be needed to auto-start future-dated sprints).
+  const today = new Date().toISOString().slice(0, 10);
+  const status =
+    autoStart && startDate && startDate <= today ? "active" : "planned";
+
   const info = await dbRun(
-    "INSERT INTO sprints (project_id, name, goal) VALUES (?, ?, ?)",
-    [projectId, name, goal]
+    "INSERT INTO sprints (project_id, name, goal, start_date, end_date, status) VALUES (?, ?, ?, ?, ?, ?)",
+    [projectId, name, goal, startDate, endDate, status]
   );
   const sprint = await dbGet<Sprint>("SELECT * FROM sprints WHERE id = ?", [
     info.lastInsertRowid,

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { dbGet, dbRun } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
-import { canAccessProject } from "@/lib/membership";
+import { canAccessTask } from "@/lib/membership";
+import { requirePermission, ERR } from "@/lib/rbac";
 import { fetchCommentTree } from "@/lib/comments";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -14,14 +15,16 @@ export async function POST(request: Request, { params }: Ctx) {
   }
   const { id } = await params;
 
-  const c = await dbGet<{ id: number; task_id: number; project_id: number }>(
-    `SELECT c.id, c.task_id, t.project_id
-     FROM task_comments c JOIN tasks t ON t.id = c.task_id
-     WHERE c.id = ?`,
+  const c = await dbGet<{ id: number; task_id: number }>(
+    "SELECT id, task_id FROM task_comments WHERE id = ?",
     [id]
   );
-  if (!c || !(await canAccessProject(c.project_id, userId))) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!c) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  // Reacting is a comment-participation action on an accessible task.
+  const denied = await requirePermission(userId, "comments", "comment");
+  if (denied) return denied;
+  if (!(await canAccessTask(c.task_id, userId))) {
+    return NextResponse.json({ error: ERR.NO_PROJECT_ACCESS }, { status: 403 });
   }
 
   const body = await request.json().catch(() => ({}));

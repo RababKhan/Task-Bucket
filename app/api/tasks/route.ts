@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { dbAll, dbGet, dbRun, type Task } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
-import { canAccessProject } from "@/lib/membership";
+import { canAccessProjectScoped } from "@/lib/membership";
+import { requirePermission, ERR } from "@/lib/rbac";
 import { logActivity } from "@/lib/activity";
 import { STATUS_ORDER, PRIORITY_ORDER } from "@/lib/types";
 import {
@@ -22,13 +23,16 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const denied = await requirePermission(userId, "tasks", "view");
+  if (denied) return denied;
+
   const { searchParams } = new URL(request.url);
   const projectId = searchParams.get("project_id");
   if (!projectId) {
     return NextResponse.json({ error: "project_id is required" }, { status: 400 });
   }
-  if (!(await canAccessProject(projectId, userId))) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!(await canAccessProjectScoped(projectId, userId))) {
+    return NextResponse.json({ error: ERR.NO_PROJECT_ACCESS }, { status: 403 });
   }
 
   const rows = await dbAll<
@@ -64,9 +68,15 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  // Any member (including assignees) can create tasks.
-  if (!(await canAccessProject(projectId, userId))) {
-    return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  // Creating a subtask needs subtasks:create; a top-level item needs tasks:create.
+  const createDenied = await requirePermission(
+    userId,
+    parentId ? "subtasks" : "tasks",
+    "create"
+  );
+  if (createDenied) return createDenied;
+  if (!(await canAccessProjectScoped(projectId, userId))) {
+    return NextResponse.json({ error: ERR.NO_PROJECT_ACCESS }, { status: 403 });
   }
 
   // A subtask must hang off a top-level task in the same project (one level deep).

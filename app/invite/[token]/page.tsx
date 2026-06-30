@@ -12,10 +12,16 @@ type Info =
   | { error: string }
   | {
       email: string;
-      role: Role;
+      role: string;
       workspace_name: string;
       account_exists: boolean;
+      project_count: number;
+      message: string | null;
     };
+
+function roleLabel(role: string) {
+  return ROLE_LABELS[role as Role] ?? role;
+}
 
 export default function InvitePage() {
   const params = useParams();
@@ -37,7 +43,8 @@ export default function InvitePage() {
       .finally(() => setLoading(false));
   }, [token]);
 
-  async function accept(e: React.FormEvent) {
+  // New-user accept: create account, then sign in.
+  async function acceptNew(e: React.FormEvent) {
     e.preventDefault();
     if (submitting) return;
     setSubmitting(true);
@@ -67,6 +74,33 @@ export default function InvitePage() {
     router.refresh();
   }
 
+  // Existing-user accept: POST; if not signed in, route to login and come back.
+  async function acceptExisting() {
+    if (submitting) return;
+    setSubmitting(true);
+    setError("");
+    const res = await fetch(`/api/invite/${token}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const data = await res.json().catch(() => ({}));
+    setSubmitting(false);
+    if (res.status === 401 && data.needs_signin) {
+      // Sign in, then return here to finish accepting.
+      router.push(
+        `/login?callbackUrl=${encodeURIComponent(`/invite/${token}`)}`
+      );
+      return;
+    }
+    if (!res.ok) {
+      setError(data.error || "Could not accept the invite.");
+      return;
+    }
+    router.push("/");
+    router.refresh();
+  }
+
   return (
     <div className="auth-wrap">
       <div className="auth-card">
@@ -90,26 +124,47 @@ export default function InvitePage() {
           </>
         ) : info && info.account_exists ? (
           <>
-            <p className="auth-title">You already have an account</p>
-            <p className="signup-sub" style={{ textAlign: "center" }}>
-              Sign in with <strong>{info.email}</strong> to access{" "}
-              {info.workspace_name}.
-            </p>
-            <p className="auth-alt">
-              <Link href="/login" className="auth-link">
-                Go to sign in
-              </Link>
-            </p>
-          </>
-        ) : info ? (
-          <form className="auth-form" onSubmit={accept} noValidate>
             <h1 className="signup-h" style={{ textAlign: "center" }}>
               Join {info.workspace_name}
             </h1>
             <p className="signup-sub" style={{ textAlign: "center" }}>
-              You&apos;ve been invited as <strong>{ROLE_LABELS[info.role]}</strong>.
-              Set up your account for <strong>{info.email}</strong>.
+              You&apos;ve been invited as <strong>{roleLabel(info.role)}</strong>
+              {info.project_count > 0 && (
+                <> with access to <strong>{info.project_count}</strong> project
+                {info.project_count === 1 ? "" : "s"}</>
+              )}
+              . Accept with your existing account <strong>{info.email}</strong>.
             </p>
+            {info.message && <p className="invite-note">“{info.message}”</p>}
+            {error && <p className="invite-err">{error}</p>}
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={acceptExisting}
+              disabled={submitting}
+            >
+              {submitting ? <Spinner /> : "Accept invite"}
+            </button>
+            <p className="auth-alt">
+              <Link href="/login" className="auth-link">
+                Sign in with a different account
+              </Link>
+            </p>
+          </>
+        ) : info ? (
+          <form className="auth-form" onSubmit={acceptNew} noValidate>
+            <h1 className="signup-h" style={{ textAlign: "center" }}>
+              Join {info.workspace_name}
+            </h1>
+            <p className="signup-sub" style={{ textAlign: "center" }}>
+              You&apos;ve been invited as <strong>{roleLabel(info.role)}</strong>
+              {info.project_count > 0 && (
+                <> with access to <strong>{info.project_count}</strong> project
+                {info.project_count === 1 ? "" : "s"}</>
+              )}
+              . Set up your account for <strong>{info.email}</strong>.
+            </p>
+            {info.message && <p className="invite-note">“{info.message}”</p>}
 
             <div className="field">
               <label>Your name</label>

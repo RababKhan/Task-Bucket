@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { dbGet, dbRun } from "@/lib/db";
 import { getMembership } from "@/lib/membership";
+import { seedRolesForWorkspace } from "@/lib/seed-roles";
 import {
   validateSubdomain,
   slugify,
@@ -54,6 +55,9 @@ export async function createWorkspace(
     "INSERT OR IGNORE INTO workspace_members (workspace_id, user_id, role) VALUES (?, ?, 'admin')",
     [id, ownerId]
   );
+  // Provision the three system roles (Admin / Project Manager / Member) and
+  // their default permissions for the new workspace right away.
+  await seedRolesForWorkspace(id);
   // The very first workspace claims the unowned seed project(s).
   const count = await dbGet<{ n: number }>(
     "SELECT COUNT(*) AS n FROM workspaces"

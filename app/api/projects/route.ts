@@ -1,16 +1,29 @@
 import { NextResponse } from "next/server";
 import { dbAll, dbGet, dbRun, type Project } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
-import { getMembership, userWorkspaceId } from "@/lib/membership";
+import {
+  getMembership,
+  userWorkspaceId,
+  accessibleProjectIds,
+} from "@/lib/membership";
+import { requirePermission } from "@/lib/rbac";
 
 export async function GET() {
   const userId = await currentUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const denied = await requirePermission(userId, "projects", "view");
+  if (denied) return denied;
 
   const wsId = await userWorkspaceId(userId);
   if (!wsId) return NextResponse.json([]);
+
+  // Scope to the projects this user may access (admins => all; managers =>
+  // managed/assigned; members => assigned). Empty => nothing to show.
+  const ids = await accessibleProjectIds(userId);
+  if (!ids.length) return NextResponse.json([]);
+  const idPlaceholders = ids.map(() => "?").join(",");
 
   const rows = await dbAll<
     Project & {
@@ -36,9 +49,9 @@ export async function GET() {
      FROM projects p
      LEFT JOIN users ou ON ou.id = p.owner_id
      LEFT JOIN users mu ON mu.id = p.manager_id
-     WHERE p.workspace_id = ?
+     WHERE p.workspace_id = ? AND p.id IN (${idPlaceholders})
      ORDER BY p.created_at DESC, p.id DESC`,
-    [wsId]
+    [wsId, ...ids]
   );
 
   const projects = rows.map(({ members_raw, ...p }) => ({
@@ -84,12 +97,8 @@ export async function POST(request: Request) {
       { status: 401 }
     );
   }
-  if (membership.role === "assignee") {
-    return NextResponse.json(
-      { error: "Assignees can't create projects." },
-      { status: 403 }
-    );
-  }
+  const denied = await requirePermission(userId, "projects", "create");
+  if (denied) return denied;
   const wsId = membership.workspace_id;
 
   // Only people in this workspace can be owner / manager / members.

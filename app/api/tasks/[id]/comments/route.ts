@@ -1,21 +1,11 @@
 import { NextResponse } from "next/server";
 import { dbGet, dbRun } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
-import { canAccessProject } from "@/lib/membership";
+import { canAccessTask } from "@/lib/membership";
+import { requirePermission, ERR } from "@/lib/rbac";
 import { fetchCommentTree } from "@/lib/comments";
 
 type Ctx = { params: Promise<{ id: string }> };
-
-// Resolve the task and verify the user can access its project.
-async function ensureAccess(taskId: string, userId: string) {
-  const t = await dbGet<{ project_id: number }>(
-    "SELECT project_id FROM tasks WHERE id = ?",
-    [taskId]
-  );
-  if (!t) return null;
-  if (!(await canAccessProject(t.project_id, userId))) return null;
-  return t;
-}
 
 export async function GET(_request: Request, { params }: Ctx) {
   const userId = await currentUserId();
@@ -23,8 +13,10 @@ export async function GET(_request: Request, { params }: Ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  if (!(await ensureAccess(id, userId))) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const denied = await requirePermission(userId, "comments", "view");
+  if (denied) return denied;
+  if (!(await canAccessTask(id, userId))) {
+    return NextResponse.json({ error: ERR.NO_PROJECT_ACCESS }, { status: 403 });
   }
   return NextResponse.json({ comments: await fetchCommentTree(id, userId) });
 }
@@ -35,8 +27,10 @@ export async function POST(request: Request, { params }: Ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  if (!(await ensureAccess(id, userId))) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const denied = await requirePermission(userId, "comments", "create");
+  if (denied) return denied;
+  if (!(await canAccessTask(id, userId))) {
+    return NextResponse.json({ error: ERR.NO_PROJECT_ACCESS }, { status: 403 });
   }
 
   const body = await request.json().catch(() => ({}));
@@ -58,6 +52,11 @@ export async function POST(request: Request, { params }: Ctx) {
 
   if (!text && attachments.length === 0) {
     return NextResponse.json({ error: "Empty comment" }, { status: 400 });
+  }
+  // Attaching files requires the files:upload permission.
+  if (attachments.length > 0) {
+    const uploadDenied = await requirePermission(userId, "files", "upload");
+    if (uploadDenied) return uploadDenied;
   }
 
   // Replies attach to a top-level comment of the same task; resolve to that

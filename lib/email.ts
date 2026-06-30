@@ -83,14 +83,27 @@ export function otpEmail(code: string): {
 export function inviteEmail(
   workspaceName: string,
   role: string,
-  inviteUrl: string
+  inviteUrl: string,
+  message?: string | null
 ): { subject: string; html: string; text: string } {
   const subject = `You're invited to ${workspaceName} on Task Bucket`;
-  const text = `You've been invited to join the "${workspaceName}" workspace as ${role} on Task Bucket.\n\nAccept your invite:\n${inviteUrl}\n\nThis link expires in 7 days.`;
+  const note = message && message.trim() ? message.trim() : "";
+  const text =
+    `You've been invited to join the "${workspaceName}" workspace as ${role} on Task Bucket.\n\n` +
+    (note ? `Message from the inviter:\n"${note}"\n\n` : "") +
+    `Accept your invite:\n${inviteUrl}\n\nThis link expires in 7 days.`;
+  // Escape the optional message for safe HTML embedding.
+  const noteHtml = note
+    ? `<blockquote style="margin:16px 0;padding:8px 14px;border-left:3px solid #d4d4d8;color:#555">${note
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")}</blockquote>`
+    : "";
   const html = `
     <div style="font-family:system-ui,sans-serif;max-width:480px;margin:auto;padding:24px;color:#1a1a1a">
       <h2 style="margin:0 0 12px">You're invited 🎉</h2>
       <p style="color:#555">You've been invited to join the <strong>${workspaceName}</strong> workspace as <strong>${role}</strong> on Task Bucket.</p>
+      ${noteHtml}
       <p style="margin:24px 0">
         <a href="${inviteUrl}" style="background:#3f3f46;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;display:inline-block">Accept invite</a>
       </p>

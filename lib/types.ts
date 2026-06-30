@@ -51,27 +51,91 @@ export type Project = {
   created_at: string;
 };
 
+// System role keys. Custom roles use arbitrary string keys, so anywhere a role
+// value can be a custom role it is typed as `string` (see RoleRow / Member).
 export type Role = "admin" | "manager" | "assignee";
 
+// Fallback display labels for the system keys. The authoritative, per-workspace
+// display name lives in the `roles` table (RoleRow.name); these are used where a
+// roles-table lookup isn't available (e.g. the cached session role).
 export const ROLE_LABELS: Record<Role, string> = {
   admin: "Admin",
-  manager: "Manager",
-  assignee: "Assignee",
+  manager: "Project Manager",
+  assignee: "Member",
+};
+
+// A row from the `roles` table — a system or custom role within a workspace.
+export type RoleRow = {
+  id: number;
+  workspace_id: string;
+  key: string;
+  name: string;
+  description: string;
+  is_system: number; // 0 | 1
+  active: number; // 0 | 1
+  created_at: string;
 };
 
 export type Member = {
   user_id: string;
   name: string | null;
   email: string | null;
-  role: Role;
+  role: string; // a role key (system or custom)
+  active: number; // 0 | 1
   created_at: string;
 };
+
+export type InviteStatus = "pending" | "accepted" | "expired" | "cancelled";
 
 export type PendingInvite = {
   id: number;
   email: string;
-  role: Role;
+  role: string; // a role key (system or custom)
+  status: InviteStatus;
+  project_access: number[];
+  message: string | null;
+  expires_at: string;
   created_at: string;
+};
+
+// Derived status shown in the Team Members directory.
+export type MemberStatus = "active" | "inactive" | "invited";
+
+export const MEMBER_STATUS_LABELS: Record<MemberStatus, string> = {
+  active: "Active",
+  inactive: "Inactive",
+  invited: "Invited",
+};
+
+// A row in the workspace Team Members directory.
+export type TeamMember = {
+  user_id: string;
+  name: string | null;
+  email: string | null;
+  image: string | null;
+  role: string; // role key
+  role_name: string; // display name
+  active: number; // 0 | 1
+  project_count: number;
+  joined_at: string;
+  last_active_at: string | null;
+};
+
+// Full member detail (directory/[uid] page).
+export type MemberDetail = {
+  user_id: string;
+  name: string | null;
+  email: string | null;
+  image: string | null;
+  role: string;
+  role_name: string;
+  is_custom_role: boolean;
+  active: number;
+  joined_at: string;
+  last_active_at: string | null;
+  projects: { id: number; name: string }[];
+  tasks: { id: number; title: string; seq: number | null; project_id: number; status: string }[];
+  activity: { id: number; text: string; created_at: string }[];
 };
 
 export type TaskStatus =

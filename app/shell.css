@@ -199,7 +199,9 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 0 20px;
+  /* Match .app-main's horizontal padding (32px) so the topbar title/actions
+     line up with the page content below. */
+  padding: 0 32px;
   background: transparent;
   border-bottom: 1px solid var(--canvas-border);
 }

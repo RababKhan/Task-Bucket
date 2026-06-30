@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { dbGet, dbRun } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
+import { canAccessTask } from "@/lib/membership";
+import { requirePermission, ERR } from "@/lib/rbac";
 
 // Upsert a custom-field value on a task (task + field must share a project the
 // user owns).
@@ -19,6 +21,12 @@ export async function POST(request: Request) {
       { error: "task_id and field_id are required" },
       { status: 400 }
     );
+  }
+  // Setting a field value edits the task.
+  const denied = await requirePermission(userId, "tasks", "edit");
+  if (denied) return denied;
+  if (!(await canAccessTask(taskId, userId))) {
+    return NextResponse.json({ error: ERR.NO_PROJECT_ACCESS }, { status: 403 });
   }
 
   const ok = await dbGet(

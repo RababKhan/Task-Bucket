@@ -9,12 +9,40 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
+import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
 import type { Member } from "@/lib/types";
 import type { CommentNode } from "@/lib/comments";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+import emojiData from "@emoji-mart/data";
+import twemoji from "@twemoji/api";
+
+// Full emoji picker (category tabs, search, frequently used) — client-only.
+const EmojiPicker = dynamic(() => import("@emoji-mart/react"), { ssr: false });
+
+// Render text/emoji with Twemoji images so emojis match Slack's look.
+function escapeHtml(s: string) {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+function twHtml(s: string) {
+  return twemoji.parse(escapeHtml(s), {
+    folder: "svg",
+    ext: ".svg",
+    className: "cm-tw-emoji",
+  });
+}
+function tw(s: string, key?: string | number): ReactNode {
+  return <span key={key} dangerouslySetInnerHTML={{ __html: twHtml(s) }} />;
+}
 
 const EMOJIS = ["👍", "❤️", "😄", "🎉", "🙌", "👀", "✅", "🔥"];
-const GROUP_WINDOW_MS = 5 * 60 * 1000;
+// Quick one-click reactions shown in the hover toolbar.
+const QUICK = ["✅", "🆗", "🙌"];
 
 function initials(name?: string | null) {
   const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
@@ -25,9 +53,6 @@ function initials(name?: string | null) {
 
 function toDate(iso: string) {
   return new Date(iso.includes("T") ? iso : iso.replace(" ", "T") + "Z");
-}
-function ts(iso: string) {
-  return toDate(iso).getTime();
 }
 function shortTime(iso: string) {
   return toDate(iso).toLocaleTimeString(undefined, {
@@ -84,18 +109,19 @@ function renderInline(
   let idx = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
-    if (m.index > last) out.push(text.slice(last, m.index));
+    if (m.index > last)
+      out.push(tw(text.slice(last, m.index), `${key}-t${idx}`));
     const k = `${key}-${idx++}`;
     if (m[1] != null) out.push(<code className="cm-ic" key={k}>{m[1]}</code>);
-    else if (m[2] != null) out.push(<strong key={k}>{m[2]}</strong>);
-    else if (m[3] != null) out.push(<s key={k}>{m[3]}</s>);
-    else if (m[4] != null) out.push(<u key={k}>{m[4]}</u>);
-    else if (m[5] != null) out.push(<em key={k}>{m[5]}</em>);
-    else if (m[6] != null) out.push(<em key={k}>{m[6]}</em>);
+    else if (m[2] != null) out.push(<strong key={k}>{tw(m[2])}</strong>);
+    else if (m[3] != null) out.push(<s key={k}>{tw(m[3])}</s>);
+    else if (m[4] != null) out.push(<u key={k}>{tw(m[4])}</u>);
+    else if (m[5] != null) out.push(<em key={k}>{tw(m[5])}</em>);
+    else if (m[6] != null) out.push(<em key={k}>{tw(m[6])}</em>);
     else if (m[7] != null)
       out.push(
         <a className="cm-link" href={m[8]} target="_blank" rel="noreferrer" key={k}>
-          {m[7]}
+          {tw(m[7])}
         </a>
       );
     else if (m[9] != null)
@@ -106,7 +132,7 @@ function renderInline(
       );
     last = m.index + m[0].length;
   }
-  if (last < text.length) out.push(text.slice(last));
+  if (last < text.length) out.push(tw(text.slice(last), `${key}-tend`));
   return out;
 }
 
@@ -114,7 +140,8 @@ function renderInline(
 // paragraphs (with inline marks).
 function renderBody(text: string, members: Member[]): ReactNode {
   const out: ReactNode[] = [];
-  const segs = text.split(/```([\s\S]*?)```/g);
+  // Drop trailing blank lines so they don't render as empty space.
+  const segs = text.replace(/\s+$/, "").split(/```([\s\S]*?)```/g);
   segs.forEach((seg, si) => {
     if (si % 2 === 1) {
       out.push(
@@ -161,6 +188,10 @@ function renderBody(text: string, members: Member[]): ReactNode {
         !/^\s*\d+\.\s+/.test(lines[j])
       )
         para.push(lines[j++]);
+      // Trim blank lines around the paragraph and skip it if it's all empty.
+      while (para.length && para[para.length - 1].trim() === "") para.pop();
+      while (para.length && para[0].trim() === "") para.shift();
+      if (!para.length) continue;
       const nodes: ReactNode[] = [];
       para.forEach((p, k) => {
         if (k > 0) nodes.push(<br key={`br${si}${j}${k}`} />);
@@ -176,18 +207,9 @@ function renderBody(text: string, members: Member[]): ReactNode {
   return out;
 }
 
-// Mark each item "grouped" when it follows a message from the same author
-// within a short window (so the avatar/name header is shown once per burst).
+// Each message is shown separately with its own avatar, name, and timestamp.
 function withGroups(list: CommentNode[]) {
-  return list.map((c, i) => {
-    const prev = list[i - 1];
-    const grouped =
-      !!prev &&
-      prev.user_id != null &&
-      prev.user_id === c.user_id &&
-      Math.abs(ts(c.created_at) - ts(prev.created_at)) < GROUP_WINDOW_MS;
-    return { c, grouped };
-  });
+  return list.map((c) => ({ c, grouped: false }));
 }
 
 /* ---------- Textarea with @mention autocomplete ---------- */
@@ -196,6 +218,7 @@ type MentionHandle = {
   focus: () => void;
   wrap: (before: string, after: string) => void;
   linePrefix: (prefix: string, numbered?: boolean) => void;
+  insert: (str: string) => void;
 };
 
 const MentionInput = forwardRef<
@@ -260,6 +283,21 @@ const MentionInput = forwardRef<
     fwdRef,
     () => ({
       focus: () => ref.current?.focus(),
+      insert(str: string) {
+        const el = ref.current;
+        if (!el) return;
+        const s = el.selectionStart ?? value.length;
+        const e = el.selectionEnd ?? s;
+        const next = value.slice(0, s) + str + value.slice(e);
+        onChange(next);
+        const caret = s + str.length;
+        requestAnimationFrame(() => {
+          el.focus();
+          try {
+            el.setSelectionRange(caret, caret);
+          } catch {}
+        });
+      },
       wrap(before: string, after: string) {
         const el = ref.current;
         if (!el) return;
@@ -404,9 +442,112 @@ export default function Comments({
     { name: string; type: string; data: string }[]
   >([]);
 
+  const [emojiPos, setEmojiPos] = useState<{
+    left: number;
+    bottom: number;
+  } | null>(null);
+
   const listRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<MentionHandle>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const emojiBtnRef = useRef<HTMLButtonElement>(null);
+  const emojiPortalRef = useRef<HTMLDivElement>(null);
+
+  // emoji-mart renders in an (open) shadow DOM. Inject a style to match our
+  // sizing/theme, and KEEP it applied: emoji-mart re-renders its shadow tree
+  // when you pick an emoji (updating "Frequently used"), which wipes the style —
+  // so a MutationObserver re-injects it whenever it goes missing.
+  useEffect(() => {
+    if (!composerEmoji) return;
+    // Inner-shadow element styles (re-injected if emoji-mart wipes them).
+    const css =
+      ".search input{" +
+      "height:28px;" +
+      "padding:0 28px 0 32px;" +
+      "border-radius:8px !important;" +
+      "font-size:11.375px;" +
+      "background:transparent !important;" +
+      "border:1px solid #e7e5e4 !important;" +
+      "}" +
+      ".search input:focus{outline:none;border-color:rgb(var(--rgb-accent)) !important}" +
+      ".sticky{font-size:11.375px !important}" +
+      ".scroll{scrollbar-width:thin}" +
+      ".scroll::-webkit-scrollbar{width:6px}" +
+      ".scroll::-webkit-scrollbar-thumb{background:rgba(var(--rgb-color),0.22);border-radius:3px}" +
+      ".scroll::-webkit-scrollbar-track{background:transparent}";
+
+    // Host-level values go on the host's INLINE style — inline wins over the
+    // :host defaults and survives emoji-mart's shadow re-renders (which were
+    // resetting the design after an emoji was picked).
+    const apply = (host: HTMLElement, sr: ShadowRoot) => {
+      host.style.height = "360px";
+      host.style.setProperty(
+        "--font-family",
+        "var(--font-inter),'Inter',ui-sans-serif,system-ui,sans-serif"
+      );
+      host.style.setProperty("--preview-title-size", "11.375px");
+      host.style.setProperty("--preview-subtitle-size", "11.375px");
+      host.style.setProperty("--preview-placeholder-size", "11.375px");
+      if (!sr.querySelector("style[data-tb]")) {
+        const s = document.createElement("style");
+        s.setAttribute("data-tb", "1");
+        s.textContent = css;
+        sr.appendChild(s);
+      }
+    };
+
+    const findHost = () =>
+      emojiPortalRef.current
+        ? (Array.from(
+            emojiPortalRef.current.querySelectorAll<HTMLElement>("*")
+          ).find((el) => el.shadowRoot) as HTMLElement | undefined)
+        : undefined;
+
+    let obs: MutationObserver | null = null;
+    let raf = 0;
+    let frames = 0;
+    // Re-apply on every frame for ~1.5s (covers the picker's async (re)mount,
+    // whose timing differs between first open and reopen), then let the
+    // MutationObserver keep it applied for the rest of the session.
+    const tick = () => {
+      const host = findHost();
+      const sr = host?.shadowRoot;
+      if (host && sr) {
+        apply(host, sr);
+        if (!obs) {
+          obs = new MutationObserver(() => {
+            const h = findHost();
+            if (h?.shadowRoot) apply(h, h.shadowRoot);
+          });
+          obs.observe(sr, { childList: true, subtree: true });
+        }
+      }
+      if (frames++ < 90) raf = requestAnimationFrame(tick);
+    };
+    tick();
+    return () => {
+      cancelAnimationFrame(raf);
+      obs?.disconnect();
+    };
+  }, [composerEmoji]);
+
+  // Open the emoji picker as a fixed popover above the button (escapes the
+  // panel's overflow clip).
+  function toggleComposerEmoji() {
+    if (!composerEmoji && emojiBtnRef.current) {
+      const r = emojiBtnRef.current.getBoundingClientRect();
+      const W = 270;
+      let left = r.left;
+      if (left + W > window.innerWidth - 8) left = window.innerWidth - W - 8;
+      // Anchor the picker's bottom just above the button so it grows upward and
+      // never overlaps the composer regardless of its height.
+      setEmojiPos({
+        left: Math.max(8, left),
+        bottom: window.innerHeight - r.top + 8,
+      });
+    }
+    setComposerEmoji((v) => !v);
+  }
 
   function readFiles(fileList: FileList | null) {
     if (!fileList) return;
@@ -480,8 +621,14 @@ export default function Comments({
     if (pickerFor == null && !composerEmoji) return;
     const onDown = (e: MouseEvent) => {
       const t = e.target as HTMLElement;
-      if (!t.closest(".cm-react-wrap")) {
+      if (!t.closest(".cm-react-wrap") && !t.closest(".cm-emoji-portal")) {
         setPickerFor(null);
+      }
+      if (
+        !t.closest(".cm-emoji-portal") &&
+        t !== emojiBtnRef.current &&
+        !emojiBtnRef.current?.contains(t)
+      ) {
         setComposerEmoji(false);
       }
     };
@@ -596,11 +743,7 @@ export default function Comments({
         }`}
       >
         <div className="cm-gutter">
-          {grouped ? (
-            <span className="cm-gtime">{shortTime(c.created_at)}</span>
-          ) : (
-            <Avatar name={c.user_name} image={c.user_image} />
-          )}
+          {!grouped && <Avatar name={c.user_name} image={c.user_image} />}
         </div>
 
         <div className="cm-main">
@@ -687,7 +830,7 @@ export default function Comments({
                   className={`cm-chip${r.mine ? " mine" : ""}`}
                   onClick={() => toggleReact(c.id, r.emoji)}
                 >
-                  <span>{r.emoji}</span>
+                  {tw(r.emoji)}
                   <span className="cm-chip-n">{r.count}</span>
                 </button>
               ))}
@@ -730,11 +873,23 @@ export default function Comments({
 
         {/* Floating hover toolbar (Slack-style). */}
         <div className="cm-float">
+          {QUICK.map((e) => (
+            <button
+              key={e}
+              type="button"
+              className="cm-quick"
+              aria-label={`React ${e}`}
+              onClick={() => toggleReact(c.id, e)}
+            >
+              {tw(e)}
+            </button>
+          ))}
           <div className="cm-react-wrap">
             <button
               type="button"
               className="cm-action"
               aria-label="Add reaction"
+              data-tip="React"
               onClick={() => setPickerFor((p) => (p === c.id ? null : c.id))}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -752,7 +907,7 @@ export default function Comments({
                     className="cm-emoji-opt"
                     onClick={() => toggleReact(c.id, e)}
                   >
-                    {e}
+                    {tw(e)}
                   </button>
                 ))}
               </div>
@@ -763,6 +918,7 @@ export default function Comments({
               type="button"
               className="cm-action"
               aria-label="Reply"
+              data-tip="Reply in thread"
               onClick={() => {
                 setReplyTo((r) => (r === c.id ? null : c.id));
                 setReplyText("");
@@ -779,6 +935,7 @@ export default function Comments({
                 type="button"
                 className="cm-action"
                 aria-label="Edit"
+                data-tip="Edit"
                 onClick={() => {
                   setEditingId(c.id);
                   setEditText(c.body);
@@ -793,6 +950,7 @@ export default function Comments({
                 type="button"
                 className="cm-action cm-action-danger"
                 aria-label="Delete"
+                data-tip="Delete"
                 onClick={() => removeComment(c.id)}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -827,16 +985,16 @@ export default function Comments({
         <div className="cm-box">
           {showFormat && (
             <div className="cm-format">
-              <button type="button" className="cm-fbtn" aria-label="Bold" onClick={() => composerRef.current?.wrap("**", "**")}>
+              <button type="button" className="cm-fbtn" aria-label="Bold" data-tip="Bold" onClick={() => composerRef.current?.wrap("**", "**")}>
                 <span style={{ fontWeight: 700 }}>B</span>
               </button>
-              <button type="button" className="cm-fbtn" aria-label="Italic" onClick={() => composerRef.current?.wrap("*", "*")}>
+              <button type="button" className="cm-fbtn" aria-label="Italic" data-tip="Italic" onClick={() => composerRef.current?.wrap("*", "*")}>
                 <span style={{ fontStyle: "italic" }}>I</span>
               </button>
-              <button type="button" className="cm-fbtn" aria-label="Underline" onClick={() => composerRef.current?.wrap("<u>", "</u>")}>
+              <button type="button" className="cm-fbtn" aria-label="Underline" data-tip="Underline" onClick={() => composerRef.current?.wrap("<u>", "</u>")}>
                 <span style={{ textDecoration: "underline" }}>U</span>
               </button>
-              <button type="button" className="cm-fbtn" aria-label="Strikethrough" onClick={() => composerRef.current?.wrap("~~", "~~")}>
+              <button type="button" className="cm-fbtn" aria-label="Strikethrough" data-tip="Strikethrough" onClick={() => composerRef.current?.wrap("~~", "~~")}>
                 <span style={{ textDecoration: "line-through" }}>S</span>
               </button>
               <span className="cm-fsep" />
@@ -844,6 +1002,7 @@ export default function Comments({
                 type="button"
                 className="cm-fbtn"
                 aria-label="Link"
+                data-tip="Link"
                 onClick={() => {
                   const url = window.prompt("Link URL", "https://");
                   if (url) composerRef.current?.wrap("[", `](${url})`);
@@ -855,23 +1014,23 @@ export default function Comments({
                 </svg>
               </button>
               <span className="cm-fsep" />
-              <button type="button" className="cm-fbtn" aria-label="Numbered list" onClick={() => composerRef.current?.linePrefix("", true)}>
+              <button type="button" className="cm-fbtn" aria-label="Numbered list" data-tip="Numbered list" onClick={() => composerRef.current?.linePrefix("", true)}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d="M10 6h11M10 12h11M10 18h11M4 6h1v4M4 10h2M6 16H4l2 2-2 2h2" />
                 </svg>
               </button>
-              <button type="button" className="cm-fbtn" aria-label="Bullet list" onClick={() => composerRef.current?.linePrefix("- ")}>
+              <button type="button" className="cm-fbtn" aria-label="Bullet list" data-tip="Bullet list" onClick={() => composerRef.current?.linePrefix("- ")}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
                 </svg>
               </button>
               <span className="cm-fsep" />
-              <button type="button" className="cm-fbtn" aria-label="Inline code" onClick={() => composerRef.current?.wrap("`", "`")}>
+              <button type="button" className="cm-fbtn" aria-label="Inline code" data-tip="Inline code" onClick={() => composerRef.current?.wrap("`", "`")}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d="m8 16-4-4 4-4M16 8l4 4-4 4" />
                 </svg>
               </button>
-              <button type="button" className="cm-fbtn" aria-label="Code block" onClick={() => composerRef.current?.wrap("```\n", "\n```")}>
+              <button type="button" className="cm-fbtn" aria-label="Code block" data-tip="Code block" onClick={() => composerRef.current?.wrap("```\n", "\n```")}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <rect x="3" y="4" width="18" height="16" rx="2" />
                   <path d="m9.5 10-2 2 2 2M14.5 10l2 2-2 2" />
@@ -935,7 +1094,7 @@ export default function Comments({
               type="button"
               className="cm-tool"
               aria-label="Attach files"
-              title="Attach files"
+              data-tip="Attach files"
               onClick={() => fileRef.current?.click()}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -946,46 +1105,67 @@ export default function Comments({
               type="button"
               className={`cm-tool${showFormat ? " active" : ""}`}
               aria-label={showFormat ? "Hide formatting" : "Show formatting"}
-              title={showFormat ? "Hide formatting" : "Show formatting"}
+              data-tip={showFormat ? "Hide formatting" : "Show formatting"}
               onClick={() => setShowFormat((v) => !v)}
             >
               <span className="cm-aa">Aa</span>
             </button>
-            <div className="cm-react-wrap">
-              <button
-                type="button"
-                className="cm-tool"
-                aria-label="Emoji"
-                onClick={() => setComposerEmoji((v) => !v)}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="M8.5 14.5a4 4 0 0 0 7 0" />
-                  <path d="M9 9h.01M15 9h.01" />
-                </svg>
-              </button>
-              {composerEmoji && (
-                <div className="cm-emoji-pop cm-emoji-up">
-                  {EMOJIS.map((e) => (
-                    <button
-                      key={e}
-                      type="button"
-                      className="cm-emoji-opt"
-                      onClick={() => {
-                        setText((t) => t + e);
-                        setComposerEmoji(false);
-                      }}
-                    >
-                      {e}
-                    </button>
-                  ))}
-                </div>
+            <button
+              ref={emojiBtnRef}
+              type="button"
+              className="cm-tool"
+              aria-label="Emoji"
+              data-tip="Emoji"
+              onClick={toggleComposerEmoji}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <circle cx="12" cy="12" r="9" />
+                <path d="M8.5 14.5a4 4 0 0 0 7 0" />
+                <path d="M9 9h.01M15 9h.01" />
+              </svg>
+            </button>
+            {composerEmoji &&
+              emojiPos &&
+              createPortal(
+                <div
+                  ref={emojiPortalRef}
+                  className="cm-emoji-portal"
+                  style={{
+                    position: "fixed",
+                    left: emojiPos.left,
+                    bottom: emojiPos.bottom,
+                    zIndex: 1000,
+                  }}
+                >
+                  <EmojiPicker
+                    data={emojiData}
+                    theme={
+                      typeof document !== "undefined" &&
+                      document.documentElement.getAttribute("data-theme") ===
+                        "light"
+                        ? "light"
+                        : "dark"
+                    }
+                    previewPosition="bottom"
+                    skinTonePosition="none"
+                    navPosition="top"
+                    perLine={8}
+                    emojiButtonSize={28}
+                    emojiSize={18}
+                    maxFrequentRows={2}
+                    onEmojiSelect={(e: { native: string }) => {
+                      composerRef.current?.insert(e.native);
+                      setComposerEmoji(false);
+                    }}
+                  />
+                </div>,
+                document.body
               )}
-            </div>
             <button
               type="button"
               className="cm-tool"
               aria-label="Mention someone"
+              data-tip="Mention someone"
               onClick={() =>
                 setText((t) => (t && !t.endsWith(" ") ? t + " @" : t + "@"))
               }
@@ -1001,6 +1181,7 @@ export default function Comments({
               disabled={busy || (!text.trim() && pendingFiles.length === 0)}
               onClick={() => post(text, undefined, pendingFiles)}
               aria-label="Send"
+              data-tip="Send"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M22 2 11 13M22 2l-7 20-4-9-9-4Z" />

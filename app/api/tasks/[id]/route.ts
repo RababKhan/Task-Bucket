@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { dbAll, dbGet, dbRun, type Task } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
+import { canAccessTask } from "@/lib/membership";
+import { requirePermission, ERR } from "@/lib/rbac";
 import { logActivity, type ActivityMeta } from "@/lib/activity";
 import {
   STATUS_ORDER,
@@ -85,6 +87,12 @@ export async function GET(_request: Request, { params }: Ctx) {
   }
   const { id } = await params;
 
+  const viewDenied = await requirePermission(userId, "tasks", "view");
+  if (viewDenied) return viewDenied;
+  if (!(await canAccessTask(id, userId))) {
+    return NextResponse.json({ error: ERR.NO_PROJECT_ACCESS }, { status: 403 });
+  }
+
   const task = await dbGet<
     TaskRow & {
       project_name: string;
@@ -107,49 +115,63 @@ export async function GET(_request: Request, { params }: Ctx) {
   }
   const shaped = shapeTask(task);
 
-  const subtaskRows = await dbAll<TaskRow>(
-    `SELECT t.*,
-       (SELECT group_concat(ta.user_id) FROM task_assignees ta WHERE ta.task_id = t.id) AS assignees_raw
-     FROM tasks t WHERE t.parent_id = ? ORDER BY t.position DESC, t.id DESC`,
-    [id]
-  );
+  // Everything below depends only on the (already-fetched) task, so fetch the
+  // subtasks, linked items, custom fields, activity, and parent in parallel
+  // instead of one sequential round-trip after another.
+  const parentId = task.story_id ?? task.linked_to ?? task.parent_id ?? null;
+  const [subtaskRows, linkedRows, bugRows, fieldRows, activity, parentRow] =
+    await Promise.all([
+      dbAll<TaskRow>(
+        `SELECT t.*,
+           (SELECT group_concat(ta.user_id) FROM task_assignees ta WHERE ta.task_id = t.id) AS assignees_raw
+         FROM tasks t WHERE t.parent_id = ? ORDER BY t.position DESC, t.id DESC`,
+        [id]
+      ),
+      // Tasks linked to this story (only meaningful when this item is a story).
+      dbAll<TaskRow>(
+        `SELECT t.*,
+           (SELECT group_concat(ta.user_id) FROM task_assignees ta WHERE ta.task_id = t.id) AS assignees_raw
+         FROM tasks t WHERE t.story_id = ? ORDER BY t.position DESC, t.id DESC`,
+        [id]
+      ),
+      // Bugs linked to this story/task.
+      dbAll<TaskRow>(
+        `SELECT t.*,
+           (SELECT group_concat(ta.user_id) FROM task_assignees ta WHERE ta.task_id = t.id) AS assignees_raw
+         FROM tasks t WHERE t.linked_to = ? AND t.type = 'bug' ORDER BY t.position DESC, t.id DESC`,
+        [id]
+      ),
+      // Project's custom fields with this task's values (if any).
+      dbAll<{
+        id: number;
+        project_id: number;
+        name: string;
+        type: string;
+        options: string;
+        value: string;
+      }>(
+        `SELECT f.id, f.project_id, f.name, f.type, f.options,
+           COALESCE(v.value, '') AS value
+         FROM custom_fields f
+         LEFT JOIN custom_field_values v ON v.field_id = f.id AND v.task_id = ?
+         WHERE f.project_id = ?
+         ORDER BY f.id ASC`,
+        [id, task.project_id]
+      ),
+      fetchActivity(id),
+      // Parent item (story for a task, story/task for a bug, parent for a
+      // subtask) so the breadcrumb can show project › parent › this item.
+      parentId != null
+        ? dbGet<{ id: number; seq: number | null }>(
+            "SELECT id, seq FROM tasks WHERE id = ?",
+            [parentId]
+          )
+        : Promise.resolve(undefined),
+    ]);
+
   const subtasks = subtaskRows.map(shapeTask);
-
-  // Tasks linked to this story (only meaningful when this item is a story).
-  const linkedRows = await dbAll<TaskRow>(
-    `SELECT t.*,
-       (SELECT group_concat(ta.user_id) FROM task_assignees ta WHERE ta.task_id = t.id) AS assignees_raw
-     FROM tasks t WHERE t.story_id = ? ORDER BY t.position DESC, t.id DESC`,
-    [id]
-  );
   const linked_tasks = linkedRows.map(shapeTask);
-
-  // Bugs linked to this story/task.
-  const bugRows = await dbAll<TaskRow>(
-    `SELECT t.*,
-       (SELECT group_concat(ta.user_id) FROM task_assignees ta WHERE ta.task_id = t.id) AS assignees_raw
-     FROM tasks t WHERE t.linked_to = ? AND t.type = 'bug' ORDER BY t.position DESC, t.id DESC`,
-    [id]
-  );
   const linked_bugs = bugRows.map(shapeTask);
-
-  // Project's custom fields with this task's values (if any).
-  const fieldRows = await dbAll<{
-    id: number;
-    project_id: number;
-    name: string;
-    type: string;
-    options: string;
-    value: string;
-  }>(
-    `SELECT f.id, f.project_id, f.name, f.type, f.options,
-       COALESCE(v.value, '') AS value
-     FROM custom_fields f
-     LEFT JOIN custom_field_values v ON v.field_id = f.id AND v.task_id = ?
-     WHERE f.project_id = ?
-     ORDER BY f.id ASC`,
-    [id, task.project_id]
-  );
   const custom_fields = fieldRows.map((r) => {
     let options: string[] = [];
     try {
@@ -158,20 +180,9 @@ export async function GET(_request: Request, { params }: Ctx) {
     } catch {}
     return { ...r, options };
   });
-
-  const activity = await fetchActivity(id);
-
-  // Parent item (story for a task, story/task for a bug, parent for a subtask)
-  // so the breadcrumb can show project › parent › this item.
-  const parentId = task.story_id ?? task.linked_to ?? task.parent_id ?? null;
-  let parent: { id: number; seq: number | null } | null = null;
-  if (parentId != null) {
-    const p = await dbGet<{ id: number; seq: number | null }>(
-      "SELECT id, seq FROM tasks WHERE id = ?",
-      [parentId]
-    );
-    if (p) parent = { id: p.id, seq: p.seq };
-  }
+  const parent: { id: number; seq: number | null } | null = parentRow
+    ? { id: parentRow.id, seq: parentRow.seq }
+    : null;
 
   return NextResponse.json({
     ...shaped,
@@ -195,6 +206,17 @@ export async function PATCH(request: Request, { params }: Ctx) {
   const existing = await ownedTask(id, userId);
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  // Editing a subtask needs subtasks:edit; a top-level item needs tasks:edit.
+  // canAccessTask additionally limits Members to their own assigned tasks.
+  const editDenied = await requirePermission(
+    userId,
+    existing.parent_id != null ? "subtasks" : "tasks",
+    "edit"
+  );
+  if (editDenied) return editDenied;
+  if (!(await canAccessTask(id, userId))) {
+    return NextResponse.json({ error: ERR.NO_PROJECT_ACCESS }, { status: 403 });
   }
 
   const title =
@@ -482,6 +504,16 @@ export async function DELETE(_request: Request, { params }: Ctx) {
   const existing = await ownedTask(id, userId);
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  // Deleting a subtask needs subtasks:delete; a top-level item needs tasks:delete.
+  const delDenied = await requirePermission(
+    userId,
+    existing.parent_id != null ? "subtasks" : "tasks",
+    "delete"
+  );
+  if (delDenied) return delDenied;
+  if (!(await canAccessTask(id, userId))) {
+    return NextResponse.json({ error: ERR.NO_PROJECT_ACCESS }, { status: 403 });
   }
 
   // Mirror the removal onto the main item's activity feed before deleting.

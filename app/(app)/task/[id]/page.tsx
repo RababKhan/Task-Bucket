@@ -40,6 +40,7 @@ import LabelsField from "@/components/app/LabelsField";
 import TaskStatusIcon from "@/components/app/TaskStatusIcon";
 import PriorityIcon from "@/components/app/PriorityIcon";
 import TaskTypeIcon from "@/components/app/TaskTypeIcon";
+import { getCachedTaskDetail, setCachedTaskDetail } from "@/lib/task-cache";
 
 type ActivityMeta = {
   field: "status" | "priority" | "type";
@@ -239,19 +240,29 @@ export default function TaskDetailPage() {
   const id = String(params.id);
   const router = useRouter();
 
-  const [detail, setDetail] = useState<Detail | null>(null);
+  // If a list/board row warmed the cache on hover, render from it immediately
+  // (then revalidate in the background) instead of showing a spinner.
+  const cachedDetail = getCachedTaskDetail<Detail>(id);
+
+  const [detail, setDetail] = useState<Detail | null>(cachedDetail ?? null);
   // Mirror of `detail` so drag handlers can read the latest order on drop.
   const detailRef = useRef<Detail | null>(null);
   detailRef.current = detail;
   const [sprints, setSprints] = useState<Sprint[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
-  const [fieldVals, setFieldVals] = useState<Record<number, string>>({});
-  const [loading, setLoading] = useState(true);
+  const [fieldVals, setFieldVals] = useState<Record<number, string>>(
+    cachedDetail
+      ? Object.fromEntries(
+          (cachedDetail.custom_fields ?? []).map((f) => [f.id, f.value])
+        )
+      : {}
+  );
+  const [loading, setLoading] = useState(!cachedDetail);
   const [notFound, setNotFound] = useState(false);
 
   // Local edit buffers for free-text fields.
-  const [title, setTitle] = useState("");
-  const [desc, setDesc] = useState("");
+  const [title, setTitle] = useState(cachedDetail?.title ?? "");
+  const [desc, setDesc] = useState(cachedDetail?.description ?? "");
   // Live value while dragging the progress slider (null = not dragging).
   const [dragProgress, setDragProgress] = useState<number | null>(null);
   // Story Point is click-to-edit so its resting state shows just an icon/value.
@@ -374,6 +385,7 @@ export default function TaskDetailPage() {
       return;
     }
     const data: Detail = await res.json();
+    setCachedTaskDetail(id, data);
     setDetail(data);
     setTitle(data.title);
     setDesc(data.description);

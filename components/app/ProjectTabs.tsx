@@ -39,7 +39,8 @@ export default function ProjectTabs({
 }) {
   function href(key: TabKey) {
     if (key === "list") return `/?project=${projectId}&view=list`;
-    if (key === "board") return `/?project=${projectId}`;
+    if (key === "board") return `/?project=${projectId}&view=board`;
+    if (key === "sprints") return `/?project=${projectId}&view=sprint`;
     return `/project/${projectId}/${key}`;
   }
   return (

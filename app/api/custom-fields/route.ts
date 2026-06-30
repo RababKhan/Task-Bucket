@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { dbAll, dbGet, dbRun, type CustomField } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
-import { canAccessProject } from "@/lib/membership";
+import { canAccessProjectScoped } from "@/lib/membership";
+import { requirePermission, ERR } from "@/lib/rbac";
 
 const TYPES = ["text", "number", "date", "select"];
 
@@ -21,13 +22,15 @@ export async function GET(request: Request) {
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const denied = await requirePermission(userId, "tasks", "view");
+  if (denied) return denied;
   const { searchParams } = new URL(request.url);
   const projectId = searchParams.get("project_id");
   if (!projectId) {
     return NextResponse.json({ error: "project_id is required" }, { status: 400 });
   }
-  if (!(await canAccessProject(projectId, userId))) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!(await canAccessProjectScoped(projectId, userId))) {
+    return NextResponse.json({ error: ERR.NO_PROJECT_ACCESS }, { status: 403 });
   }
 
   const rows = await dbAll<FieldRow>(
@@ -57,8 +60,10 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  if (!(await canAccessProject(projectId, userId))) {
-    return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  const denied = await requirePermission(userId, "projects", "edit");
+  if (denied) return denied;
+  if (!(await canAccessProjectScoped(projectId, userId))) {
+    return NextResponse.json({ error: ERR.NO_PROJECT_ACCESS }, { status: 403 });
   }
 
   const info = await dbRun(
