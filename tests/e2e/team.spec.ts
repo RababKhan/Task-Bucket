@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { readSeed } from "./fixtures";
 
 // Team directory + invitations (admin).
 
@@ -16,5 +17,19 @@ test.describe("team / invitations", () => {
 
     // The new invite shows up in the pending-invites list on the directory.
     await expect(page.getByText(email)).toBeVisible();
+  });
+
+  test("TEAM-09: admin cannot change own role or remove self (API)", async ({
+    page,
+  }) => {
+    const adminId = readSeed().users.admin;
+    // Role/active changes + removal go through /api/members/[uid].
+    const patch = await page.request.patch(`/api/members/${adminId}`, {
+      data: { role: "assignee" },
+    });
+    expect([400, 403]).toContain(patch.status());
+
+    const del = await page.request.delete(`/api/members/${adminId}`);
+    expect([400, 403]).toContain(del.status());
   });
 });

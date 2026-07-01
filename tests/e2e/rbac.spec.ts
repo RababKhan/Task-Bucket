@@ -11,6 +11,17 @@ test.describe("RBAC", () => {
     await expect(page.getByRole("button", { name: "Create role" })).toBeVisible();
   });
 
+  test("RBAC-02: admin creates a custom role", async ({ page }) => {
+    const roleName = `QA ${Date.now()}`;
+    await page.goto("/settings/roles");
+    await page.getByRole("button", { name: "Create role" }).click();
+    await expect(page).toHaveURL(/\/settings\/roles\/new/);
+    await page.getByPlaceholder("e.g. QA Reviewer").fill(roleName);
+    await page.getByRole("button", { name: "Create role" }).click();
+    await expect(page).toHaveURL(/\/settings\/roles$/);
+    await expect(page.getByText(roleName)).toBeVisible();
+  });
+
   test.describe("manager", () => {
     test.use({ storageState: authFile("manager") });
 
