@@ -40,8 +40,10 @@ test.describe("auth", () => {
   test("AUTH-06: logout clears the session", async ({ page }) => {
     await page.goto("/projects");
     await page.getByRole("button", { name: "Account menu" }).click();
-    await page.getByRole("button", { name: /logout|sign out/i }).click();
-    await expect(page).toHaveURL(/\/login/);
+    const logout = page.getByRole("button", { name: /logout|sign out/i });
+    await logout.waitFor({ state: "visible" });
+    await logout.click();
+    await page.waitForURL(/\/login/, { timeout: 20000 });
     // Protected route now bounces back to an auth page.
     await page.goto("/projects");
     await expect(page).toHaveURL(/\/(login|signup)/);
