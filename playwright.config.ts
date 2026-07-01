@@ -42,7 +42,12 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: false,
     timeout: 180_000,
-    // Point the dev server at the throwaway test DB (overrides .env.local).
-    env: { DATABASE_URL: process.env.TEST_DATABASE_URL || "" },
+    // Point the dev server at the throwaway test DB (overrides .env.local) and
+    // disable real email sending (invite/OTP flows fall back to console).
+    env: {
+      DATABASE_URL: process.env.TEST_DATABASE_URL || "",
+      RESEND_API_KEY: "",
+      SMTP_HOST: "",
+    },
   },
 });
