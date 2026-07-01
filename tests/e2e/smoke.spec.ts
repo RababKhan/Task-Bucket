@@ -36,6 +36,16 @@ test.describe("auth", () => {
     await expect(page.getByText(/invalid email or password/i)).toBeVisible();
     await ctx.close();
   });
+
+  test("AUTH-06: logout clears the session", async ({ page }) => {
+    await page.goto("/projects");
+    await page.getByRole("button", { name: "Account menu" }).click();
+    await page.getByRole("button", { name: /logout|sign out/i }).click();
+    await expect(page).toHaveURL(/\/login/);
+    // Protected route now bounces back to an auth page.
+    await page.goto("/projects");
+    await expect(page).toHaveURL(/\/(login|signup)/);
+  });
 });
 
 test.describe("tenant scoping + RBAC (member)", () => {

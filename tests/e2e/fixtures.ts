@@ -1,5 +1,18 @@
+import { readFileSync } from "node:fs";
+
 // Shared constants for the E2E suite — seeded by global.setup.ts and referenced
 // by specs. Two workspaces exercise multi-tenant isolation.
+
+// IDs written by the seed step, read by specs that need to hit specific
+// projects/users (e.g. cross-tenant URL/API checks).
+export type SeedInfo = {
+  users: Record<string, string>;
+  workspaces: Record<string, string>;
+  projects: Record<string, number>;
+};
+export function readSeed(): SeedInfo {
+  return JSON.parse(readFileSync("tests/e2e/.auth/seed.json", "utf8"));
+}
 
 export const PASSWORD = "Password123!";
 
