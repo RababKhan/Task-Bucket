@@ -8,6 +8,6 @@ export const config = {
   // Run on everything except NextAuth's own routes, the public auth APIs,
   // Next internals, and static assets.
   matcher: [
-    "/((?!api/auth|api/register|api/password|api/signup|api/invite|api/workspace/check|_next/static|_next/image|favicon.ico|icon.svg).*)",
+    "/((?!api/auth|api/register|api/password|api/signup|api/invite|api/workspace/check|api/billing/webhook|_next/static|_next/image|favicon.ico|icon.svg).*)",
   ],
 };

@@ -5,6 +5,7 @@ import { currentUserId } from "@/lib/session";
 import { getMembership, accessibleProjectIds } from "@/lib/membership";
 import { requirePermission, getUserRoleRow, ERR } from "@/lib/rbac";
 import { sha256, isoPlus, INVITE_TTL_MS } from "@/lib/invites";
+import { canAddMember, BILLING_ERR } from "@/lib/billing";
 import { sendEmail, inviteEmail } from "@/lib/email";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -34,6 +35,14 @@ export async function POST(request: Request) {
 
   if (!EMAIL_RE.test(email)) {
     return NextResponse.json({ error: "Enter a valid email." }, { status: 400 });
+  }
+
+  // Plan gating: free workspaces are capped on members (active + pending).
+  if (!(await canAddMember(wsId))) {
+    return NextResponse.json(
+      { error: BILLING_ERR.MEMBER_LIMIT, code: "plan_limit" },
+      { status: 402 }
+    );
   }
 
   // Validate the requested role against this workspace's active roles; only an

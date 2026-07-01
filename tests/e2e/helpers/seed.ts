@@ -72,6 +72,15 @@ export async function resetAndSeed(): Promise<SeedData> {
       );
     }
 
+    // Put both test workspaces on Pro so plan limits don't interfere with the
+    // functional specs (limit enforcement can be tested separately).
+    for (const wsId of Object.values(wsIds)) {
+      await q(
+        "INSERT INTO subscriptions (workspace_id, plan, status) VALUES ($1,'pro','active') ON CONFLICT DO NOTHING",
+        [wsId]
+      );
+    }
+
     // 3. Memberships
     for (const [key, u] of Object.entries(USERS)) {
       await q(

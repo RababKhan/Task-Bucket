@@ -7,6 +7,7 @@ import {
   accessibleProjectIds,
 } from "@/lib/membership";
 import { requirePermission } from "@/lib/rbac";
+import { canAddProject, BILLING_ERR } from "@/lib/billing";
 
 export async function GET() {
   const userId = await currentUserId();
@@ -100,6 +101,14 @@ export async function POST(request: Request) {
   const denied = await requirePermission(userId, "projects", "create");
   if (denied) return denied;
   const wsId = membership.workspace_id;
+
+  // Plan gating: free workspaces are capped on projects.
+  if (!(await canAddProject(wsId))) {
+    return NextResponse.json(
+      { error: BILLING_ERR.PROJECT_LIMIT, code: "plan_limit" },
+      { status: 402 }
+    );
+  }
 
   // Only people in this workspace can be owner / manager / members.
   const memberRows = await dbAll<{ user_id: string }>(

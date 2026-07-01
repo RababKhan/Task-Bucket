@@ -58,6 +58,11 @@ export async function createWorkspace(
   // Provision the three system roles (Admin / Project Manager / Member) and
   // their default permissions for the new workspace right away.
   await seedRolesForWorkspace(id);
+  // Start every workspace on the free plan.
+  await dbRun(
+    "INSERT INTO subscriptions (workspace_id, plan, status) VALUES (?, 'free', 'active') ON CONFLICT DO NOTHING",
+    [id]
+  );
   // The very first workspace claims the unowned seed project(s).
   const count = await dbGet<{ n: number }>(
     "SELECT COUNT(*) AS n FROM workspaces"

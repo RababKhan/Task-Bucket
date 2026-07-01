@@ -48,7 +48,8 @@
     "pg": "^8.22.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "resend": "^6.12.4"
+    "resend": "^6.12.4",
+    "stripe": "^22.3.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",

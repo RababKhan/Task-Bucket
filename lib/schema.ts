@@ -397,6 +397,23 @@ export const commentAttachments = pgTable(
   (t) => [index("idx_comment_attachments_comment").on(t.commentId)]
 );
 
+// One row per workspace (1:1). Absence of a row is treated as the free plan.
+export const subscriptions = pgTable("subscriptions", {
+  workspaceId: text("workspace_id")
+    .primaryKey()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  plan: text("plan").notNull().default("free"), // 'free' | 'pro'
+  status: text("status").notNull().default("active"), // stripe subscription status
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  priceId: text("price_id"),
+  interval: text("interval"), // 'month' | 'year'
+  currentPeriodEnd: text("current_period_end"),
+  cancelAtPeriodEnd: integer("cancel_at_period_end").notNull().default(0),
+  createdAt: text("created_at").notNull().default(nowText),
+  updatedAt: text("updated_at"),
+});
+
 export const rolePermissions = pgTable(
   "role_permissions",
   {
