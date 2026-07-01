@@ -73,4 +73,25 @@ test.describe("projects", () => {
     await page.getByRole("button", { name: "Yes, Delete it" }).click();
     await expect(page.getByText(renamed)).toHaveCount(0);
   });
+
+  test("PROJ-04: bulk-select and delete projects", async ({ page }) => {
+    const a = `E2E Bulk A ${Date.now()}`;
+    const b = `E2E Bulk B ${Date.now()}`;
+    for (const n of [a, b]) {
+      await page.goto("/projects");
+      await openCreateModal(page);
+      const m = page.locator(".cp-modal");
+      await m.getByPlaceholder("e.g. Manhattan Project").fill(n);
+      await m.getByRole("button", { name: "Create Project" }).click();
+      await expect(page).toHaveURL(/[?&]project=\d+/);
+    }
+
+    await page.goto("/projects");
+    await page.locator(".pv-row", { hasText: a }).locator("input.pv-check").check();
+    await page.locator(".pv-row", { hasText: b }).locator("input.pv-check").check();
+    await page.locator(".pv-selbar").getByRole("button", { name: "Delete" }).click();
+    await page.getByRole("button", { name: "Yes, Delete it" }).click();
+    await expect(page.getByText(a)).toHaveCount(0);
+    await expect(page.getByText(b)).toHaveCount(0);
+  });
 });

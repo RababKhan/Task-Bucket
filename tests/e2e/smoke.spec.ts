@@ -37,6 +37,21 @@ test.describe("auth", () => {
     await ctx.close();
   });
 
+  test("AUTH-01: signup step 1 sends a code and advances to OTP", async ({
+    browser,
+  }) => {
+    const ctx = await browser.newContext({
+      storageState: { cookies: [], origins: [] },
+    });
+    const page = await ctx.newPage();
+    const email = `signup-${Date.now()}@e2e.test`;
+    await page.goto("/signup");
+    await page.getByPlaceholder("you@example.com").fill(email);
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page.getByText("Check Your Email")).toBeVisible();
+    await ctx.close();
+  });
+
   test("AUTH-06: logout clears the session", async ({ page }) => {
     await page.goto("/projects");
     await page.getByRole("button", { name: "Account menu" }).click();
