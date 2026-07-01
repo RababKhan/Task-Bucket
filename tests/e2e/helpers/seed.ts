@@ -120,6 +120,24 @@ export async function resetAndSeed(): Promise<SeedData> {
       [projectIds.alpha, userIds.member]
     );
 
+    // 7. A couple of tasks in Alpha so detail/nav/comment specs have data.
+    const alphaTasks: Array<[string, string, string]> = [
+      ["Design homepage", "backlog", "high"],
+      ["Write launch copy", "dev_in_progress", "medium"],
+    ];
+    for (let i = 0; i < alphaTasks.length; i++) {
+      const [title, status, priority] = alphaTasks[i];
+      await q(
+        `INSERT INTO tasks (project_id, title, status, priority, position, seq, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [projectIds.alpha, title, status, priority, i, i + 1, userIds.admin]
+      );
+    }
+    await q("UPDATE projects SET task_seq = $1 WHERE id = $2", [
+      alphaTasks.length,
+      projectIds.alpha,
+    ]);
+
     const data: SeedData = {
       users: userIds,
       workspaces: wsIds,
