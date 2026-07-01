@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { dbAll, dbGet, dbRun, type RoleRow } from "@/lib/db";
+import { dbAll, dbGet, dbRun, dbInsert, type RoleRow } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 import { getMembership } from "@/lib/membership";
 import { can, requirePermission, ERR } from "@/lib/rbac";
@@ -101,12 +101,11 @@ export async function POST(request: Request) {
     if (n > 100) break;
   }
 
-  const info = await dbRun(
+  const roleId = await dbInsert(
     `INSERT INTO roles (workspace_id, key, name, description, is_system, active)
      VALUES (?, ?, ?, ?, 0, 1)`,
     [m.workspace_id, unique, name.slice(0, 80), description.slice(0, 200)]
   );
-  const roleId = info.lastInsertRowid;
 
   // Optional initial permissions: validated "module:action" strings.
   const perms = Array.isArray(body.permissions) ? body.permissions : [];
@@ -116,8 +115,8 @@ export async function POST(request: Request) {
     const [module, action] = pair;
     if (!isValidPermission(module, action)) continue;
     await dbRun(
-      `INSERT OR IGNORE INTO role_permissions (role_id, workspace_id, module, action)
-       VALUES (?, ?, ?, ?)`,
+      `INSERT INTO role_permissions (role_id, workspace_id, module, action)
+       VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING`,
       [roleId, m.workspace_id, module, action]
     );
   }

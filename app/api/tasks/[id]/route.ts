@@ -364,7 +364,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
     await dbRun("DELETE FROM task_assignees WHERE task_id = ?", [id]);
     for (const uid of valid) {
       await dbRun(
-        "INSERT OR IGNORE INTO task_assignees (task_id, user_id) VALUES (?, ?)",
+        "INSERT INTO task_assignees (task_id, user_id) VALUES (?, ?) ON CONFLICT DO NOTHING",
         [id, uid]
       );
     }

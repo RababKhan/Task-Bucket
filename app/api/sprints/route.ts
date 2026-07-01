@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { dbAll, dbGet, dbRun, type Sprint } from "@/lib/db";
+import { dbAll, dbGet, dbRun, dbInsert, type Sprint } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 import { canAccessProjectScoped } from "@/lib/membership";
 import { requirePermission, ERR } from "@/lib/rbac";
@@ -64,12 +64,12 @@ export async function POST(request: Request) {
   const status =
     autoStart && startDate && startDate <= today ? "active" : "planned";
 
-  const info = await dbRun(
+  const sprintId = await dbInsert(
     "INSERT INTO sprints (project_id, name, goal, start_date, end_date, status) VALUES (?, ?, ?, ?, ?, ?)",
     [projectId, name, goal, startDate, endDate, status]
   );
   const sprint = await dbGet<Sprint>("SELECT * FROM sprints WHERE id = ?", [
-    info.lastInsertRowid,
+    sprintId,
   ]);
   return NextResponse.json(sprint, { status: 201 });
 }

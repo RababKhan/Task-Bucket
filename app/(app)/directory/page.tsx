@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { apiGet } from "@/lib/api";
 import Spinner from "@/components/Spinner";
 import AccessDenied from "@/components/app/AccessDenied";
 import { usePerms } from "@/components/app/PermissionProvider";
@@ -39,15 +41,7 @@ export default function DirectoryPage() {
   const perms = usePerms();
   const router = useRouter();
 
-  const [members, setMembers] = useState<TeamMember[]>([]);
-  const [roles, setRoles] = useState<RoleOption[]>([]);
-  const [projects, setProjects] = useState<ProjectOption[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [canInvite, setCanInvite] = useState(false);
-  const [canResend, setCanResend] = useState(false);
-  const [canCancel, setCanCancel] = useState(false);
 
   // Filters
   const [q, setQ] = useState("");
@@ -70,8 +64,7 @@ export default function DirectoryPage() {
     setPage(1);
   }, [debouncedQ, roleFilter, projectFilter, statusFilter]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const qs = useMemo(() => {
     const params = new URLSearchParams();
     if (debouncedQ) params.set("q", debouncedQ);
     if (roleFilter) params.set("role", roleFilter);
@@ -79,25 +72,34 @@ export default function DirectoryPage() {
     if (statusFilter) params.set("status", statusFilter);
     params.set("page", String(page));
     params.set("pageSize", String(PAGE_SIZE));
-    const res = await fetch(`/api/team/members?${params.toString()}`);
-    if (!res.ok) {
-      setLoading(false);
-      return;
-    }
-    const data = await res.json();
-    setMembers(data.members ?? []);
-    setRoles(data.roles ?? []);
-    setProjects(data.projects ?? []);
-    setTotal(data.total ?? 0);
-    setCanInvite(!!data.can_invite);
-    setCanResend(!!data.can_resend);
-    setCanCancel(!!data.can_cancel);
-    setLoading(false);
+    return params.toString();
   }, [debouncedQ, roleFilter, projectFilter, statusFilter, page]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  // One cache entry per filter/page combination; keepPreviousData holds the old
+  // rows visible while the next page/filter loads (no spinner flash).
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["team-members", qs],
+    queryFn: () =>
+      apiGet<{
+        members?: TeamMember[];
+        roles?: RoleOption[];
+        projects?: ProjectOption[];
+        total?: number;
+        can_invite?: boolean;
+        can_resend?: boolean;
+        can_cancel?: boolean;
+      }>(`/api/team/members?${qs}`),
+    placeholderData: keepPreviousData,
+  });
+  const load = refetch;
+  const members = data?.members ?? [];
+  const roles = data?.roles ?? [];
+  const projects = data?.projects ?? [];
+  const total = data?.total ?? 0;
+  const canInvite = !!data?.can_invite;
+  const canResend = !!data?.can_resend;
+  const canCancel = !!data?.can_cancel;
+  const loading = isLoading;
 
   if (perms.loaded && !perms.can("team_member", "view")) {
     return (

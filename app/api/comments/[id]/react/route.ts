@@ -42,7 +42,7 @@ export async function POST(request: Request, { params }: Ctx) {
     );
   } else {
     await dbRun(
-      "INSERT OR IGNORE INTO comment_reactions (comment_id, user_id, emoji) VALUES (?, ?, ?)",
+      "INSERT INTO comment_reactions (comment_id, user_id, emoji) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
       [id, userId, emoji]
     );
   }

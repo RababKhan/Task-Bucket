@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { dbAll, dbGet, dbRun, type CustomField } from "@/lib/db";
+import { dbAll, dbGet, dbRun, dbInsert, type CustomField } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 import { canAccessProjectScoped } from "@/lib/membership";
 import { requirePermission, ERR } from "@/lib/rbac";
@@ -66,12 +66,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: ERR.NO_PROJECT_ACCESS }, { status: 403 });
   }
 
-  const info = await dbRun(
+  const fieldId = await dbInsert(
     "INSERT INTO custom_fields (project_id, name, type, options) VALUES (?, ?, ?, ?)",
     [projectId, name, type, JSON.stringify(options)]
   );
   const row = await dbGet<FieldRow>("SELECT * FROM custom_fields WHERE id = ?", [
-    info.lastInsertRowid,
+    fieldId,
   ]);
   return NextResponse.json(row ? parse(row) : null, { status: 201 });
 }

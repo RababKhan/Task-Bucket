@@ -120,8 +120,8 @@ export async function PATCH(request: Request, { params }: Ctx) {
 
   for (const pid of add) {
     await dbRun(
-      `INSERT OR IGNORE INTO project_members (project_id, user_id, added_by, status, created_at)
-       VALUES (?, ?, ?, 'active', datetime('now'))`,
+      `INSERT INTO project_members (project_id, user_id, added_by, status, created_at)
+       VALUES (?, ?, ?, 'active', datetime('now')) ON CONFLICT DO NOTHING`,
       [pid, uid, userId]
     );
   }

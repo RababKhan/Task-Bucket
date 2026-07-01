@@ -2,7 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Member, Project, Sprint } from "@/lib/types";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useSprints,
+  useProjectTasks,
+  useMembers,
+  useProjects,
+} from "@/lib/queries";
+import { queryKeys } from "@/lib/query-keys";
+import type { Sprint } from "@/lib/types";
 import Spinner from "@/components/Spinner";
 import TaskListTable, { type ListTask } from "@/components/app/TaskListTable";
 import CreateSprintModal, {
@@ -10,22 +18,6 @@ import CreateSprintModal, {
 } from "@/components/app/CreateSprintModal";
 
 type SprintWithCount = Sprint & { task_count: number };
-
-// Per-project in-memory cache so switching back to the Sprint view renders
-// instantly (then revalidates in the background) instead of flashing a spinner.
-type SprintCache = {
-  sprints: SprintWithCount[];
-  tasks: ListTask[];
-  members: Member[];
-  projectName: string;
-};
-const sprintCache = new Map<number, SprintCache>();
-function writeCache(pid: number, patch: Partial<SprintCache>) {
-  const prev =
-    sprintCache.get(pid) ??
-    ({ sprints: [], tasks: [], members: [], projectName: "" } as SprintCache);
-  sprintCache.set(pid, { ...prev, ...patch });
-}
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -45,14 +37,22 @@ function fmtSprintDate(iso: string | null): string {
 export default function SprintView({ projectId }: { projectId: number }) {
   const router = useRouter();
 
-  const cached = sprintCache.get(projectId);
-  const [sprints, setSprints] = useState<SprintWithCount[]>(
-    cached?.sprints ?? []
-  );
-  const [tasks, setTasks] = useState<ListTask[]>(cached?.tasks ?? []);
-  const [members, setMembers] = useState<Member[]>(cached?.members ?? []);
-  const [projectName, setProjectName] = useState(cached?.projectName ?? "");
-  const [loading, setLoading] = useState(!cached);
+  const queryClient = useQueryClient();
+  // Shared caches — tasks/members/projects keys match the board view, so
+  // switching List/Board ↔ Sprint reuses already-fetched data.
+  const sprintsQuery = useSprints<SprintWithCount>(projectId);
+  const tasksQuery = useProjectTasks<ListTask>(projectId);
+  const membersQuery = useMembers(projectId);
+  const projectsQuery = useProjects<{ id: number; name: string }>();
+
+  const sprints = sprintsQuery.data ?? [];
+  const members = membersQuery.data ?? [];
+  const projectName =
+    projectsQuery.data?.find((p) => p.id === projectId)?.name ?? "";
+  // Tasks mirror the shared cache but stay in local state so inline optimistic
+  // edits apply instantly.
+  const [tasks, setTasks] = useState<ListTask[]>([]);
+  const loading = sprintsQuery.isLoading || tasksQuery.isLoading;
   const [showCreate, setShowCreate] = useState(false);
   const [editSprint, setEditSprint] = useState<EditSprint | null>(null);
   const [query, setQuery] = useState("");
@@ -90,43 +90,23 @@ export default function SprintView({ projectId }: { projectId: number }) {
       return next;
     });
 
-  const load = useCallback(async () => {
-    const [s, t] = await Promise.all([
-      fetch(`/api/sprints?project_id=${projectId}`).then((r) => r.json()),
-      fetch(`/api/tasks?project_id=${projectId}`).then((r) => r.json()),
-    ]);
-    const nextSprints = Array.isArray(s) ? s : [];
-    const nextTasks = Array.isArray(t) ? t : [];
-    setSprints(nextSprints);
-    setTasks(nextTasks);
-    writeCache(projectId, { sprints: nextSprints, tasks: nextTasks });
-  }, [projectId]);
+  // Invalidate the shared sprint + task caches; the mirror effect repopulates
+  // local `tasks`, and `sprints` re-derives from its query automatically.
+  const load = useCallback(
+    () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.sprints(projectId) }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.projectTasks(projectId),
+        }),
+      ]),
+    [queryClient, projectId]
+  );
 
+  // Mirror the shared tasks cache into local state for optimistic updates.
   useEffect(() => {
-    setLoading(!sprintCache.get(projectId));
-    load().finally(() => setLoading(false));
-  }, [load, projectId]);
-
-  useEffect(() => {
-    fetch(`/api/members?project_id=${projectId}`)
-      .then((r) => r.json())
-      .then((d) => {
-        const ms = Array.isArray(d.members) ? d.members : [];
-        setMembers(ms);
-        writeCache(projectId, { members: ms });
-      })
-      .catch(() => {});
-    fetch("/api/projects")
-      .then((r) => r.json())
-      .then((d: Project[]) => {
-        const p = Array.isArray(d) ? d.find((x) => x.id === projectId) : null;
-        if (p) {
-          setProjectName(p.name);
-          writeCache(projectId, { projectName: p.name });
-        }
-      })
-      .catch(() => {});
-  }, [projectId]);
+    if (tasksQuery.data) setTasks(tasksQuery.data);
+  }, [tasksQuery.data]);
 
   const projectPrefix = useMemo(
     () =>

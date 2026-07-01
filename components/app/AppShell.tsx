@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useCan } from "@/components/app/PermissionProvider";
+import { usePrefetch } from "@/lib/queries";
 
 function initials(text: string) {
   const parts = text.trim().split(/\s+/).filter(Boolean);
@@ -74,12 +75,14 @@ function NavLink({
   icon,
   active,
   external,
+  onHover,
 }: {
   href: string;
   label: string;
   icon: React.ReactNode;
   active?: boolean;
   external?: boolean;
+  onHover?: () => void;
 }) {
   const cls = `nav-link ${active ? "active" : ""}`;
   const inner = (
@@ -93,7 +96,7 @@ function NavLink({
       {inner}
     </a>
   ) : (
-    <Link href={href} className={cls}>
+    <Link href={href} className={cls} onMouseEnter={onHover}>
       {inner}
     </Link>
   );
@@ -124,6 +127,8 @@ function Sidebar({
   // The Employee Directory requires team_member:view.
   const canViewDirectory = useCan("team_member", "view");
 
+  const prefetch = usePrefetch();
+
   return (
     <aside className="app-sidebar">
       <div className="sidebar-logo">
@@ -151,10 +156,10 @@ function Sidebar({
 
       <nav className="app-nav">
         <NavLink href="/dashboard" label="Dashboard" icon={DashboardIcon} active={isActive("/dashboard")} />
-        <NavLink href="/projects" label="Project" icon={ProjectsIcon} active={projectsActive} />
+        <NavLink href="/projects" label="Project" icon={ProjectsIcon} active={projectsActive} onHover={prefetch.projects} />
         <NavLink href="/tasks" label="Tasks" icon={TasksIcon} active={isActive("/tasks")} />
         {canViewDirectory && (
-          <NavLink href="/directory" label="Employee Directory" icon={DirectoryIcon} active={isActive("/directory")} />
+          <NavLink href="/directory" label="Employee Directory" icon={DirectoryIcon} active={isActive("/directory")} onHover={prefetch.directory} />
         )}
         <NavLink href="/timesheet" label="Time Sheet" icon={TimeSheetIcon} active={isActive("/timesheet")} />
       </nav>

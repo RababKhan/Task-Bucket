@@ -52,7 +52,7 @@ export async function createWorkspace(
   );
   // The creator is the workspace admin.
   await dbRun(
-    "INSERT OR IGNORE INTO workspace_members (workspace_id, user_id, role) VALUES (?, ?, 'admin')",
+    "INSERT INTO workspace_members (workspace_id, user_id, role) VALUES (?, ?, 'admin') ON CONFLICT DO NOTHING",
     [id, ownerId]
   );
   // Provision the three system roles (Admin / Project Manager / Member) and

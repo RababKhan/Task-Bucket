@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { dbAll, dbGet, dbRun, type Project } from "@/lib/db";
+import { dbAll, dbGet, dbRun, dbInsert, type Project } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 import {
   getMembership,
@@ -128,16 +128,15 @@ export async function POST(request: Request) {
     ? body.member_ids.filter((id: unknown) => valid.has(String(id)))
     : [];
 
-  const info = await dbRun(
+  const projectId = await dbInsert(
     `INSERT INTO projects (owner_id, workspace_id, manager_id, name, description, status, start_date, due_date)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [ownerId, wsId, managerId, name, description, status, startDate, dueDate]
   );
-  const projectId = info.lastInsertRowid;
 
   for (const uid of memberIds) {
     await dbRun(
-      "INSERT OR IGNORE INTO project_members (project_id, user_id) VALUES (?, ?)",
+      "INSERT INTO project_members (project_id, user_id) VALUES (?, ?) ON CONFLICT DO NOTHING",
       [projectId, uid]
     );
   }

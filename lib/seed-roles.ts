@@ -34,8 +34,8 @@ const SYSTEM_ROLES: {
 export async function seedRolesForWorkspace(workspaceId: string): Promise<void> {
   for (const r of SYSTEM_ROLES) {
     await dbRun(
-      `INSERT OR IGNORE INTO roles (workspace_id, key, name, description, is_system, active)
-       VALUES (?, ?, ?, ?, 1, 1)`,
+      `INSERT INTO roles (workspace_id, key, name, description, is_system, active)
+       VALUES (?, ?, ?, ?, 1, 1) ON CONFLICT DO NOTHING`,
       [workspaceId, r.key, r.name, r.description]
     );
   }
@@ -45,9 +45,10 @@ export async function seedRolesForWorkspace(workspaceId: string): Promise<void> 
     const grants = DEFAULT_PERMISSIONS[r.key];
     for (const [module, action] of grants) {
       await dbRun(
-        `INSERT OR IGNORE INTO role_permissions (role_id, workspace_id, module, action)
+        `INSERT INTO role_permissions (role_id, workspace_id, module, action)
          SELECT id, workspace_id, ?, ?
-         FROM roles WHERE workspace_id = ? AND key = ?`,
+         FROM roles WHERE workspace_id = ? AND key = ?
+         ON CONFLICT DO NOTHING`,
         [module, action, workspaceId, r.key]
       );
     }

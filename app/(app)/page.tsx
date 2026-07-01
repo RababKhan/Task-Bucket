@@ -11,7 +11,6 @@ import {
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type {
-  Member,
   Project,
   Task,
   TaskStatus,
@@ -34,6 +33,9 @@ import TaskModal, { type TaskDraft } from "@/app/TaskModal";
 import ProjectTabs from "@/components/app/ProjectTabs";
 import SprintView from "@/components/app/SprintView";
 import { prefetchTaskDetail } from "@/lib/task-cache";
+import { useQueryClient } from "@tanstack/react-query";
+import { useProjects, useProjectTasks, useMembers } from "@/lib/queries";
+import { queryKeys } from "@/lib/query-keys";
 import StatusIcon from "@/components/app/StatusIcon";
 import TaskStatusIcon from "@/components/app/TaskStatusIcon";
 import TaskTypeIcon from "@/components/app/TaskTypeIcon";
@@ -65,12 +67,6 @@ const PRIO_COLOR: Record<string, string> = {
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
-
-// Module-level caches so returning to the board (e.g. from the Sprint route,
-// which is a separate page) renders instantly and revalidates in the
-// background, instead of flashing a spinner on every tab switch.
-let boardProjectsCache: ProjectWithCount[] | null = null;
-const boardTasksCache = new Map<number, BoardTask[]>();
 
 const STATUS_OPTS: SelectOption[] = STATUS_ORDER.map((s) => ({
   value: s,
@@ -116,26 +112,25 @@ function BoardPage() {
   const view: "board" | "list" | "sprint" =
     viewParam === "board" ? "board" : viewParam === "sprint" ? "sprint" : "list";
 
-  // Seed the initial active project from the URL + cache so the first paint on
-  // a tab switch already has data.
-  const initialActiveId = (() => {
-    const pid = Number(urlProject);
-    if (pid && boardProjectsCache?.some((p) => p.id === pid)) return pid;
-    return boardProjectsCache?.[0]?.id ?? null;
-  })();
+  const queryClient = useQueryClient();
 
-  const [projects, setProjects] = useState<ProjectWithCount[]>(
-    boardProjectsCache ?? []
-  );
-  const [activeId, setActiveId] = useState<number | null>(initialActiveId);
-  const [tasks, setTasks] = useState<BoardTask[]>(
-    initialActiveId != null ? boardTasksCache.get(initialActiveId) ?? [] : []
-  );
-  // Spinner only on the very first load (no cached projects yet).
-  const [loading, setLoading] = useState(!boardProjectsCache);
+  // Shared TanStack Query caches: projects + the active project's tasks/members.
+  // Switching tabs/projects renders from cache instantly and revalidates in the
+  // background. Local mirrors keep the existing optimistic-update handlers.
+  const projectsQuery = useProjects<ProjectWithCount>();
+  const projectsData = projectsQuery.data;
+
+  const [activeId, setActiveId] = useState<number | null>(null);
+  const tasksQuery = useProjectTasks<BoardTask>(activeId);
+  const membersQuery = useMembers(activeId);
+  const members = membersQuery.data ?? [];
+
+  const [projects, setProjects] = useState<ProjectWithCount[]>([]);
+  const [tasks, setTasks] = useState<BoardTask[]>([]);
+  // Spinner only on the very first load (nothing cached yet).
+  const loading = projectsQuery.isLoading;
   const [createOpen, setCreateOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [members, setMembers] = useState<Member[]>([]);
 
   const [editing, setEditing] = useState<BoardTask | null>(null);
   const [creatingStatus, setCreatingStatus] = useState<TaskStatus | null>(null);
@@ -177,58 +172,47 @@ function BoardPage() {
     [activeProject]
   );
 
-  const loadProjects = useCallback(async () => {
-    const res = await fetch("/api/projects");
-    const data: ProjectWithCount[] = await res.json();
-    boardProjectsCache = data;
-    setProjects(data);
-    setActiveId((cur) => {
-      if (cur && data.some((p) => p.id === cur)) return cur;
-      const pid = Number(urlProject);
-      if (pid && data.some((p) => p.id === pid)) return pid;
-      return data[0]?.id ?? null;
-    });
-    return data;
-  }, [urlProject]);
+  // Invalidating a query refetches it and the mirror effects below push the
+  // fresh data into local state — replacing the old hand-rolled loaders.
+  const loadProjects = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: queryKeys.projects }),
+    [queryClient]
+  );
+  const loadTasks = useCallback(
+    (projectId: number) =>
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.projectTasks(projectId),
+      }),
+    [queryClient]
+  );
 
-  const loadTasks = useCallback(async (projectId: number) => {
-    const res = await fetch(`/api/tasks?project_id=${projectId}`);
-    const data: BoardTask[] = await res.json();
-    boardTasksCache.set(projectId, data);
-    setTasks(data);
-  }, []);
-
+  // Cache → local mirrors (so optimistic setProjects/setTasks keep working).
+  // `[]` is truthy, so empty projects correctly clear the list; `undefined`
+  // (still loading a never-seen project) is skipped to avoid an empty flash.
   useEffect(() => {
-    loadProjects().finally(() => setLoading(false));
-  }, [loadProjects]);
+    if (projectsData) setProjects(projectsData);
+  }, [projectsData]);
+  useEffect(() => {
+    const data = tasksQuery.data;
+    if (data) setTasks(data);
+  }, [tasksQuery.data]);
+
+  // Pick the active project once projects load, honoring ?project= and falling
+  // back to the first project (or a new one after the current is deleted).
+  useEffect(() => {
+    if (!projectsData) return;
+    setActiveId((cur) => {
+      if (cur && projectsData.some((p) => p.id === cur)) return cur;
+      const pid = Number(urlProject);
+      if (pid && projectsData.some((p) => p.id === pid)) return pid;
+      return projectsData[0]?.id ?? null;
+    });
+  }, [projectsData, urlProject]);
 
   // React to ?project= changes from search / project list navigation.
   useEffect(() => {
     if (urlProject) setActiveId(Number(urlProject));
   }, [urlProject]);
-
-  useEffect(() => {
-    if (activeId != null) loadTasks(activeId);
-    else setTasks([]);
-  }, [activeId, loadTasks]);
-
-  // Workspace members assignable to this project's tasks.
-  useEffect(() => {
-    if (activeId == null) {
-      setMembers([]);
-      return;
-    }
-    let cancelled = false;
-    fetch(`/api/members?project_id=${activeId}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (!cancelled) setMembers(Array.isArray(d.members) ? d.members : []);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [activeId]);
 
   // Expose the pinned project-header height so the table header can stick below
   // it. Defer to rAF and skip redundant writes to avoid a resize/reflow loop

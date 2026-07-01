@@ -102,8 +102,8 @@ export async function PUT(request: Request, { params }: Ctx) {
   for (const key of nextPerms) {
     const [module, action] = key.split(":");
     await dbRun(
-      `INSERT OR IGNORE INTO role_permissions (role_id, workspace_id, module, action)
-       VALUES (?, ?, ?, ?)`,
+      `INSERT INTO role_permissions (role_id, workspace_id, module, action)
+       VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING`,
       [role.id, m.workspace_id, module, action]
     );
   }

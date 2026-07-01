@@ -41,6 +41,7 @@ import TaskStatusIcon from "@/components/app/TaskStatusIcon";
 import PriorityIcon from "@/components/app/PriorityIcon";
 import TaskTypeIcon from "@/components/app/TaskTypeIcon";
 import { getCachedTaskDetail, setCachedTaskDetail } from "@/lib/task-cache";
+import { useSprints, useMembers, useProjectTasks } from "@/lib/queries";
 
 type ActivityMeta = {
   field: "status" | "priority" | "type";
@@ -248,8 +249,12 @@ export default function TaskDetailPage() {
   // Mirror of `detail` so drag handlers can read the latest order on drop.
   const detailRef = useRef<Detail | null>(null);
   detailRef.current = detail;
-  const [sprints, setSprints] = useState<Sprint[]>([]);
-  const [members, setMembers] = useState<Member[]>([]);
+  // Project sprints + members come from the shared cache (same keys the board
+  // and sprint views use), so they're already warm when a task opens.
+  const sprintsQuery = useSprints<Sprint>(detail?.project_id ?? null);
+  const membersQuery = useMembers(detail?.project_id ?? null);
+  const sprints = sprintsQuery.data ?? [];
+  const members = membersQuery.data ?? [];
   const [fieldVals, setFieldVals] = useState<Record<number, string>>(
     cachedDetail
       ? Object.fromEntries(
@@ -309,7 +314,13 @@ export default function TaskDetailPage() {
   const [dragOverId, setDragOverId] = useState<number | null>(null);
   // Linked-bugs section (shown for Story/Task items).
   const [openBugs, setOpenBugs] = useState(() => readOpen("bugs", true));
-  const [projectTasks, setProjectTasks] = useState<LinkedItem[]>([]);
+  // Candidate tasks to link (Story/Task items only) — shared project-tasks cache.
+  const projectTasksQuery = useProjectTasks<LinkedItem>(
+    detail && (detail.type === "story" || detail.type === "task")
+      ? detail.project_id
+      : null
+  );
+  const projectTasks = projectTasksQuery.data ?? [];
   // Description is collapsible + click-to-edit (editor + Save while editing).
   const [openDesc, setOpenDesc] = useState(() => readOpen("desc", true));
   const [editingDesc, setEditingDesc] = useState(false);
@@ -406,35 +417,6 @@ export default function TaskDetailPage() {
   useEffect(() => {
     load().finally(() => setLoading(false));
   }, [load]);
-
-  // Load the project's sprints + members once we know which project we're in.
-  useEffect(() => {
-    if (!detail?.project_id) return;
-    fetch(`/api/sprints?project_id=${detail.project_id}`)
-      .then((r) => r.json())
-      .then((d: Sprint[]) => setSprints(Array.isArray(d) ? d : []))
-      .catch(() => {});
-    fetch(`/api/members?project_id=${detail.project_id}`)
-      .then((r) => r.json())
-      .then((d: { members?: Member[] }) =>
-        setMembers(Array.isArray(d.members) ? d.members : [])
-      )
-      .catch(() => {});
-  }, [detail?.project_id]);
-
-  // Story/Task items: load the project's top-level tasks to link from.
-  useEffect(() => {
-    if (!detail || (detail.type !== "story" && detail.type !== "task")) return;
-    fetch(`/api/tasks?project_id=${detail.project_id}`)
-      .then((r) => r.json())
-      .then((d: LinkedItem[]) => setProjectTasks(Array.isArray(d) ? d : []))
-      .catch(() => {});
-  }, [
-    detail?.project_id,
-    detail?.type,
-    detail?.linked_tasks?.length,
-    detail?.linked_bugs?.length,
-  ]);
 
   // Briefly flag a row so it plays its entrance animation after refresh.
   function flagEntering(taskId: number) {

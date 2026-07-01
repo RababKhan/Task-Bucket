@@ -33,7 +33,7 @@ function loadInvite(token: string): Promise<InviteRow | undefined> {
 // and grant the invited project access. Idempotent on membership.
 async function applyInvite(invite: InviteRow, userId: string): Promise<void> {
   await dbRun(
-    "INSERT OR IGNORE INTO workspace_members (workspace_id, user_id, role, active) VALUES (?, ?, ?, 1)",
+    "INSERT INTO workspace_members (workspace_id, user_id, role, active) VALUES (?, ?, ?, 1) ON CONFLICT DO NOTHING",
     [invite.workspace_id, userId, invite.role]
   );
   const projectIds = parseProjectAccess(invite.project_access);
@@ -45,8 +45,8 @@ async function applyInvite(invite: InviteRow, userId: string): Promise<void> {
     );
     if (!ok) continue;
     await dbRun(
-      `INSERT OR IGNORE INTO project_members (project_id, user_id, added_by, status, created_at)
-       VALUES (?, ?, ?, 'active', datetime('now'))`,
+      `INSERT INTO project_members (project_id, user_id, added_by, status, created_at)
+       VALUES (?, ?, ?, 'active', datetime('now')) ON CONFLICT DO NOTHING`,
       [pid, userId, invite.invited_by]
     );
   }

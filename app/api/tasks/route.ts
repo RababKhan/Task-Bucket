@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { dbAll, dbGet, dbRun, type Task } from "@/lib/db";
+import { dbAll, dbGet, dbRun, dbInsert, type Task } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 import { canAccessProjectScoped } from "@/lib/membership";
 import { requirePermission, ERR } from "@/lib/rbac";
@@ -144,7 +144,7 @@ export async function POST(request: Request) {
   );
   const seq = seqRow?.task_seq ?? 1;
 
-  const info = await dbRun(
+  const taskId = await dbInsert(
     `INSERT INTO tasks (project_id, parent_id, title, description, type, status, priority, severity, story_points, start_date, due_date, labels, position, seq, created_by)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
@@ -165,7 +165,6 @@ export async function POST(request: Request) {
       userId,
     ]
   );
-  const taskId = info.lastInsertRowid;
 
   await logActivity(
     Number(taskId),
@@ -179,7 +178,7 @@ export async function POST(request: Request) {
 
   for (const uid of validAssignees) {
     await dbRun(
-      "INSERT OR IGNORE INTO task_assignees (task_id, user_id) VALUES (?, ?)",
+      "INSERT INTO task_assignees (task_id, user_id) VALUES (?, ?) ON CONFLICT DO NOTHING",
       [taskId, uid]
     );
   }

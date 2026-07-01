@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { dbGet, dbRun } from "@/lib/db";
+import { dbGet, dbRun, dbInsert } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 import { canAccessTask } from "@/lib/membership";
 import { requirePermission, ERR } from "@/lib/rbac";
@@ -70,11 +70,10 @@ export async function POST(request: Request, { params }: Ctx) {
     if (p) parentId = p.parent_id ?? p.id;
   }
 
-  const info = await dbRun(
+  const commentId = await dbInsert(
     "INSERT INTO task_comments (task_id, parent_id, user_id, body) VALUES (?, ?, ?, ?)",
     [id, parentId, userId, text.slice(0, 5000)]
   );
-  const commentId = info.lastInsertRowid;
   for (const a of attachments) {
     await dbRun(
       "INSERT INTO comment_attachments (comment_id, name, type, data) VALUES (?, ?, ?, ?)",

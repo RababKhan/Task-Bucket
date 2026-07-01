@@ -26,3 +26,9 @@ next-env.d.ts
 # local tooling / logs
 .claude/
 dev.log
+
+# playwright / e2e
+/test-results/
+/playwright-report/
+/playwright/.cache/
+tests/e2e/.auth/

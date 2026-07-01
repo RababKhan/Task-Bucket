@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Project, ProjectStatus, Member } from "@/lib/types";
+import { useQueryClient } from "@tanstack/react-query";
+import { useProjects, useMembers, usePrefetch } from "@/lib/queries";
+import { queryKeys } from "@/lib/query-keys";
+import type { Project, ProjectStatus } from "@/lib/types";
 import { PROJECT_STATUS_ORDER, PROJECT_STATUS_LABELS } from "@/lib/types";
 import Spinner from "@/components/Spinner";
 import StatusIcon from "@/components/app/StatusIcon";
@@ -62,9 +65,15 @@ function todayISO() {
 
 export default function ProjectsPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const prefetch = usePrefetch();
+  // Shared caches — projects is mirrored into local state for optimistic edits;
+  // members is read-only reference data, so derive it directly.
+  const projectsQuery = useProjects<ProjectRow>();
+  const membersQuery = useMembers();
+  const members = membersQuery.data ?? [];
   const [projects, setProjects] = useState<ProjectRow[]>([]);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [loading, setLoading] = useState(true);
+  const loading = projectsQuery.isLoading;
   const [modalOpen, setModalOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
@@ -92,21 +101,15 @@ export default function ProjectsPage() {
   const [pageSize, setPageSize] = useState(50);
   const [visible, setVisible] = useState<Record<ColKey, boolean>>(DEFAULT_VISIBLE);
 
-  const load = useCallback(async () => {
-    const res = await fetch("/api/projects");
-    setProjects(await res.json());
-  }, []);
+  const load = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: queryKeys.projects }),
+    [queryClient]
+  );
 
+  // Mirror the shared projects cache into local state for optimistic edits.
   useEffect(() => {
-    load().finally(() => setLoading(false));
-  }, [load]);
-
-  useEffect(() => {
-    fetch("/api/members")
-      .then((r) => r.json())
-      .then((d) => setMembers(d.members ?? []))
-      .catch(() => {});
-  }, []);
+    if (projectsQuery.data) setProjects(projectsQuery.data);
+  }, [projectsQuery.data]);
 
   // Load saved view preferences (page size + visible columns).
   useEffect(() => {
@@ -655,6 +658,10 @@ export default function ProjectsPage() {
               onDragEnd={() => {
                 setDragId(null);
                 setDragOverId(null);
+              }}
+              onMouseEnter={() => {
+                prefetch.project(p.id);
+                router.prefetch("/");
               }}
               onClick={() => router.push(`/?project=${p.id}&view=list`)}
             >

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePrefetch } from "@/lib/queries";
 
 type TabKey = "list" | "board" | "sprints";
 export type ActiveTab = TabKey | "members" | "settings";
@@ -37,11 +38,18 @@ export default function ProjectTabs({
   projectId: number;
   active: ActiveTab;
 }) {
+  const prefetch = usePrefetch();
   function href(key: TabKey) {
     if (key === "list") return `/?project=${projectId}&view=list`;
     if (key === "board") return `/?project=${projectId}&view=board`;
     if (key === "sprints") return `/?project=${projectId}&view=sprint`;
     return `/project/${projectId}/${key}`;
+  }
+  // List/Board share the (already-loaded) task cache; Sprint needs its own
+  // sprints query, so warm it on hover for an instant tab switch.
+  function warm(key: TabKey) {
+    if (key === "sprints") prefetch.sprints(projectId);
+    else prefetch.project(projectId);
   }
   return (
     <div className="project-tabs">
@@ -50,6 +58,7 @@ export default function ProjectTabs({
           key={t.key}
           href={href(t.key)}
           className={`ptab ${active === t.key ? "active" : ""}`}
+          onMouseEnter={() => warm(t.key)}
         >
           <span className="ptab-ic">{ICONS[t.key]}</span>
           {t.label}
