@@ -3813,8 +3813,8 @@ img.cm-tw-emoji {
 .sprints-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  justify-content: flex-start;
+  gap: 10px;
   margin-bottom: 8px;
 }
 .sprints-head .pv-search {
