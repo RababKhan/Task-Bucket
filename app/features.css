@@ -7187,10 +7187,10 @@ textarea::placeholder {
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
-/* Pull the first tab's inner padding back so its label aligns flush with the
-   content/cards below. */
+/* First tab starts flush with the content/cards below (no left inset, and no
+   negative margin — that would push its underline past the card edge). */
 .settings-subtab:first-child {
-  margin-left: -12px;
+  padding-left: 0;
 }
 .settings-subtab {
   padding: 8px 12px;
