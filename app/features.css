@@ -7187,13 +7187,11 @@ textarea::placeholder {
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
-/* First tab: small symmetric padding so the active underline extends a touch
-   past the label on both sides (label centered); the negative margin keeps the
-   label itself flush with the content edge. */
+/* First tab: its box (and active underline) starts exactly at the card's left
+   edge; small symmetric padding keeps the label centered on the underline. */
 .settings-subtab:first-child {
   padding-left: 6px;
   padding-right: 6px;
-  margin-left: -6px;
   margin-right: 6px;
 }
 .settings-subtab {
