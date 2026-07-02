@@ -230,20 +230,21 @@ export default function SprintView({ projectId }: { projectId: number }) {
             </svg>
             Add Sprint
           </button>
-          <div className="pv-search">
+          <div className="proj-search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <circle cx="11" cy="11" r="7" />
               <path d="m21 21-4.3-4.3" />
             </svg>
             <input
+              type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search sprints"
+              placeholder="Search"
             />
             {query && (
               <button
                 type="button"
-                className="pv-search-clear"
+                className="proj-search-clear"
                 onClick={() => setQuery("")}
                 aria-label="Clear search"
               >
