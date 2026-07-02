@@ -20,7 +20,6 @@ export default function SettingsLayout({
   const canRoles = useCan("roles", "view");
 
   const tabs = [
-    { href: "/settings", label: "General", exact: true },
     { href: "/settings/profile", label: "Profile" },
     ...(isAdmin ? [{ href: "/settings/billing", label: "Billing" }] : []),
     ...(canRoles
