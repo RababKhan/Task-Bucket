@@ -191,9 +191,7 @@ function sectionTitle(pathname: string) {
   if (pathname.startsWith("/tasks")) return "Tasks";
   if (pathname.startsWith("/directory")) return "Employee Directory";
   if (pathname.startsWith("/timesheet")) return "Time Sheet";
-  if (pathname.startsWith("/settings/roles")) return "Roles & Permissions";
-  if (pathname.startsWith("/settings/billing")) return "Billing";
-  if (pathname.startsWith("/settings/profile")) return "Profile";
+  // The settings sub-nav already names the section; the topbar stays "Settings".
   if (pathname.startsWith("/settings")) return "Settings";
   if (pathname.startsWith("/task")) return "Task";
   return "Task Bucket";
