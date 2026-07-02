@@ -7208,6 +7208,7 @@ textarea::placeholder {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  padding-top: 10px;
 }
 
 /* ---- Tasks module (cross-project list) ---- */
