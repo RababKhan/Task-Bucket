@@ -7182,9 +7182,15 @@ textarea::placeholder {
 .settings-subnav {
   display: flex;
   gap: 2px;
-  padding: 10px 32px 0;
+  /* .app-main already pads 32px horizontally — don't double it. */
+  padding: 10px 0 0;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+}
+/* Pull the first tab's inner padding back so its label aligns flush with the
+   content/cards below. */
+.settings-subtab:first-child {
+  margin-left: -12px;
 }
 .settings-subtab {
   padding: 8px 12px;
