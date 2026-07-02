@@ -127,12 +127,6 @@ function Sidebar({
   // The Employee Directory requires team_member:view.
   const canViewDirectory = useCan("team_member", "view");
 
-  // Billing is workspace-admin only.
-  const { data: session } = useSession();
-  const isWsAdmin =
-    (session as { workspace?: { role?: string } } | null)?.workspace?.role ===
-    "admin";
-
   const prefetch = usePrefetch();
 
   return (
@@ -171,30 +165,12 @@ function Sidebar({
       </nav>
 
       <div className="sidebar-bottom">
-        <NavLink href="/profile" label="Profile" icon={ProfileIcon} active={isActive("/profile")} />
         <NavLink
           href="/settings"
           label="Settings"
           icon={SettingsIcon}
-          active={
-            isActive("/settings") &&
-            !pathname.startsWith("/settings/roles") &&
-            !pathname.startsWith("/settings/billing")
-          }
+          active={isActive("/settings")}
         />
-        {isWsAdmin && (
-          <NavLink
-            href="/settings/billing"
-            label="Billing"
-            icon={
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <rect x="2" y="5" width="20" height="14" rx="2" />
-                <path d="M2 10h20" />
-              </svg>
-            }
-            active={pathname.startsWith("/settings/billing")}
-          />
-        )}
         <NavLink
           href="https://github.com/RababKhan/Task-Bucket"
           label="Help & Support"
@@ -216,8 +192,9 @@ function sectionTitle(pathname: string) {
   if (pathname.startsWith("/directory")) return "Employee Directory";
   if (pathname.startsWith("/timesheet")) return "Time Sheet";
   if (pathname.startsWith("/settings/roles")) return "Roles & Permissions";
+  if (pathname.startsWith("/settings/billing")) return "Billing";
+  if (pathname.startsWith("/settings/profile")) return "Profile";
   if (pathname.startsWith("/settings")) return "Settings";
-  if (pathname.startsWith("/profile")) return "Profile";
   if (pathname.startsWith("/task")) return "Task";
   return "Task Bucket";
 }
@@ -417,7 +394,7 @@ function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
                     <div className="menu-header-email">{email}</div>
                   </div>
                 </div>
-                <Link href="/profile" className="menu-item" onClick={() => setMenu(null)}>
+                <Link href="/settings/profile" className="menu-item" onClick={() => setMenu(null)}>
                   {ProfileIcon}
                   Profile
                 </Link>
