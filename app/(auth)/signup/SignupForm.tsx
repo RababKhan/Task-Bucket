@@ -271,7 +271,7 @@ export default function SignupForm({
       router.push("/login");
       return;
     }
-    router.push("/");
+    router.push("/dashboard");
     router.refresh();
   }
 

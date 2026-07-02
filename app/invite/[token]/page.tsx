@@ -70,7 +70,7 @@ export default function InvitePage() {
       router.push("/login");
       return;
     }
-    router.push("/");
+    router.push("/dashboard");
     router.refresh();
   }
 
@@ -97,7 +97,7 @@ export default function InvitePage() {
       setError(data.error || "Could not accept the invite.");
       return;
     }
-    router.push("/");
+    router.push("/dashboard");
     router.refresh();
   }
 

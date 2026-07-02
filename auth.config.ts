@@ -59,7 +59,7 @@ const authConfig: NextAuthConfig = {
       if (matches(PUBLIC_PATHS)) return true;
 
       if (matches(AUTH_PATHS)) {
-        if (isLoggedIn) return Response.redirect(new URL("/projects", nextUrl));
+        if (isLoggedIn) return Response.redirect(new URL("/dashboard", nextUrl));
         return true;
       }
       // Everything else the middleware matches is protected.
