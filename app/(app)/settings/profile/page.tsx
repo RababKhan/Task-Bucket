@@ -46,13 +46,6 @@ export default function ProfilePage() {
 
   return (
     <>
-      <div className="main-header">
-        <div className="board-title">
-          <h1>Profile</h1>
-          <p>Your account details.</p>
-        </div>
-      </div>
-
       <div className="settings-card">
         <div className="settings-card-head">
           <span className="profile-avatar">
@@ -93,17 +86,6 @@ export default function ProfilePage() {
             </>
           )}
         </div>
-      </div>
-
-      <div className="settings-card">
-        <div className="settings-card-title">Session</div>
-        <p className="settings-card-sub">Sign out of Task Bucket on this device.</p>
-        <button
-          className="btn btn-danger btn-sm"
-          onClick={() => signOut({ callbackUrl: "/login" })}
-        >
-          Logout
-        </button>
       </div>
 
       {isAdmin && ws && (
