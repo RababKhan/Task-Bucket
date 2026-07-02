@@ -398,20 +398,32 @@ export const commentAttachments = pgTable(
 );
 
 // One row per workspace (1:1). Absence of a row is treated as the free plan.
+// Manual billing: the owner activates Pro after an offline bank transfer.
 export const subscriptions = pgTable("subscriptions", {
   workspaceId: text("workspace_id")
     .primaryKey()
     .references(() => workspaces.id, { onDelete: "cascade" }),
   plan: text("plan").notNull().default("free"), // 'free' | 'pro'
-  status: text("status").notNull().default("active"), // stripe subscription status
-  stripeCustomerId: text("stripe_customer_id"),
-  stripeSubscriptionId: text("stripe_subscription_id"),
-  priceId: text("price_id"),
-  interval: text("interval"), // 'month' | 'year'
-  currentPeriodEnd: text("current_period_end"),
-  cancelAtPeriodEnd: integer("cancel_at_period_end").notNull().default(0),
+  status: text("status").notNull().default("active"), // 'active' | 'free'
+  interval: text("interval"), // 'month' | 'year' (informational)
+  currentPeriodEnd: text("current_period_end"), // optional Pro expiry
+  note: text("note"), // owner reference, e.g. invoice number
+  activatedBy: text("activated_by"), // who activated it (owner)
   createdAt: text("created_at").notNull().default(nowText),
   updatedAt: text("updated_at"),
+});
+
+// Upgrade requests a workspace admin files after paying (so the owner has a
+// queue to cross-reference against the emailed invoice + domain).
+export const billingRequests = pgTable("billing_requests", {
+  id: serial("id").primaryKey(),
+  workspaceId: text("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  interval: text("interval").notNull().default("month"),
+  status: text("status").notNull().default("pending"), // 'pending' | 'resolved'
+  createdAt: text("created_at").notNull().default(nowText),
+  resolvedAt: text("resolved_at"),
 });
 
 export const rolePermissions = pgTable(

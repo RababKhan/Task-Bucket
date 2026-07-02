@@ -1,20 +1,29 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import Spinner from "@/components/Spinner";
 import { PLANS, type PlanId, type BillingInterval } from "@/lib/plans";
+
+type Bank = {
+  beneficiary: string;
+  bankName: string;
+  accountNumber: string;
+  iban: string;
+  swift: string;
+  reference: string;
+};
 
 type BillingInfo = {
   plan: PlanId;
   status: string;
   interval: string | null;
   current_period_end: string | null;
-  cancel_at_period_end: boolean;
   usage: { projects: number; members: number };
   limits: { projects: number | null; members: number | null };
   is_admin: boolean;
-  stripe_configured: boolean;
+  workspace: { subdomain: string; name: string };
+  contact: { email: string; bank: Bank };
+  pending_request: { interval: string; created_at: string } | null;
 };
 
 function fmtDate(iso: string | null) {
@@ -29,15 +38,22 @@ function fmtDate(iso: string | null) {
       });
 }
 
-function limitText(n: number | null) {
-  return n == null ? "Unlimited" : String(n);
-}
+const limitText = (n: number | null) => (n == null ? "Unlimited" : String(n));
+
+const BANK_FIELDS: { key: keyof Bank; label: string }[] = [
+  { key: "beneficiary", label: "Account name" },
+  { key: "bankName", label: "Bank" },
+  { key: "accountNumber", label: "Account number" },
+  { key: "iban", label: "IBAN" },
+  { key: "swift", label: "SWIFT / BIC" },
+  { key: "reference", label: "Reference" },
+];
 
 export default function BillingPage() {
-  const params = useSearchParams();
   const [info, setInfo] = useState<BillingInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState<string | null>(null);
+  const [interval, setInterval] = useState<BillingInterval>("month");
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -50,34 +66,21 @@ export default function BillingPage() {
     load();
   }, [load]);
 
-  async function checkout(interval: BillingInterval) {
-    setBusy(interval);
+  async function requestUpgrade() {
+    setBusy(true);
     setError("");
-    const res = await fetch("/api/billing/checkout", {
+    const res = await fetch("/api/billing/request", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ interval }),
     });
     const data = await res.json().catch(() => ({}));
-    if (res.ok && data.url) {
-      window.location.href = data.url;
+    setBusy(false);
+    if (!res.ok) {
+      setError(data.error || "Could not submit your request.");
       return;
     }
-    setError(data.error || "Could not start checkout.");
-    setBusy(null);
-  }
-
-  async function portal() {
-    setBusy("portal");
-    setError("");
-    const res = await fetch("/api/billing/portal", { method: "POST" });
-    const data = await res.json().catch(() => ({}));
-    if (res.ok && data.url) {
-      window.location.href = data.url;
-      return;
-    }
-    setError(data.error || "Could not open the billing portal.");
-    setBusy(null);
+    load();
   }
 
   if (loading) {
@@ -87,13 +90,11 @@ export default function BillingPage() {
       </div>
     );
   }
-  if (!info) {
-    return <div className="pv">Could not load billing.</div>;
-  }
+  if (!info) return <div className="pv">Could not load billing.</div>;
 
   const isPro = info.plan === "pro";
-  const success = params.get("success");
-  const canceled = params.get("canceled");
+  const bankLines = BANK_FIELDS.filter((f) => info.contact.bank[f.key]);
+  const amount = PLANS.pro.price[interval];
 
   return (
     <div className="pv billing-pv">
@@ -104,19 +105,7 @@ export default function BillingPage() {
         </p>
       </div>
 
-      {success && (
-        <p className="invite-ok">Your subscription is active — welcome to Pro!</p>
-      )}
-      {canceled && (
-        <p className="settings-card-sub">Checkout canceled — no changes made.</p>
-      )}
       {error && <p className="invite-err">{error}</p>}
-      {!info.stripe_configured && (
-        <p className="invite-err">
-          Billing isn&apos;t configured yet (no Stripe keys). See
-          BILLING-SETUP.md.
-        </p>
-      )}
 
       {/* Current plan + usage */}
       <div className="billing-current">
@@ -127,22 +116,18 @@ export default function BillingPage() {
             {isPro && info.interval ? ` · ${info.interval}ly` : ""}
           </strong>
         </div>
-        {isPro && (
+        {isPro && info.current_period_end && (
           <div className="billing-current-row">
-            <span>{info.cancel_at_period_end ? "Ends on" : "Renews on"}</span>
+            <span>Valid until</span>
             <strong>{fmtDate(info.current_period_end)}</strong>
           </div>
         )}
         <div className="billing-usage">
           <div className="billing-usage-item">
-            <span>
-              Projects: {info.usage.projects} / {limitText(info.limits.projects)}
-            </span>
+            Projects: {info.usage.projects} / {limitText(info.limits.projects)}
           </div>
           <div className="billing-usage-item">
-            <span>
-              Members: {info.usage.members} / {limitText(info.limits.members)}
-            </span>
+            Members: {info.usage.members} / {limitText(info.limits.members)}
           </div>
         </div>
       </div>
@@ -176,40 +161,87 @@ export default function BillingPage() {
         })}
       </div>
 
-      {/* Actions */}
-      {!info.is_admin ? (
+      {/* Upgrade via bank transfer */}
+      {isPro ? (
         <p className="settings-card-sub">
-          Only workspace admins can change the plan.
+          You&apos;re on Pro — thank you! To renew or change your plan, contact{" "}
+          {info.contact.email ? <strong>{info.contact.email}</strong> : "us"}.
         </p>
-      ) : isPro ? (
-        <div className="billing-actions">
-          <button
-            className="btn btn-primary"
-            onClick={portal}
-            disabled={busy !== null || !info.stripe_configured}
-          >
-            {busy === "portal" ? <Spinner /> : "Manage billing"}
-          </button>
+      ) : !info.is_admin ? (
+        <p className="settings-card-sub">
+          Only workspace admins can upgrade the plan.
+        </p>
+      ) : info.pending_request ? (
+        <div className="billing-pending">
+          <strong>Upgrade request received.</strong> We&apos;ll activate Pro (
+          {info.pending_request.interval}ly) once we&apos;ve verified your bank
+          transfer. Make sure you&apos;ve emailed your invoice and workspace
+          domain to {info.contact.email || "us"}.
         </div>
       ) : (
-        <div className="billing-actions">
+        <div className="billing-upgrade">
+          <h2 className="billing-sec-title">Upgrade to Pro by bank transfer</h2>
+
+          <div className="billing-interval">
+            <label className={`billing-int-opt${interval === "month" ? " sel" : ""}`}>
+              <input
+                type="radio"
+                name="interval"
+                checked={interval === "month"}
+                onChange={() => setInterval("month")}
+              />
+              Monthly — ${PLANS.pro.price.month}/mo
+            </label>
+            <label className={`billing-int-opt${interval === "year" ? " sel" : ""}`}>
+              <input
+                type="radio"
+                name="interval"
+                checked={interval === "year"}
+                onChange={() => setInterval("year")}
+              />
+              Yearly — ${PLANS.pro.price.year}/yr (save 2 months)
+            </label>
+          </div>
+
+          <ol className="billing-steps">
+            <li>
+              Transfer <strong>${amount}</strong> to the account below.
+            </li>
+            <li>
+              Email your payment invoice and your workspace domain{" "}
+              <code className="billing-domain">{info.workspace.subdomain}</code>{" "}
+              to{" "}
+              {info.contact.email ? (
+                <strong>{info.contact.email}</strong>
+              ) : (
+                "our billing contact"
+              )}
+              .
+            </li>
+            <li>Click the button below so we know to expect it.</li>
+          </ol>
+
+          {bankLines.length > 0 ? (
+            <dl className="billing-bank">
+              {bankLines.map((f) => (
+                <div key={f.key} className="billing-bank-row">
+                  <dt>{f.label}</dt>
+                  <dd>{info.contact.bank[f.key]}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : (
+            <p className="invite-err">
+              Bank details aren&apos;t configured yet. See BILLING.md.
+            </p>
+          )}
+
           <button
             className="btn btn-primary"
-            onClick={() => checkout("month")}
-            disabled={busy !== null || !info.stripe_configured}
+            onClick={requestUpgrade}
+            disabled={busy}
           >
-            {busy === "month" ? <Spinner /> : `Upgrade to Pro — $${PLANS.pro.price.month}/mo`}
-          </button>
-          <button
-            className="btn"
-            onClick={() => checkout("year")}
-            disabled={busy !== null || !info.stripe_configured}
-          >
-            {busy === "year" ? (
-              <Spinner />
-            ) : (
-              `Yearly — $${PLANS.pro.price.year}/yr (save 2 months)`
-            )}
+            {busy ? <Spinner /> : "I've made the transfer — request activation"}
           </button>
         </div>
       )}

@@ -7087,3 +7087,91 @@ textarea::placeholder {
   flex-wrap: wrap;
   margin-top: 8px;
 }
+
+/* ---- Billing: manual bank transfer ---- */
+.billing-sec-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+.billing-upgrade {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  background: var(--surface);
+}
+.billing-interval {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.billing-int-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.billing-int-opt.sel {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+.billing-steps {
+  margin: 0 0 14px;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.billing-steps strong,
+.billing-steps code {
+  color: var(--text);
+}
+.billing-domain {
+  padding: 1px 7px;
+  border-radius: 5px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+}
+.billing-bank {
+  margin: 0 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.billing-bank-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 14px;
+  font-size: 13px;
+  border-top: 1px solid var(--border);
+}
+.billing-bank-row:first-child {
+  border-top: none;
+}
+.billing-bank-row dt {
+  color: var(--text-dim);
+  margin: 0;
+}
+.billing-bank-row dd {
+  margin: 0;
+  font-weight: 500;
+  text-align: right;
+}
+.billing-pending {
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 16px;
+  background: var(--surface-2);
+  font-size: 13px;
+  line-height: 1.5;
+}

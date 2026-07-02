@@ -16,6 +16,7 @@
     "db:push": "drizzle-kit push",
     "db:setup": "node scripts/db-setup.mjs",
     "db:studio": "drizzle-kit studio",
+    "billing": "node scripts/billing.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },
@@ -48,8 +49,7 @@
     "pg": "^8.22.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "resend": "^6.12.4",
-    "stripe": "^22.3.0"
+    "resend": "^6.12.4"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",

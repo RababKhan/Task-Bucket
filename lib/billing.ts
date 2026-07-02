@@ -1,19 +1,22 @@
 import "server-only";
 import { dbGet, dbRun } from "@/lib/db";
-import { stripe } from "@/lib/stripe";
 import { getMembership } from "@/lib/membership";
-import { planLimit, ACTIVE_STATUSES, type PlanId } from "@/lib/plans";
+import { isExpired } from "@/lib/invites";
+import {
+  planLimit,
+  ACTIVE_STATUSES,
+  type PlanId,
+  type BillingInterval,
+} from "@/lib/plans";
 
 export type Subscription = {
   workspace_id: string;
   plan: PlanId;
   status: string;
-  stripe_customer_id: string | null;
-  stripe_subscription_id: string | null;
-  price_id: string | null;
   interval: string | null;
   current_period_end: string | null;
-  cancel_at_period_end: number;
+  note: string | null;
+  activated_by: string | null;
 };
 
 // Absence of a row => free plan.
@@ -29,56 +32,25 @@ export async function getSubscription(
       workspace_id: workspaceId,
       plan: "free",
       status: "active",
-      stripe_customer_id: null,
-      stripe_subscription_id: null,
-      price_id: null,
       interval: null,
       current_period_end: null,
-      cancel_at_period_end: 0,
+      note: null,
+      activated_by: null,
     }
   );
 }
 
-// Effective plan: "pro" only when the sub is pro AND in an active/trialing state
-// (so a past_due/canceled Pro sub falls back to free-tier limits).
+// Effective plan: "pro" only when active AND not past its (optional) expiry.
 export async function getEffectivePlan(workspaceId: string): Promise<PlanId> {
   const s = await getSubscription(workspaceId);
   if (
     s.plan === "pro" &&
     (ACTIVE_STATUSES as readonly string[]).includes(s.status)
   ) {
+    if (s.current_period_end && isExpired(s.current_period_end)) return "free";
     return "pro";
   }
   return "free";
-}
-
-export async function ensureSubscriptionRow(workspaceId: string): Promise<void> {
-  await dbRun(
-    "INSERT INTO subscriptions (workspace_id, plan, status) VALUES (?, 'free', 'active') ON CONFLICT DO NOTHING",
-    [workspaceId]
-  );
-}
-
-// Create (or reuse) the workspace's Stripe customer.
-export async function ensureStripeCustomer(
-  workspaceId: string,
-  email: string,
-  name: string
-): Promise<string> {
-  if (!stripe) throw new Error("Stripe is not configured");
-  const s = await getSubscription(workspaceId);
-  if (s.stripe_customer_id) return s.stripe_customer_id;
-  const customer = await stripe.customers.create({
-    email,
-    name,
-    metadata: { workspace_id: workspaceId },
-  });
-  await ensureSubscriptionRow(workspaceId);
-  await dbRun(
-    "UPDATE subscriptions SET stripe_customer_id = ?, updated_at = datetime('now') WHERE workspace_id = ?",
-    [customer.id, workspaceId]
-  );
-  return customer.id;
 }
 
 // Billing management is workspace-admin only.
@@ -87,6 +59,46 @@ export async function billingAdminWorkspace(
 ): Promise<string | null> {
   const m = await getMembership(userId);
   return m && m.role === "admin" ? m.workspace_id : null;
+}
+
+// ---- Upgrade requests (customer signals "I've paid, please activate") ----
+export async function createUpgradeRequest(
+  workspaceId: string,
+  interval: BillingInterval
+): Promise<void> {
+  await dbRun(
+    "UPDATE billing_requests SET status = 'resolved', resolved_at = datetime('now') WHERE workspace_id = ? AND status = 'pending'",
+    [workspaceId]
+  );
+  await dbRun(
+    "INSERT INTO billing_requests (workspace_id, interval, status) VALUES (?, ?, 'pending')",
+    [workspaceId, interval]
+  );
+}
+
+export async function getPendingRequest(
+  workspaceId: string
+): Promise<{ interval: string; created_at: string } | undefined> {
+  return dbGet<{ interval: string; created_at: string }>(
+    "SELECT interval, created_at FROM billing_requests WHERE workspace_id = ? AND status = 'pending' ORDER BY id DESC LIMIT 1",
+    [workspaceId]
+  );
+}
+
+// ---- Bank-transfer details (owner-configured via env) ----
+export function billingContact() {
+  const clean = (v?: string) => (v?.trim() ? v.trim() : "");
+  return {
+    email: clean(process.env.BILLING_CONTACT_EMAIL),
+    bank: {
+      beneficiary: clean(process.env.BANK_BENEFICIARY),
+      bankName: clean(process.env.BANK_NAME),
+      accountNumber: clean(process.env.BANK_ACCOUNT_NUMBER),
+      iban: clean(process.env.BANK_IBAN),
+      swift: clean(process.env.BANK_SWIFT),
+      reference: clean(process.env.BANK_REFERENCE),
+    },
+  };
 }
 
 // ---- Plan-limit checks (used for gating) ----
@@ -111,7 +123,6 @@ export async function canAddProject(workspaceId: string): Promise<boolean> {
   return (await projectCount(workspaceId)) < planLimit(plan, "projects");
 }
 
-// Pending invites count toward the seat limit so you can't over-invite.
 export async function canAddMember(workspaceId: string): Promise<boolean> {
   const plan = await getEffectivePlan(workspaceId);
   const limit = planLimit(plan, "members");
