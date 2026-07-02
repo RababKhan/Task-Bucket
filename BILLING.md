@@ -24,16 +24,19 @@ activate Pro manually.
 
 ```
 BILLING_CONTACT_EMAIL="billing@yourdomain.com"
-BANK_BENEFICIARY="Your Company Ltd"
-BANK_NAME="Example Bank"
+BANK_NAME="Example Bank PLC"
+BANK_BENEFICIARY="Account Holder Name"
 BANK_ACCOUNT_NUMBER="0000000000"
-BANK_IBAN="XX00 0000 0000 0000"
+BANK_BRANCH="Branch, City"
+BANK_ROUTING="000000000"
+BANK_BRANCH_CODE="000"
 BANK_SWIFT="EXAMPLEXXX"
-BANK_REFERENCE="Include your workspace domain"
+BANK_IBAN=""
+BANK_REFERENCE=""
 ```
 
-Only the fields you set are shown; leave the rest blank. Restart `npm run dev`
-after changing them.
+Only the fields you set are shown (blank ones are hidden). Restart
+`npm run dev` after changing them.
 
 ## Owner CLI
 

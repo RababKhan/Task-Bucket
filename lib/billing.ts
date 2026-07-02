@@ -94,8 +94,11 @@ export function billingContact() {
       beneficiary: clean(process.env.BANK_BENEFICIARY),
       bankName: clean(process.env.BANK_NAME),
       accountNumber: clean(process.env.BANK_ACCOUNT_NUMBER),
-      iban: clean(process.env.BANK_IBAN),
+      branch: clean(process.env.BANK_BRANCH),
+      routing: clean(process.env.BANK_ROUTING),
+      branchCode: clean(process.env.BANK_BRANCH_CODE),
       swift: clean(process.env.BANK_SWIFT),
+      iban: clean(process.env.BANK_IBAN),
       reference: clean(process.env.BANK_REFERENCE),
     },
   };

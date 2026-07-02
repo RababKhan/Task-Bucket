@@ -8,8 +8,11 @@ type Bank = {
   beneficiary: string;
   bankName: string;
   accountNumber: string;
-  iban: string;
+  branch: string;
+  routing: string;
+  branchCode: string;
   swift: string;
+  iban: string;
   reference: string;
 };
 
@@ -41,11 +44,14 @@ function fmtDate(iso: string | null) {
 const limitText = (n: number | null) => (n == null ? "Unlimited" : String(n));
 
 const BANK_FIELDS: { key: keyof Bank; label: string }[] = [
-  { key: "beneficiary", label: "Account name" },
   { key: "bankName", label: "Bank" },
+  { key: "beneficiary", label: "Account name" },
   { key: "accountNumber", label: "Account number" },
-  { key: "iban", label: "IBAN" },
+  { key: "branch", label: "Branch" },
+  { key: "routing", label: "Routing number" },
+  { key: "branchCode", label: "Branch code" },
   { key: "swift", label: "SWIFT / BIC" },
+  { key: "iban", label: "IBAN" },
   { key: "reference", label: "Reference" },
 ];
 
