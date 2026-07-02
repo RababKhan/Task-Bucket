@@ -7187,10 +7187,13 @@ textarea::placeholder {
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
-/* First tab starts flush with the content/cards below (no left inset, and no
-   negative margin — that would push its underline past the card edge). */
+/* First tab starts flush with the content/cards below; symmetric zero padding
+   keeps its label centered on the active underline. margin-right preserves the
+   usual spacing to the next tab. */
 .settings-subtab:first-child {
   padding-left: 0;
+  padding-right: 0;
+  margin-right: 12px;
 }
 .settings-subtab {
   padding: 8px 12px;
