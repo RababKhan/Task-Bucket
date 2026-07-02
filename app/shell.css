@@ -529,6 +529,10 @@
 /* ---- Dropdown menus ---- */
 .menu-anchor {
   position: relative;
+  /* Collapse to the button's height so the avatar/bell center exactly with
+     the other topbar icons (a block wrapper adds baseline whitespace). */
+  display: flex;
+  align-items: center;
 }
 .menu-backdrop {
   position: fixed;
