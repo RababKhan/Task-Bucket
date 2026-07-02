@@ -7257,3 +7257,248 @@ textarea::placeholder {
 .settings-danger .settings-card-title {
   color: var(--danger);
 }
+
+/* ---- Dashboard ---- */
+.db {
+  padding: 24px 32px;
+  max-width: 1200px;
+}
+.db-head h1 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0 0 2px;
+}
+.db-head p {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+/* KPI stat tiles */
+.db-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+.db-tile {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 16px 18px;
+}
+.db-tile-value {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.db-tile.danger .db-tile-value {
+  color: var(--danger);
+}
+.db-tile-label {
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+/* Widget grid */
+.db-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 14px;
+}
+.db-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 16px 18px;
+  min-width: 0;
+}
+.db-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.db-card-head h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+.db-link {
+  background: none;
+  border: none;
+  color: var(--link);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.db-link:hover {
+  color: var(--link-hover);
+}
+.db-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.db-empty {
+  color: var(--text-dim);
+  font-size: 13px;
+  padding: 12px 0;
+  margin: 0;
+}
+
+/* Thin, recessive progress meter (single-hue magnitude) */
+.db-meter {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+  margin: 8px 0 6px;
+}
+.db-meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--done);
+  min-width: 2px;
+  transition: width 0.3s ease;
+}
+
+/* Shared project badge */
+.db-proj {
+  flex-shrink: 0;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 11.5px;
+  white-space: nowrap;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* My tasks list */
+.db-task {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 4px;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+}
+.db-task:first-child {
+  border-top: none;
+}
+.db-task:hover {
+  background: var(--surface-2);
+}
+.db-task-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.db-task-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.db-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.db-due {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.db-due.overdue {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* Sprint + project cards in the list */
+.db-sprint,
+.db-project {
+  padding: 11px 4px;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+}
+.db-sprint:first-child,
+.db-project:first-child {
+  border-top: none;
+}
+.db-sprint:hover,
+.db-project:hover {
+  background: var(--surface-2);
+}
+.db-sprint-top,
+.db-project-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.db-sprint-name,
+.db-project-name {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.db-project-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+.db-sprint-sub {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+
+/* Activity feed */
+.db-activity {
+  display: flex;
+  gap: 10px;
+  padding: 9px 4px;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+}
+.db-activity:first-child {
+  border-top: none;
+}
+.db-activity:hover {
+  background: var(--surface-2);
+}
+.db-activity-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+.db-activity-text {
+  font-size: 12.5px;
+}
+.db-activity-sub {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
