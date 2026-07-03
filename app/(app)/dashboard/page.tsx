@@ -222,7 +222,7 @@ export default function DashboardPage() {
                 <circle cx="17" cy="18" r="2" />
               </svg>
               Customize
-              <svg className="db-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <svg className={`db-chev${menu === "customize" ? " open" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="m6 9 6 6 6-6" />
               </svg>
             </button>
@@ -256,7 +256,7 @@ export default function DashboardPage() {
                 <path d="M16 2v4M8 2v4M3 10h18" />
               </svg>
               {rangeLabel(range)}
-              <svg className="db-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <svg className={`db-chev${menu === "range" ? " open" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="m6 9 6 6 6-6" />
               </svg>
             </button>

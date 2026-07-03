@@ -7342,6 +7342,10 @@ textarea::placeholder {
   width: 12px !important;
   height: 12px !important;
   color: var(--text-dim);
+  transition: transform 0.18s ease;
+}
+.db-chev.open {
+  transform: rotate(180deg);
 }
 .db-ctrl-icon {
   padding: 0;
