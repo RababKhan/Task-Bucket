@@ -7437,7 +7437,7 @@ textarea::placeholder {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 12px;
-  margin: 20px 0;
+  margin: 10px 0 20px;
 }
 .db-tile {
   border: 1px solid var(--border);
