@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
 import { prefetchTaskDetail } from "@/lib/task-cache";
@@ -92,10 +91,6 @@ function fmtRelative(iso: string) {
   if (s < 604800) return `${Math.floor(s / 86400)}d ago`;
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
-function greeting() {
-  const h = new Date().getHours();
-  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-}
 function fmtAgo(ms: number) {
   const s = Math.floor((Date.now() - ms) / 1000);
   if (s < 60) return "just now";
@@ -129,8 +124,6 @@ function Meter({ value }: { value: number }) {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { data: session } = useSession();
-  const firstName = (session?.user?.name || "").split(" ")[0];
 
   const [range, setRange] = useState(30);
   const [menu, setMenu] = useState<null | "range" | "customize">(null);
@@ -206,10 +199,6 @@ export default function DashboardPage() {
     <div className="db">
       <div className="db-head">
         <div className="db-head-left">
-          <h1>
-            {greeting()}
-            {firstName ? `, ${firstName}` : ""}
-          </h1>
           <p className="db-sub">
             {stats.overdue === 0
               ? "You're all caught up for today."
