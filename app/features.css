@@ -7186,6 +7186,12 @@ textarea::placeholder {
   padding: 10px 0 0;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  /* Stay pinned while the settings content scrolls (.app-main is the
+     scroll container); opaque background so content passes underneath. */
+  position: sticky;
+  top: 0;
+  background: var(--canvas-bg);
+  z-index: 20;
 }
 /* First tab: its box (and active underline) starts exactly at the card's left
    edge; small symmetric padding keeps the label centered on the underline. */
