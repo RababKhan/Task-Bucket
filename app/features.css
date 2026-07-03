@@ -7272,7 +7272,8 @@ textarea::placeholder {
 
 /* ---- Dashboard ---- */
 .db {
-  padding: 24px 32px;
+  /* .app-main already pads 32px horizontally — only add vertical padding. */
+  padding: 18px 0 32px;
   max-width: 1200px;
 }
 .db-head h1 {
