@@ -43,6 +43,7 @@ export async function GET(request: Request) {
     myOpen,
     overdue,
     activeSprintCount,
+    sprintOverdue,
     myTasks,
     projects,
     sprints,
@@ -64,6 +65,12 @@ export async function GET(request: Request) {
     dbGet<{ n: number }>(
       `SELECT COUNT(*) AS n FROM sprints WHERE project_id IN (${ph}) AND status = 'active'`,
       ids
+    ),
+    dbGet<{ n: number }>(
+      `SELECT COUNT(*) AS n FROM sprints
+       WHERE project_id IN (${ph}) AND status = 'active'
+         AND end_date IS NOT NULL AND end_date < ?`,
+      [...ids, new Date().toISOString().slice(0, 10)]
     ),
     dbAll(
       `SELECT t.id, t.title, t.status, t.priority, t.due_date, t.type,
@@ -112,6 +119,7 @@ export async function GET(request: Request) {
       overdue: Number(overdue?.n ?? 0),
       projects: ids.length,
       active_sprints: Number(activeSprintCount?.n ?? 0),
+      sprint_overdue: Number(sprintOverdue?.n ?? 0),
     },
     my_tasks: myTasks,
     projects,

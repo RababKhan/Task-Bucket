@@ -64,6 +64,7 @@ type Dash = {
     overdue: number;
     projects: number;
     active_sprints: number;
+    sprint_overdue: number;
   };
   my_tasks: MyTask[];
   projects: ProjRow[];
@@ -187,14 +188,18 @@ export default function DashboardPage() {
   }
 
   const TILES = [
-    { label: "My open tasks", value: stats.my_open_tasks, tone: "" },
+    { label: "Total projects", value: stats.projects, tone: "" },
     {
-      label: "Overdue",
+      label: "Task overdue",
       value: stats.overdue,
       tone: stats.overdue > 0 ? "danger" : "",
     },
-    { label: "Projects", value: stats.projects, tone: "" },
     { label: "Active sprints", value: stats.active_sprints, tone: "" },
+    {
+      label: "Sprint overdue",
+      value: stats.sprint_overdue,
+      tone: stats.sprint_overdue > 0 ? "danger" : "",
+    },
   ];
 
   return (
