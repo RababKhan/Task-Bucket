@@ -200,9 +200,6 @@ export default function DashboardPage() {
       <div className="db-head">
         <div className="db-head-left">
           <p className="db-sub">
-            {stats.overdue === 0
-              ? "You're all caught up for today."
-              : `You have ${stats.overdue} overdue task${stats.overdue === 1 ? "" : "s"}.`}
             {!!dataUpdatedAt && (
               <span className="db-updated">
                 <span className="db-dot" /> Updated {fmtAgo(dataUpdatedAt)}
