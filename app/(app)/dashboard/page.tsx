@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
@@ -94,6 +95,22 @@ function greeting() {
   const h = new Date().getHours();
   return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
 }
+function fmtAgo(ms: number) {
+  const s = Math.floor((Date.now() - ms) / 1000);
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
+}
+
+const WIDGETS = [
+  { key: "tasks", label: "My tasks" },
+  { key: "sprints", label: "Active sprints" },
+  { key: "projects", label: "Projects" },
+  { key: "activity", label: "Recent activity" },
+] as const;
+const RANGES = [7, 30, 90] as const;
+const rangeLabel = (r: number) => `Last ${r} days`;
 
 function Meter({ value }: { value: number }) {
   return (
@@ -114,9 +131,39 @@ export default function DashboardPage() {
   const { data: session } = useSession();
   const firstName = (session?.user?.name || "").split(" ")[0];
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["dashboard"],
-    queryFn: () => apiGet<Dash>("/api/dashboard"),
+  const [range, setRange] = useState(30);
+  const [menu, setMenu] = useState<null | "range" | "customize">(null);
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const [, setTick] = useState(0);
+
+  // Persisted widget visibility (Customize menu).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("tb-dash-hidden");
+      if (raw) setHidden(new Set(JSON.parse(raw)));
+    } catch {}
+  }, []);
+  function toggleWidget(key: string) {
+    setHidden((cur) => {
+      const next = new Set(cur);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      try {
+        localStorage.setItem("tb-dash-hidden", JSON.stringify([...next]));
+      } catch {}
+      return next;
+    });
+  }
+
+  // Keep "Updated Xm ago" fresh.
+  useEffect(() => {
+    const t = setInterval(() => setTick((n) => n + 1), 30000);
+    return () => clearInterval(t);
+  }, []);
+
+  const { data, isLoading, isFetching, refetch, dataUpdatedAt } = useQuery({
+    queryKey: ["dashboard", range],
+    queryFn: () => apiGet<Dash>(`/api/dashboard?range=${range}`),
   });
 
   if (isLoading || !data) {
@@ -144,11 +191,107 @@ export default function DashboardPage() {
   return (
     <div className="db">
       <div className="db-head">
-        <h1>
-          {greeting()}
-          {firstName ? `, ${firstName}` : ""}
-        </h1>
-        <p>Here&apos;s what&apos;s happening across your workspace.</p>
+        <div className="db-head-left">
+          <h1>
+            {greeting()}
+            {firstName ? `, ${firstName}` : ""}
+          </h1>
+          <p className="db-sub">
+            {stats.overdue === 0
+              ? "You're all caught up for today."
+              : `You have ${stats.overdue} overdue task${stats.overdue === 1 ? "" : "s"}.`}
+            {!!dataUpdatedAt && (
+              <span className="db-updated">
+                <span className="db-dot" /> Updated {fmtAgo(dataUpdatedAt)}
+              </span>
+            )}
+          </p>
+        </div>
+
+        <div className="db-controls">
+          {/* Customize — show/hide widgets */}
+          <div className="menu-anchor">
+            <button
+              className="db-ctrl"
+              onClick={() => setMenu((m) => (m === "customize" ? null : "customize"))}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M4 6h11M4 12h7M4 18h9" />
+                <circle cx="19" cy="6" r="2" />
+                <circle cx="15" cy="12" r="2" />
+                <circle cx="17" cy="18" r="2" />
+              </svg>
+              Customize
+              <svg className="db-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+            {menu === "customize" && (
+              <>
+                <div className="menu-backdrop" onClick={() => setMenu(null)} />
+                <div className="db-menu">
+                  {WIDGETS.map((w) => (
+                    <label key={w.key} className="db-menu-check">
+                      <input
+                        type="checkbox"
+                        checked={!hidden.has(w.key)}
+                        onChange={() => toggleWidget(w.key)}
+                      />
+                      {w.label}
+                    </label>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Date range — scopes recent activity */}
+          <div className="menu-anchor">
+            <button
+              className="db-ctrl"
+              onClick={() => setMenu((m) => (m === "range" ? null : "range"))}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <rect x="3" y="4" width="18" height="18" rx="2" />
+                <path d="M16 2v4M8 2v4M3 10h18" />
+              </svg>
+              {rangeLabel(range)}
+              <svg className="db-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+            {menu === "range" && (
+              <>
+                <div className="menu-backdrop" onClick={() => setMenu(null)} />
+                <div className="db-menu">
+                  {RANGES.map((r) => (
+                    <button
+                      key={r}
+                      className={`db-menu-item${range === r ? " active" : ""}`}
+                      onClick={() => {
+                        setRange(r);
+                        setMenu(null);
+                      }}
+                    >
+                      {rangeLabel(r)}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Refresh */}
+          <button
+            className={`db-ctrl db-ctrl-icon${isFetching ? " spinning" : ""}`}
+            onClick={() => refetch()}
+            aria-label="Refresh"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* KPI tiles */}
@@ -165,7 +308,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="db-grid">
-        {/* My tasks */}
+        {!hidden.has("tasks") && (
         <section className="db-card">
           <div className="db-card-head">
             <h2>My tasks</h2>
@@ -208,8 +351,9 @@ export default function DashboardPage() {
             </ul>
           )}
         </section>
+        )}
 
-        {/* Active sprints */}
+        {!hidden.has("sprints") && (
         <section className="db-card">
           <div className="db-card-head">
             <h2>Active sprints</h2>
@@ -244,8 +388,9 @@ export default function DashboardPage() {
             </ul>
           )}
         </section>
+        )}
 
-        {/* Projects */}
+        {!hidden.has("projects") && (
         <section className="db-card">
           <div className="db-card-head">
             <h2>Projects</h2>
@@ -280,8 +425,9 @@ export default function DashboardPage() {
             </ul>
           )}
         </section>
+        )}
 
-        {/* Recent activity */}
+        {!hidden.has("activity") && (
         <section className="db-card">
           <div className="db-card-head">
             <h2>Recent activity</h2>
@@ -311,6 +457,7 @@ export default function DashboardPage() {
             </ul>
           )}
         </section>
+        )}
       </div>
     </div>
   );

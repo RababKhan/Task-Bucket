@@ -6,14 +6,25 @@ import { accessibleProjectIds } from "@/lib/membership";
 
 // Everything the Dashboard needs in one scoped round-trip: headline stats, the
 // tasks assigned to me, my projects, active sprints, and recent activity —
-// all limited to the projects the caller can access.
-export async function GET() {
+// all limited to the projects the caller can access. `?range` (days) scopes
+// the recent-activity feed.
+export async function GET(request: Request) {
   const userId = await currentUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const denied = await requirePermission(userId, "dashboard", "view");
   if (denied) return denied;
+
+  const rangeDays = [7, 30, 90].includes(
+    Number(new URL(request.url).searchParams.get("range"))
+  )
+    ? Number(new URL(request.url).searchParams.get("range"))
+    : 30;
+  const activitySince = new Date(Date.now() - rangeDays * 86400000)
+    .toISOString()
+    .replace("T", " ")
+    .slice(0, 19);
 
   const ids = await accessibleProjectIds(userId);
   if (!ids.length) {
@@ -89,9 +100,9 @@ export async function GET() {
        JOIN tasks t ON t.id = a.task_id
        JOIN projects p ON p.id = t.project_id
        LEFT JOIN users u ON u.id = a.actor_id
-       WHERE t.project_id IN (${ph})
+       WHERE t.project_id IN (${ph}) AND a.created_at >= ?
        ORDER BY a.created_at DESC, a.id DESC LIMIT 10`,
-      ids
+      [...ids, activitySince]
     ),
   ]);
 
