@@ -300,6 +300,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {isFetching && (
+        <div className="db-loading" role="progressbar" aria-label="Refreshing">
+          <div className="db-loading-bar" />
+        </div>
+      )}
+
       {/* KPI tiles */}
       <div className="db-tiles">
         {TILES.map((tile) => (
