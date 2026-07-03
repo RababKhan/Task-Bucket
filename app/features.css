@@ -7291,7 +7291,7 @@ textarea::placeholder {
 .db-sub {
   margin: 0;
   color: var(--text-dim);
-  font-size: 13px;
+  font-size: 11.375px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -7325,7 +7325,7 @@ textarea::placeholder {
   border-radius: 8px;
   background: var(--surface);
   color: var(--text);
-  font-size: 12.5px;
+  font-size: 11.375px;
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
@@ -7455,7 +7455,7 @@ textarea::placeholder {
 }
 .db-tile-label {
   margin-top: 4px;
-  font-size: 12.5px;
+  font-size: 11.375px;
   color: var(--text-dim);
 }
 
