@@ -135,6 +135,7 @@ export default function DashboardPage() {
   const [menu, setMenu] = useState<null | "range" | "customize">(null);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [, setTick] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Persisted widget visibility (Customize menu).
   useEffect(() => {
@@ -176,6 +177,14 @@ export default function DashboardPage() {
 
   const { stats, my_tasks, projects, sprints, activity } = data;
   const t = today();
+
+  // Keep the refresh bar visible for a beat even when the refetch is instant.
+  const busy = isFetching || refreshing;
+  function doRefresh() {
+    setRefreshing(true);
+    refetch();
+    window.setTimeout(() => setRefreshing(false), 800);
+  }
 
   const TILES = [
     { label: "My open tasks", value: stats.my_open_tasks, tone: "" },
@@ -288,8 +297,8 @@ export default function DashboardPage() {
 
           {/* Refresh */}
           <button
-            className={`db-ctrl db-ctrl-icon${isFetching ? " spinning" : ""}`}
-            onClick={() => refetch()}
+            className={`db-ctrl db-ctrl-icon${busy ? " spinning" : ""}`}
+            onClick={doRefresh}
             aria-label="Refresh"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -300,7 +309,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {isFetching && (
+      {busy && (
         <div className="db-loading" role="progressbar" aria-label="Refreshing">
           <div className="db-loading-bar" />
         </div>
