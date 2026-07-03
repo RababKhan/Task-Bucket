@@ -6781,9 +6781,7 @@ textarea::placeholder {
 }
 .rpm-table thead th {
   position: sticky;
-  /* Sit just below the sticky settings sub-nav (they share .app-main as the
-     scroll container). */
-  top: 43px;
+  top: 0;
   z-index: 2;
   background: var(--surface-2);
   border-bottom: 1px solid var(--border);
@@ -7223,6 +7221,7 @@ textarea::placeholder {
 .settings-body {
   flex: 1;
   min-height: 0;
+  overflow-y: auto;
   padding-top: 10px;
 }
 
