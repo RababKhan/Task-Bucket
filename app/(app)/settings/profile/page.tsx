@@ -234,7 +234,9 @@ export default function ProfilePage() {
             </span>
           )}
           <div className="profile-headinfo">
-            <div className="profile-name">{name || "Your account"}</div>
+            <div className="profile-name">
+              {(editing ? form.name : name) || "Your account"}
+            </div>
             <div className="profile-email">
               {(editing ? form.designation.trim() : extra.designation) || email}
             </div>
