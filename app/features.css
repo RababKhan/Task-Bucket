@@ -7386,6 +7386,11 @@ textarea::placeholder {
 .security-pw-strength {
   margin-top: 12px;
 }
+.security-pw-strength .pw-rules {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 14px;
+}
 .pw-match {
   margin-top: 12px;
 }
