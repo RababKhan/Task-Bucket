@@ -7451,6 +7451,34 @@ textarea::placeholder {
   border-radius: 8px;
   width: 100%;
 }
+/* Two-step change-password transition: current field slides out, new fields in. */
+@keyframes secpwStepIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes secpwStepOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+.secpw-step {
+  animation: secpwStepIn 0.24s ease both;
+}
+.secpw-step.leaving {
+  animation: secpwStepOut 0.2s ease both;
+}
+
 /* Password field with an inline show/hide eye (self-contained). */
 .secpw {
   position: relative;

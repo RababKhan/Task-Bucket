@@ -23,6 +23,9 @@ export default function SecurityCard() {
   const [pwErr, setPwErr] = useState<FieldErr>(null);
   const [pwBusy, setPwBusy] = useState(false);
   const [pwOk, setPwOk] = useState(false);
+  // Two-step change flow: verify the current password, then reveal the new ones.
+  const [pwStep, setPwStep] = useState<"current" | "new">("new");
+  const [pwLeaving, setPwLeaving] = useState(false);
 
   // MFA setup / disable
   const [setup, setSetup] = useState<Setup | null>(null);
@@ -51,6 +54,36 @@ export default function SecurityCard() {
     setMfaErr(null);
     setBackupCodes([]);
     setUseBackup(false);
+  }
+
+  function openPasswordForm() {
+    resetPw();
+    setPwStep(info?.hasPassword ? "current" : "new");
+    setPwLeaving(false);
+    setMode("password");
+  }
+
+  async function verifyCurrent() {
+    if (pwBusy) return;
+    setPwErr(null);
+    setPwBusy(true);
+    const res = await fetch("/api/security/password/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ current: pw.current }),
+    });
+    const d = await res.json().catch(() => ({}));
+    setPwBusy(false);
+    if (!d.ok) {
+      setPwErr({ field: "current", msg: "Current password is incorrect." });
+      return;
+    }
+    // Animate the current field out, then reveal the new-password fields.
+    setPwLeaving(true);
+    setTimeout(() => {
+      setPwLeaving(false);
+      setPwStep("new");
+    }, 220);
   }
 
   async function savePassword() {
@@ -181,26 +214,30 @@ export default function SecurityCard() {
             >
               Cancel
             </button>
-            <button
-              className="btn btn-sm btn-primary"
-              onClick={savePassword}
-              disabled={
-                pwBusy ||
-                !passwordMeetsRules(pw.next) ||
-                pw.next !== pw.confirm
-              }
-            >
-              {pwBusy ? <Spinner /> : "Update password"}
-            </button>
+            {pwStep === "current" ? (
+              <button
+                className="btn btn-sm btn-primary"
+                onClick={verifyCurrent}
+                disabled={pwBusy || !pw.current}
+              >
+                {pwBusy ? <Spinner /> : "Continue"}
+              </button>
+            ) : (
+              <button
+                className="btn btn-sm btn-primary"
+                onClick={savePassword}
+                disabled={
+                  pwBusy ||
+                  !passwordMeetsRules(pw.next) ||
+                  pw.next !== pw.confirm
+                }
+              >
+                {pwBusy ? <Spinner /> : "Update password"}
+              </button>
+            )}
           </div>
         ) : (
-          <button
-            className="btn btn-sm"
-            onClick={() => {
-              resetPw();
-              setMode("password");
-            }}
-          >
+          <button className="btn btn-sm" onClick={openPasswordForm}>
             {info.hasPassword ? "Change password" : "Set password"}
           </button>
         )}
@@ -208,8 +245,10 @@ export default function SecurityCard() {
 
       {mode === "password" && (
         <div className="security-panel">
-          {info.hasPassword && (
-            <div className="security-field">
+          {pwStep === "current" && info.hasPassword && (
+            <div
+              className={`security-field secpw-step${pwLeaving ? " leaving" : ""}`}
+            >
               <label>Current password</label>
               <SecPasswordInput
                 autoComplete="current-password"
@@ -223,7 +262,8 @@ export default function SecurityCard() {
               <FieldError message={pwErr?.field === "current" ? pwErr.msg : undefined} />
             </div>
           )}
-          <div className="security-row-2">
+          {pwStep === "new" && (
+          <div className="security-row-2 secpw-step">
             <div className="security-field">
               <label>New password</label>
               <SecPasswordInput
@@ -270,6 +310,7 @@ export default function SecurityCard() {
               )}
             </div>
           </div>
+          )}
         </div>
       )}
 
