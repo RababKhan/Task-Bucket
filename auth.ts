@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import authConfig from "@/auth.config";
 import {
   getUserByEmail,
+  getUserById,
   verifyPassword,
   upsertOAuthUser,
 } from "@/lib/auth-db";
@@ -38,7 +39,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     ...authConfig.callbacks,
-    async jwt({ token, user, account, profile }) {
+    async jwt({ token, user, account, profile, trigger }) {
       // OAuth sign-in: upsert into our DB and use our internal user id.
       if (account && account.type === "oauth" && profile) {
         const dbUser = await upsertOAuthUser({
@@ -63,9 +64,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.uid = user.id;
       }
 
-      // At sign-in (account or user present), resolve the workspace and cache
-      // it on the token. OAuth sign-ups get one auto-provisioned here.
-      if ((account || user) && token.uid) {
+      // On an explicit session.update() (e.g. after editing the profile),
+      // re-read the user's latest name/email/image from the DB.
+      if (trigger === "update" && token.uid) {
+        const u = await getUserById(token.uid as string);
+        if (u) {
+          token.name = u.name;
+          token.email = u.email;
+          token.picture = u.image;
+        }
+      }
+
+      // At sign-in (or on update), resolve the workspace and cache it on the
+      // token. OAuth sign-ups get one auto-provisioned here.
+      if ((account || user || trigger === "update") && token.uid) {
         const emailLocal = ((token.email as string | null) ?? "").split("@")[0];
         const ws = await ensureWorkspaceForUser(
           token.uid as string,

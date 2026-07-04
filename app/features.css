@@ -7270,6 +7270,19 @@ textarea::placeholder {
   color: var(--danger);
 }
 
+/* Profile edit controls */
+.profile-edit-btn {
+  margin-left: auto;
+}
+.profile-edit-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+.profile-save-err {
+  margin-top: 12px;
+}
+
 /* ---- Dashboard ---- */
 .db {
   /* .app-main already pads 32px horizontally — only add vertical padding. */

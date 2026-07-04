@@ -12,7 +12,7 @@ function initials(text: string) {
 }
 
 export default function ProfilePage() {
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
   const user = session?.user;
   const name = user?.name || "";
   const email = user?.email || "";
@@ -23,6 +23,47 @@ export default function ProfilePage() {
   const [confirmText, setConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
+
+  // Profile editing.
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({ name: "", workspaceName: "", subdomain: "" });
+  const [saving, setSaving] = useState(false);
+  const [saveErr, setSaveErr] = useState("");
+
+  function startEdit() {
+    setForm({
+      name,
+      workspaceName: ws?.name ?? "",
+      subdomain: ws?.subdomain ?? "",
+    });
+    setSaveErr("");
+    setEditing(true);
+  }
+
+  async function save() {
+    if (saving) return;
+    setSaving(true);
+    setSaveErr("");
+    const body: Record<string, string> = { name: form.name.trim() };
+    if (isAdmin && ws) {
+      body.workspace_name = form.workspaceName.trim();
+      body.subdomain = form.subdomain.trim().toLowerCase();
+    }
+    const res = await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setSaveErr(d.error || "Could not save changes.");
+      setSaving(false);
+      return;
+    }
+    await update(); // refresh the session (name + workspace)
+    setSaving(false);
+    setEditing(false);
+  }
 
   async function deleteWorkspace() {
     if (!ws || confirmText.trim() !== ws.name || deleting) return;
@@ -59,12 +100,45 @@ export default function ProfilePage() {
             <div className="profile-name">{name || "Your account"}</div>
             <div className="profile-email">{email}</div>
           </div>
+          {!editing ? (
+            <button className="btn btn-sm profile-edit-btn" onClick={startEdit}>
+              Edit
+            </button>
+          ) : (
+            <div className="profile-edit-actions">
+              <button
+                className="btn btn-sm"
+                onClick={() => setEditing(false)}
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-sm btn-primary"
+                onClick={save}
+                disabled={saving || !form.name.trim()}
+              >
+                {saving ? <Spinner /> : "Save"}
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="settings-grid">
           <div className="settings-field">
             <label>Full Name</label>
-            <div className="settings-value">{name || "—"}</div>
+            {editing ? (
+              <input
+                className="cf-input"
+                value={form.name}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, name: e.target.value }))
+                }
+                placeholder="Your name"
+              />
+            ) : (
+              <div className="settings-value">{name || "—"}</div>
+            )}
           </div>
           <div className="settings-field">
             <label>Email Address</label>
@@ -74,15 +148,38 @@ export default function ProfilePage() {
             <>
               <div className="settings-field">
                 <label>Workspace</label>
-                <div className="settings-value">{ws.name}</div>
+                {editing && isAdmin ? (
+                  <input
+                    className="cf-input"
+                    value={form.workspaceName}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, workspaceName: e.target.value }))
+                    }
+                    placeholder="Workspace name"
+                  />
+                ) : (
+                  <div className="settings-value">{ws.name}</div>
+                )}
               </div>
               <div className="settings-field">
                 <label>Subdomain</label>
-                <div className="settings-value">{ws.subdomain}</div>
+                {editing && isAdmin ? (
+                  <input
+                    className="cf-input"
+                    value={form.subdomain}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, subdomain: e.target.value }))
+                    }
+                    placeholder="your-workspace"
+                  />
+                ) : (
+                  <div className="settings-value">{ws.subdomain}</div>
+                )}
               </div>
             </>
           )}
         </div>
+        {saveErr && <p className="invite-err profile-save-err">{saveErr}</p>}
       </div>
 
       {isAdmin && ws && (
