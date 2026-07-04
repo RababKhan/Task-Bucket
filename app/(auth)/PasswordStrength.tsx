@@ -14,21 +14,9 @@ const SHORT_LABELS: Record<string, string> = {
 
 export default function PasswordStrength({ password }: { password: string }) {
   const met = PASSWORD_RULES.map((rule) => rule.test(password));
-  const count = password ? met.filter(Boolean).length : 0;
 
   return (
     <div className="pw-strength" aria-live="polite">
-      <div className="pw-bars">
-        {PASSWORD_RULES.map((_, i) => (
-          <span key={i} className="pw-bar">
-            <span
-              className={`pw-bar-fill ${i < count ? "active" : ""}`}
-              style={{ transitionDelay: `${i * 60}ms` }}
-            />
-          </span>
-        ))}
-      </div>
-
       <ul className="pw-rules">
         {PASSWORD_RULES.map((rule, i) => (
           <li key={rule.id} className={met[i] ? "ok" : ""}>
