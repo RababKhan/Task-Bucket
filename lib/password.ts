@@ -13,11 +13,6 @@ export const PASSWORD_RULES: PasswordRule[] = [
   { id: "upper", label: "An uppercase letter", test: (p) => /[A-Z]/.test(p) },
   { id: "lower", label: "A lowercase letter", test: (p) => /[a-z]/.test(p) },
   { id: "number", label: "A number", test: (p) => /[0-9]/.test(p) },
-  {
-    id: "punct",
-    label: "A punctuation mark",
-    test: (p) => /[^A-Za-z0-9]/.test(p),
-  },
 ];
 
 export function passwordRuleFailures(pw: string): string[] {
