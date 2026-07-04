@@ -881,7 +881,7 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 22px 24px;
+  padding: 18px 24px;
   margin-bottom: 16px;
   max-width: 720px;
 }
@@ -889,8 +889,8 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  padding-bottom: 18px;
-  margin-bottom: 18px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
   border-bottom: 1px solid var(--border);
 }
 .profile-avatar {
@@ -948,7 +948,7 @@
 .settings-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 12px;
 }
 .settings-field label {
   display: block;
