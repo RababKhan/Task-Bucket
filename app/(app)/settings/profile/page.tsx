@@ -139,7 +139,10 @@ export default function ProfilePage() {
 
         <div className="settings-grid">
           <div className="settings-field">
-            <label>Full Name</label>
+            <label>
+              Full Name
+              {editing && <span className="req"> *</span>}
+            </label>
             {editing ? (
               <>
                 <input
@@ -161,7 +164,10 @@ export default function ProfilePage() {
           {ws && (
             <>
               <div className="settings-field">
-                <label>Workspace</label>
+                <label>
+                  Workspace
+                  {editing && isAdmin && <span className="req"> *</span>}
+                </label>
                 {editing && isAdmin ? (
                   <>
                     <input
@@ -179,7 +185,10 @@ export default function ProfilePage() {
                 )}
               </div>
               <div className="settings-field">
-                <label>Subdomain</label>
+                <label>
+                  Subdomain
+                  {editing && isAdmin && <span className="req"> *</span>}
+                </label>
                 {editing && isAdmin ? (
                   <>
                     <input
