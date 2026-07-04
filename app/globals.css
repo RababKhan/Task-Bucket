@@ -143,6 +143,7 @@ select:focus {
 .btn-danger {
   border-color: var(--danger);
   color: var(--danger);
+  background: transparent;
 }
 .btn-danger:hover {
   border-color: var(--danger);
