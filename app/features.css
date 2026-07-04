@@ -7451,23 +7451,34 @@ textarea::placeholder {
   border-radius: 8px;
   width: 100%;
 }
-/* Show/hide toggle sized down for the 28px security password fields. */
-.security-field .password-input {
+/* Password field with an inline show/hide eye (self-contained). */
+.secpw {
   position: relative;
   display: block;
 }
-.security-field .password-input input {
+.secpw .secpw-input {
+  width: 100%;
   padding-right: 32px;
 }
-.security-field .password-input .pw-toggle {
+.secpw-eye {
   position: absolute;
-  top: 50%;
-  right: 3px;
-  transform: translateY(-50%);
-  width: 24px;
-  height: 24px;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--text-dim);
 }
-.security-field .password-input .pw-toggle svg {
+.secpw-eye:hover {
+  color: var(--text);
+}
+.secpw-eye svg {
   width: 15px;
   height: 15px;
 }

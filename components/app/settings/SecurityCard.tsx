@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Spinner from "@/components/Spinner";
 import FieldError from "@/components/FieldError";
 import OtpInput from "@/app/(auth)/OtpInput";
-import PasswordInput from "@/app/(auth)/PasswordInput";
+import SecPasswordInput from "@/components/app/settings/SecPasswordInput";
 import PasswordStrength from "@/app/(auth)/PasswordStrength";
 import { passwordMeetsRules } from "@/lib/password";
 import { CheckIcon } from "@/components/StatusIcon";
@@ -211,8 +211,7 @@ export default function SecurityCard() {
           {info.hasPassword && (
             <div className="security-field">
               <label>Current password</label>
-              <PasswordInput
-                className="cf-input"
+              <SecPasswordInput
                 autoComplete="current-password"
                 value={pw.current}
                 invalid={pwErr?.field === "current"}
@@ -227,8 +226,7 @@ export default function SecurityCard() {
           <div className="security-row-2">
             <div className="security-field">
               <label>New password</label>
-              <PasswordInput
-                className="cf-input"
+              <SecPasswordInput
                 autoComplete="new-password"
                 value={pw.next}
                 invalid={pwErr?.field === "next"}
@@ -246,8 +244,7 @@ export default function SecurityCard() {
             </div>
             <div className="security-field">
               <label>Confirm new password</label>
-              <PasswordInput
-                className="cf-input"
+              <SecPasswordInput
                 autoComplete="new-password"
                 value={pw.confirm}
                 invalid={pwErr?.field === "confirm"}
