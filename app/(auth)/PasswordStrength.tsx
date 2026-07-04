@@ -10,6 +10,7 @@ const SHORT_LABELS: Record<string, string> = {
   upper: "uppercase",
   lower: "lowercase",
   number: "number",
+  punct: "punctuation",
 };
 
 export default function PasswordStrength({ password }: { password: string }) {
