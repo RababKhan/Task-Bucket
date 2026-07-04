@@ -129,7 +129,9 @@ export default function ProfilePage() {
       setSaving(false);
       return;
     }
-    await update(); // refresh the session (name + workspace)
+    // Pass an argument so next-auth fires the jwt `trigger === "update"`
+    // branch (a bare update() only refetches and won't re-read the DB).
+    await update({}); // refresh the session (name + workspace + avatar)
     setSaving(false);
     setEditing(false);
   }

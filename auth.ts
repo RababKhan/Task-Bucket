@@ -75,7 +75,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.picture = avatarRef(user.id as string, user.image);
       }
 
-      // On an explicit session.update() (e.g. after editing the profile),
+      // On an explicit session.update(data) (e.g. after editing the profile),
       // re-read the user's latest name/email/image from the DB.
       if (trigger === "update" && token.uid) {
         const u = await getUserById(token.uid as string);
@@ -107,6 +107,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (session.user && token.uid) {
         session.user.id = token.uid as string;
+        session.user.image = (token.picture as string | null) ?? null;
       }
       if (token.ws) {
         session.workspace = token.ws as {
