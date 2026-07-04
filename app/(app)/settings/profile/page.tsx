@@ -155,6 +155,23 @@ export default function ProfilePage() {
     signOut({ callbackUrl: "/login" });
   }
 
+  // Has the user actually changed anything? The Update button only enables when
+  // dirty; otherwise it's disabled with a tooltip explaining why.
+  const dirty =
+    form.name.trim() !== (name || "").trim() ||
+    form.image !== (user?.image ?? "") ||
+    (isAdmin && ws
+      ? form.workspaceName.trim() !== (ws.name ?? "") ||
+        form.subdomain.trim().toLowerCase() !== (ws.subdomain ?? "")
+      : false);
+  const updateTip = saving
+    ? undefined
+    : !form.name.trim()
+      ? "Name is required"
+      : !dirty
+        ? "No changes to update"
+        : undefined;
+
   // Session still resolving — show a loader rather than an empty account card.
   if (status === "loading") {
     return (
@@ -214,13 +231,15 @@ export default function ProfilePage() {
               >
                 Cancel
               </button>
-              <button
-                className="btn btn-sm btn-primary"
-                onClick={save}
-                disabled={saving || !form.name.trim()}
-              >
-                {saving ? <Spinner /> : "Save"}
-              </button>
+              <span className="profile-update-wrap" data-tip={updateTip}>
+                <button
+                  className="btn btn-sm btn-primary"
+                  onClick={save}
+                  disabled={saving || !form.name.trim() || !dirty}
+                >
+                  {saving ? <Spinner /> : "Update"}
+                </button>
+              </span>
             </div>
           )}
         </div>

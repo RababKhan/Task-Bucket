@@ -7343,6 +7343,16 @@ textarea::placeholder {
   display: flex;
   gap: 8px;
 }
+.profile-edit-btn,
+.profile-edit-actions .btn {
+  font-size: 11.375px;
+  border-radius: 8px;
+}
+/* Wrapper so the disabled Update button still shows a tooltip on hover
+   (disabled buttons don't fire :hover themselves). */
+.profile-update-wrap {
+  display: inline-flex;
+}
 .profile-save-err {
   margin-top: 12px;
 }
