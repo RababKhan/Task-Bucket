@@ -21,6 +21,9 @@ export default function SettingsLayout({
 
   const tabs = [
     { href: "/settings/profile", label: "Profile" },
+    ...(isAdmin
+      ? [{ href: "/settings/workspace", label: "Workspace settings" }]
+      : []),
     ...(isAdmin ? [{ href: "/settings/billing", label: "Billing" }] : []),
     ...(canRoles
       ? [{ href: "/settings/roles", label: "Roles & Permissions" }]
