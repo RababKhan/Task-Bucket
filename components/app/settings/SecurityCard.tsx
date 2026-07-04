@@ -6,6 +6,7 @@ import FieldError from "@/components/FieldError";
 import OtpInput from "@/app/(auth)/OtpInput";
 import PasswordStrength from "@/app/(auth)/PasswordStrength";
 import { passwordMeetsRules } from "@/lib/password";
+import { CheckIcon } from "@/components/StatusIcon";
 
 type Info = { hasPassword: boolean; mfaEnabled: boolean };
 type Setup = { qr: string; secret: string; otpauthUrl: string };
@@ -255,6 +256,20 @@ export default function SecurityCard() {
                 }}
               />
               <FieldError message={pwErr?.field === "confirm" ? pwErr.msg : undefined} />
+              {pw.confirm && (
+                <ul className="pw-rules pw-match">
+                  <li className={pw.next === pw.confirm ? "ok" : "bad"}>
+                    {pw.next === pw.confirm ? (
+                      <CheckIcon className="rule-ic" />
+                    ) : (
+                      <span className="rule-dot" />
+                    )}
+                    {pw.next === pw.confirm
+                      ? "Passwords match"
+                      : "Passwords don't match"}
+                  </li>
+                </ul>
+              )}
             </div>
           </div>
         </div>

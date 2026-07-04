@@ -7386,6 +7386,15 @@ textarea::placeholder {
 .security-pw-strength {
   margin-top: 12px;
 }
+.pw-match {
+  margin-top: 12px;
+}
+.pw-match li.bad {
+  color: var(--danger);
+}
+.pw-match li.bad .rule-dot {
+  border-color: var(--danger);
+}
 .security-panel .security-desc + .security-field {
   margin-top: 10px;
 }
