@@ -5592,7 +5592,13 @@ textarea::placeholder {
   position: relative;
   width: 440px;
   max-width: 92vw;
-  padding: 22px 24px 18px;
+  padding: 18px 24px 14px;
+}
+/* The icon-style confirm modal (delete workspace / tasks) lays out with
+   margins; opt out of the flex `gap` the generic ConfirmModal sets on
+   .confirm-modal, otherwise the two stack into oversized spacing. */
+.confirm-modal:has(.confirm-icon) {
+  display: block;
 }
 .confirm-close {
   position: absolute;
@@ -5624,7 +5630,7 @@ textarea::placeholder {
   background: rgba(229, 72, 77, 0.12);
   color: var(--danger);
   box-shadow: 0 0 0 6px rgba(229, 72, 77, 0.06);
-  margin: 6px 0 20px;
+  margin: 0 0 10px;
   animation: confirmIconPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 .confirm-icon svg {
@@ -5661,12 +5667,12 @@ textarea::placeholder {
   }
 }
 .confirm-modal h2 {
-  margin: 0 0 8px;
+  margin: 0 0 5px;
   font-size: 12.5px;
   font-weight: 600;
 }
 .confirm-text {
-  margin: 0 0 14px;
+  margin: 0 0 8px;
   font-size: 11.375px;
   line-height: 1.6;
   color: var(--text-dim);
@@ -5682,7 +5688,7 @@ textarea::placeholder {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  padding-top: 12px;
+  padding-top: 10px;
   border-top: 1px solid var(--border);
 }
 .confirm-keep,
