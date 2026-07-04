@@ -7271,6 +7271,14 @@ textarea::placeholder {
 }
 
 /* Profile edit controls */
+.profile-headinfo {
+  min-width: 0;
+}
+.profile-name-input {
+  font-size: 15px;
+  font-weight: 600;
+  max-width: 280px;
+}
 .profile-edit-btn {
   margin-left: auto;
 }
