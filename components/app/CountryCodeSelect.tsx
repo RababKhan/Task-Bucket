@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { COUNTRY_CODES } from "@/lib/countryCodes";
+import { COUNTRY_CODES, flagUrl } from "@/lib/countryCodes";
 
 // Custom (non-native) dial-code dropdown for the phone field: app-styled trigger
 // + searchable popup list. Value is the dial code (e.g. "+880").
@@ -49,7 +49,8 @@ export default function CountryCodeSelect({
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className="ccs-flag">{current.flag}</span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="ccs-flagimg" src={flagUrl(current.iso)} alt="" width={20} height={15} />
         <span className="ccs-code">{current.code}</span>
         <svg
           className={`ccs-chev${open ? " open" : ""}`}
@@ -88,7 +89,8 @@ export default function CountryCodeSelect({
                   setQ("");
                 }}
               >
-                <span className="ccs-flag">{c.flag}</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img className="ccs-flagimg" src={flagUrl(c.iso)} alt="" width={20} height={15} />
                 <span className="ccs-name">{c.name}</span>
                 <span className="ccs-itemcode">{c.code}</span>
               </button>
