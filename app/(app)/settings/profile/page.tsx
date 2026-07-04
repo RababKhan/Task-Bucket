@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Spinner from "@/components/Spinner";
+import FieldError from "@/components/FieldError";
 
 function initials(text: string) {
   const parts = text.trim().split(/\s+/).filter(Boolean);
@@ -28,7 +29,11 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ name: "", workspaceName: "", subdomain: "" });
   const [saving, setSaving] = useState(false);
-  const [saveErr, setSaveErr] = useState("");
+  const [fieldErr, setFieldErr] = useState<{ field: string; msg: string } | null>(
+    null
+  );
+  const errFor = (f: string) =>
+    fieldErr?.field === f ? fieldErr.msg : undefined;
 
   function startEdit() {
     setForm({
@@ -36,14 +41,19 @@ export default function ProfilePage() {
       workspaceName: ws?.name ?? "",
       subdomain: ws?.subdomain ?? "",
     });
-    setSaveErr("");
+    setFieldErr(null);
     setEditing(true);
+  }
+  // Clear a field's error as the user corrects it.
+  function edit(field: keyof typeof form, key: string, value: string) {
+    setForm((f) => ({ ...f, [field]: value }));
+    setFieldErr((e) => (e && e.field === key ? null : e));
   }
 
   async function save() {
     if (saving) return;
     setSaving(true);
-    setSaveErr("");
+    setFieldErr(null);
     const body: Record<string, string> = { name: form.name.trim() };
     if (isAdmin && ws) {
       body.workspace_name = form.workspaceName.trim();
@@ -56,7 +66,10 @@ export default function ProfilePage() {
     });
     const d = await res.json().catch(() => ({}));
     if (!res.ok) {
-      setSaveErr(d.error || "Could not save changes.");
+      setFieldErr({
+        field: d.field || "name",
+        msg: d.error || "Could not save changes.",
+      });
       setSaving(false);
       return;
     }
@@ -128,14 +141,15 @@ export default function ProfilePage() {
           <div className="settings-field">
             <label>Full Name</label>
             {editing ? (
-              <input
-                className="cf-input"
-                value={form.name}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, name: e.target.value }))
-                }
-                placeholder="Your name"
-              />
+              <>
+                <input
+                  className={`cf-input${errFor("name") ? " invalid" : ""}`}
+                  value={form.name}
+                  onChange={(e) => edit("name", "name", e.target.value)}
+                  placeholder="Your name"
+                />
+                <FieldError message={errFor("name")} />
+              </>
             ) : (
               <div className="settings-value">{name || "—"}</div>
             )}
@@ -149,14 +163,17 @@ export default function ProfilePage() {
               <div className="settings-field">
                 <label>Workspace</label>
                 {editing && isAdmin ? (
-                  <input
-                    className="cf-input"
-                    value={form.workspaceName}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, workspaceName: e.target.value }))
-                    }
-                    placeholder="Workspace name"
-                  />
+                  <>
+                    <input
+                      className={`cf-input${errFor("workspace_name") ? " invalid" : ""}`}
+                      value={form.workspaceName}
+                      onChange={(e) =>
+                        edit("workspaceName", "workspace_name", e.target.value)
+                      }
+                      placeholder="Workspace name"
+                    />
+                    <FieldError message={errFor("workspace_name")} />
+                  </>
                 ) : (
                   <div className="settings-value">{ws.name}</div>
                 )}
@@ -164,14 +181,17 @@ export default function ProfilePage() {
               <div className="settings-field">
                 <label>Subdomain</label>
                 {editing && isAdmin ? (
-                  <input
-                    className="cf-input"
-                    value={form.subdomain}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, subdomain: e.target.value }))
-                    }
-                    placeholder="your-workspace"
-                  />
+                  <>
+                    <input
+                      className={`cf-input${errFor("subdomain") ? " invalid" : ""}`}
+                      value={form.subdomain}
+                      onChange={(e) =>
+                        edit("subdomain", "subdomain", e.target.value)
+                      }
+                      placeholder="your-workspace"
+                    />
+                    <FieldError message={errFor("subdomain")} />
+                  </>
                 ) : (
                   <div className="settings-value">{ws.subdomain}</div>
                 )}
@@ -179,7 +199,6 @@ export default function ProfilePage() {
             </>
           )}
         </div>
-        {saveErr && <p className="invite-err profile-save-err">{saveErr}</p>}
       </div>
 
       {isAdmin && ws && (

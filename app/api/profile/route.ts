@@ -21,7 +21,10 @@ export async function PATCH(request: Request) {
   if (typeof body.name === "string") {
     const name = body.name.trim().slice(0, 100);
     if (!name) {
-      return NextResponse.json({ error: "Name is required." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Name is required.", field: "name" },
+        { status: 400 }
+      );
     }
     await dbRun("UPDATE users SET name = ? WHERE id = ?", [name, userId]);
   }
@@ -32,14 +35,14 @@ export async function PATCH(request: Request) {
   if (typeof body.workspace_name === "string" && membership) {
     if (membership.role !== "admin") {
       return NextResponse.json(
-        { error: "Only admins can rename the workspace." },
+        { error: "Only admins can rename the workspace.", field: "workspace_name" },
         { status: 403 }
       );
     }
     const wsName = body.workspace_name.trim().slice(0, 80);
     if (!wsName) {
       return NextResponse.json(
-        { error: "Workspace name is required." },
+        { error: "Workspace name is required.", field: "workspace_name" },
         { status: 400 }
       );
     }
@@ -54,17 +57,24 @@ export async function PATCH(request: Request) {
     const owned = await getWorkspaceByOwner(userId);
     if (!owned) {
       return NextResponse.json(
-        { error: "Only the workspace owner can change the subdomain." },
+        {
+          error: "Only the workspace owner can change the subdomain.",
+          field: "subdomain",
+        },
         { status: 403 }
       );
     }
     const sub = body.subdomain.trim().toLowerCase();
     if (sub !== owned.subdomain) {
       const err = validateSubdomain(sub);
-      if (err) return NextResponse.json({ error: err }, { status: 400 });
+      if (err)
+        return NextResponse.json(
+          { error: err, field: "subdomain" },
+          { status: 400 }
+        );
       if (!(await isSubdomainAvailable(sub))) {
         return NextResponse.json(
-          { error: "That subdomain is already taken." },
+          { error: "That subdomain is already taken.", field: "subdomain" },
           { status: 400 }
         );
       }
