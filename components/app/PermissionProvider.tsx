@@ -8,7 +8,13 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
+import { useSession } from "next-auth/react";
 import { permKey, type Module, type Action } from "@/lib/permissions";
+
+// Cache the last-known permissions per user so permission-gated UI (e.g. the
+// Employee Directory link) renders instantly on the next load instead of
+// waiting for the /api/permissions/me round-trip.
+const cacheKey = (uid: string) => `tb-perms-${uid}`;
 
 // Client-side permission context. Fetches the signed-in user's effective
 // permissions once and exposes a `can(module, action)` check used to hide UI
@@ -36,6 +42,9 @@ export default function PermissionProvider({
 }: {
   children: ReactNode;
 }) {
+  const { data: session } = useSession();
+  const uid = session?.user?.id;
+
   const [state, setState] = useState<PermState>({
     role: null,
     roleName: null,
@@ -61,14 +70,46 @@ export default function PermissionProvider({
         permissions: new Set<string>(data.permissions ?? []),
         loaded: true,
       });
+      // Persist for an instant render next time.
+      if (uid) {
+        try {
+          localStorage.setItem(
+            cacheKey(uid),
+            JSON.stringify({
+              role: data.role ?? null,
+              roleName: data.role_name ?? null,
+              isAdmin: !!data.is_admin,
+              active: data.active !== false,
+              permissions: data.permissions ?? [],
+            })
+          );
+        } catch {}
+      }
     } catch {
       setState((s) => ({ ...s, loaded: true }));
     }
-  }, []);
+  }, [uid]);
 
   useEffect(() => {
+    if (!uid) return;
+    // 1. Instant: hydrate from the cached permissions (if any).
+    try {
+      const raw = localStorage.getItem(cacheKey(uid));
+      if (raw) {
+        const c = JSON.parse(raw);
+        setState({
+          role: c.role ?? null,
+          roleName: c.roleName ?? null,
+          isAdmin: !!c.isAdmin,
+          active: c.active !== false,
+          permissions: new Set<string>(c.permissions ?? []),
+          loaded: true,
+        });
+      }
+    } catch {}
+    // 2. Revalidate from the server (overwrites the cache when it resolves).
     refresh();
-  }, [refresh]);
+  }, [uid, refresh]);
 
   const can = useCallback(
     (module: Module, action: Action) => {
