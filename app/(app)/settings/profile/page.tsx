@@ -306,8 +306,9 @@ export default function ProfilePage() {
             Danger zone
           </div>
           <p className="settings-card-sub">
-            Permanently delete <strong>{ws.name}</strong> and everything in it —
-            projects, tasks, members, roles, and billing. This cannot be undone.
+            Permanently delete <strong>{ws.name}</strong> and everything in it
+            such as projects, tasks, members, roles, and billing. This cannot be
+            undone.
           </p>
           <button
             className="btn btn-danger btn-sm"
