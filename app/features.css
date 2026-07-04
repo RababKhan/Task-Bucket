@@ -7299,6 +7299,13 @@ textarea::placeholder {
   color: var(--text-dim);
 }
 
+/* Neutral (non-primary/danger) buttons in the settings cards are outline-only
+   — no fill at rest or on hover, just a border accent on hover. */
+.settings-card .btn:not(.btn-primary):not(.btn-danger),
+.settings-card .btn:not(.btn-primary):not(.btn-danger):hover {
+  background: transparent;
+}
+
 /* ---- Settings security card ---- */
 .security-card-title {
   display: flex;
