@@ -5671,6 +5671,9 @@ textarea::placeholder {
   line-height: 1.6;
   color: var(--text-dim);
 }
+.confirm-modal .cf-input {
+  height: 28px;
+}
 .confirm-text strong {
   color: var(--text);
   font-weight: 600;
