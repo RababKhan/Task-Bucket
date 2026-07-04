@@ -7307,6 +7307,14 @@ textarea::placeholder {
 }
 
 /* ---- Settings security card ---- */
+.security-head {
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.security-head .settings-card-title {
+  margin-bottom: 0;
+}
 .security-card-title {
   display: flex;
   align-items: center;
