@@ -7451,9 +7451,12 @@ textarea::placeholder {
   border-radius: 8px;
   width: 100%;
 }
-/* Backup-code input matches the OTP field width (6 boxes * 28 + 5 gaps * 7). */
+/* Backup-code input matches the OTP field width (6 boxes * 28 + 5 gaps * 7).
+   display:block so the "Use authenticator code" link wraps below it (like the
+   OTP screen) instead of sitting beside the narrow field. */
 .security-field .cf-input.security-backup-input {
   width: 203px;
+  display: block;
 }
 .security-actions {
   display: flex;
