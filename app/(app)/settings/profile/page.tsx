@@ -110,18 +110,8 @@ export default function ProfilePage() {
             )}
           </span>
           <div className="profile-headinfo">
-            {editing ? (
-              <input
-                className={`cf-input profile-name-input${errFor("name") ? " invalid" : ""}`}
-                value={form.name}
-                onChange={(e) => edit("name", "name", e.target.value)}
-                placeholder="Your name"
-              />
-            ) : (
-              <div className="profile-name">{name || "Your account"}</div>
-            )}
+            <div className="profile-name">{name || "Your account"}</div>
             <div className="profile-email">{email}</div>
-            {editing && <FieldError message={errFor("name")} />}
           </div>
           {!editing ? (
             <button className="btn btn-sm profile-edit-btn" onClick={startEdit}>
@@ -148,6 +138,26 @@ export default function ProfilePage() {
         </div>
 
         <div className="settings-grid">
+          {editing && (
+            <>
+              <div className="settings-field">
+                <label>
+                  Full Name<span className="req"> *</span>
+                </label>
+                <input
+                  className={`cf-input${errFor("name") ? " invalid" : ""}`}
+                  value={form.name}
+                  onChange={(e) => edit("name", "name", e.target.value)}
+                  placeholder="Your name"
+                />
+                <FieldError message={errFor("name")} />
+              </div>
+              <div className="settings-field">
+                <label>Email Address</label>
+                <div className="settings-value">{email || "—"}</div>
+              </div>
+            </>
+          )}
           {ws && (
             <>
               <div className="settings-field">
