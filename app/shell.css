@@ -975,22 +975,117 @@
   display: flex;
   gap: 6px;
 }
-.phone-code {
-  flex: 0 0 96px;
-  width: 96px;
+.phone-number {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+/* Custom dial-code dropdown */
+.ccs {
+  position: relative;
+  flex: 0 0 auto;
+}
+.ccs-trigger {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   height: 28px;
+  padding: 0 8px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--input-bg);
   color: var(--text);
   font-size: 11.375px;
-  padding: 0 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.12s;
+}
+.ccs-trigger:hover {
+  border-color: var(--accent);
+}
+.ccs-flag {
+  font-size: 13px;
+  line-height: 1;
+}
+.ccs-code {
+  font-weight: 500;
+}
+.ccs-chev {
+  width: 13px;
+  height: 13px;
+  color: var(--text-dim);
+  transition: transform 0.15s ease;
+}
+.ccs-chev.open {
+  transform: rotate(180deg);
+}
+.ccs-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 100;
+  width: 240px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+  padding: 6px;
+}
+.ccs-search {
+  width: 100%;
+  height: 30px;
+  margin-bottom: 6px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 11.375px;
+  padding: 0 9px;
+}
+.ccs-list {
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ccs-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font-size: 11.375px;
+  text-align: left;
   cursor: pointer;
 }
-.phone-number {
-  flex: 1 1 auto;
-  width: auto;
+.ccs-item:hover {
+  background: var(--surface-2);
+}
+.ccs-item.sel {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.ccs-name {
+  flex: 1;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ccs-itemcode {
+  flex-shrink: 0;
+  color: var(--text-dim);
+}
+.ccs-empty {
+  padding: 12px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 11.375px;
 }
 .settings-card-title {
   font-size: 15px;

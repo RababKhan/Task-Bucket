@@ -5,7 +5,8 @@ import { useSession, signOut } from "next-auth/react";
 import Spinner from "@/components/Spinner";
 import FieldError from "@/components/FieldError";
 import SecurityCard from "@/components/app/settings/SecurityCard";
-import { COUNTRY_CODES, parsePhone, DEFAULT_DIAL_CODE } from "@/lib/countryCodes";
+import { parsePhone, DEFAULT_DIAL_CODE } from "@/lib/countryCodes";
+import CountryCodeSelect from "@/components/app/CountryCodeSelect";
 
 function initials(text: string) {
   const parts = text.trim().split(/\s+/).filter(Boolean);
@@ -296,19 +297,12 @@ export default function ProfilePage() {
               <div className="settings-field">
                 <label>Phone number</label>
                 <div className="phone-input">
-                  <select
-                    className="phone-code"
+                  <CountryCodeSelect
                     value={form.phoneCode}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, phoneCode: e.target.value }))
+                    onChange={(code) =>
+                      setForm((f) => ({ ...f, phoneCode: code }))
                     }
-                  >
-                    {COUNTRY_CODES.map((c) => (
-                      <option key={`${c.name}${c.code}`} value={c.code}>
-                        {c.flag} {c.code}
-                      </option>
-                    ))}
-                  </select>
+                  />
                   <input
                     className="cf-input phone-number"
                     inputMode="tel"
