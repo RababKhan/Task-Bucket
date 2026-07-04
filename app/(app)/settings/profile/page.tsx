@@ -225,7 +225,9 @@ export default function ProfilePage() {
           )}
           <div className="profile-headinfo">
             <div className="profile-name">{name || "Your account"}</div>
-            <div className="profile-email">{email}</div>
+            <div className="profile-email">
+              {(editing ? form.designation.trim() : extra.designation) || email}
+            </div>
             {editing && <FieldError message={errFor("image")} />}
           </div>
           {!editing ? (
@@ -294,16 +296,21 @@ export default function ProfilePage() {
             </>
           ) : (
             <>
-              <div className="settings-field">
-                <label>Designation</label>
-                {extra.designation ? (
-                  <div className="settings-value">{extra.designation}</div>
-                ) : (
+              {/* Designation shows under the name in the header once set, so its
+                  grid slot becomes the email; until then it prompts for one. */}
+              {extra.designation ? (
+                <div className="settings-field">
+                  <label>Email Address</label>
+                  <div className="settings-value">{email}</div>
+                </div>
+              ) : (
+                <div className="settings-field">
+                  <label>Designation</label>
                   <div className="settings-value settings-empty">
                     Add your designation in Edit
                   </div>
-                )}
-              </div>
+                </div>
+              )}
               <div className="settings-field">
                 <label>Phone number</label>
                 {extra.phone ? (
