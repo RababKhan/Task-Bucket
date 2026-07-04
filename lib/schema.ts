@@ -3,6 +3,7 @@ import {
   serial,
   text,
   integer,
+  boolean,
   primaryKey,
   unique,
   index,
@@ -26,6 +27,9 @@ export const users = pgTable("users", {
   image: text("image"),
   passwordHash: text("password_hash"),
   emailVerified: text("email_verified"),
+  mfaEnabled: boolean("mfa_enabled").notNull().default(false),
+  mfaSecret: text("mfa_secret"),
+  mfaBackupCodes: text("mfa_backup_codes"),
   createdAt: text("created_at").notNull().default(nowText),
 });
 

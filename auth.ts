@@ -9,6 +9,8 @@ import {
 } from "@/lib/auth-db";
 import { ensureWorkspaceForUser } from "@/lib/workspace";
 import { getMembership } from "@/lib/membership";
+import { verifyTotp } from "@/lib/totp";
+import { consumeBackupCode } from "@/lib/security-db";
 
 // Keep the session cookie small: uploaded avatars are stored as data URLs in
 // the DB, so reference them by endpoint (versioned by length to bust the cache
@@ -27,15 +29,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        code: { label: "Code", type: "text" },
       },
       async authorize(credentials) {
         const email = String(credentials?.email ?? "").trim();
         const password = String(credentials?.password ?? "");
+        const code = String(credentials?.code ?? "").trim();
         if (!email || !password) return null;
 
         const user = await getUserByEmail(email);
         if (!user || !user.password_hash) return null;
         if (!verifyPassword(password, user.password_hash)) return null;
+
+        // Enforce two-factor: a valid authenticator code or a backup code.
+        if (user.mfa_enabled && user.mfa_secret) {
+          if (!code) return null;
+          const ok =
+            verifyTotp(user.mfa_secret, code) ||
+            (await consumeBackupCode(user.id, code));
+          if (!ok) return null;
+        }
 
         return {
           id: user.id,

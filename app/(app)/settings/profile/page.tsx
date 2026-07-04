@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Spinner from "@/components/Spinner";
 import FieldError from "@/components/FieldError";
+import SecurityCard from "@/components/app/settings/SecurityCard";
 
 function initials(text: string) {
   const parts = text.trim().split(/\s+/).filter(Boolean);
@@ -313,6 +314,8 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+
+      <SecurityCard />
 
       {isAdmin && ws && (
         <div className="settings-card settings-danger">

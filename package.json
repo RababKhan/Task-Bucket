@@ -40,6 +40,7 @@
     "@tiptap/react": "^3.26.1",
     "@tiptap/starter-kit": "^3.26.1",
     "@twemoji/api": "^17.0.3",
+    "@types/qrcode": "^1.5.6",
     "drizzle-orm": "^0.45.2",
     "emoji-mart": "^5.6.0",
     "geist": "^1.7.2",
@@ -47,6 +48,7 @@
     "next-auth": "^5.0.0-beta.31",
     "nodemailer": "^7.0.13",
     "pg": "^8.22.0",
+    "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "resend": "^6.12.4"

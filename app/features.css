@@ -7299,6 +7299,138 @@ textarea::placeholder {
   color: var(--text-dim);
 }
 
+/* ---- Settings security card ---- */
+.security-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.security-row-main {
+  flex: 1;
+  min-width: 0;
+}
+.security-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+.security-desc {
+  font-size: 11.375px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+.security-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+.security-badge.on {
+  background: color-mix(in srgb, var(--success, #2ea043) 15%, transparent);
+  color: var(--success, #3fb950);
+  border-color: transparent;
+}
+.security-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 16px 0;
+}
+.security-panel {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--canvas-bg, var(--bg));
+}
+.security-field {
+  margin-bottom: 12px;
+  max-width: 340px;
+}
+.security-field label {
+  display: block;
+  font-size: 11.375px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 5px;
+}
+.security-field .cf-input {
+  height: 28px;
+  font-size: 11.375px;
+  border-radius: 8px;
+  width: 100%;
+}
+.security-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+.security-actions .btn {
+  font-size: 11.375px;
+  border-radius: 8px;
+}
+.mfa-steps {
+  margin: 0 0 12px;
+  padding-left: 18px;
+  font-size: 11.375px;
+  color: var(--text-dim);
+}
+.mfa-setup-grid {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.mfa-qr {
+  width: 148px;
+  height: 148px;
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px;
+  flex-shrink: 0;
+}
+.mfa-manual {
+  min-width: 0;
+}
+.mfa-secret {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  letter-spacing: 1px;
+  word-break: break-all;
+  color: var(--text);
+}
+.backup-codes {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px 12px;
+  max-width: 340px;
+  margin: 12px 0;
+}
+.backup-codes code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  color: var(--text);
+  padding: 3px 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  text-align: center;
+}
+
 /* ---- Settings danger zone ---- */
 .settings-danger {
   border: 1px solid var(--danger);
