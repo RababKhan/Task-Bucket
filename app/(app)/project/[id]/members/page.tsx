@@ -210,7 +210,7 @@ export default function MembersPage() {
                 <button
                   className="btn btn-xs"
                   onClick={() => toggleActive(m)}
-                  title={m.active ? "Deactivate member" : "Activate member"}
+                  data-tip={m.active ? "Deactivate member" : "Activate member"}
                 >
                   {m.active ? "Deactivate" : "Activate"}
                 </button>

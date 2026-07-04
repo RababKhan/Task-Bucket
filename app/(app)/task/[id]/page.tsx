@@ -1707,7 +1707,8 @@ export default function TaskDetailPage() {
                   type="button"
                   className="td-sort"
                   onClick={() => setSortNewest((s) => !s)}
-                  title={sortNewest ? "Showing newest first" : "Showing oldest first"}
+                  data-tip={sortNewest ? "Showing newest first" : "Showing oldest first"}
+                  data-tip-pos="top"
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <path d="M4 6h13M4 12h9M4 18h5" />

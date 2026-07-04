@@ -160,7 +160,7 @@ export default function RolesPage() {
                           type="button"
                           className="rpm-rolename"
                           onClick={() => router.push(`/settings/roles/${r.id}`)}
-                          title="Open role details"
+                          data-tip="Open role details"
                         >
                           {r.name}
                         </button>
@@ -172,7 +172,7 @@ export default function RolesPage() {
                               onClick={() => saveEdit(r.id)}
                               disabled={saving}
                               aria-label="Save"
-                              title="Save"
+                              data-tip="Save"
                             >
                               {saving ? (
                                 <Spinner />
@@ -188,7 +188,7 @@ export default function RolesPage() {
                               onClick={cancelEdit}
                               disabled={saving}
                               aria-label="Cancel"
-                              title="Cancel"
+                              data-tip="Cancel"
                             >
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                                 <path d="M18 6 6 18M6 6l12 12" />
@@ -202,7 +202,7 @@ export default function RolesPage() {
                             onClick={() => startEdit(r)}
                             disabled={editingRole !== null}
                             aria-label={`Edit ${r.name} permissions`}
-                            title="Edit permissions"
+                            data-tip="Edit permissions"
                           >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                               <path d="M12 20h9" />
@@ -210,7 +210,7 @@ export default function RolesPage() {
                             </svg>
                           </button>
                         ) : isAdminRole(r) ? (
-                          <span className="rpm-lock" title="Admin always has full access" aria-hidden>
+                          <span className="rpm-lock" data-tip="Admin always has full access" aria-hidden>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <rect x="5" y="11" width="14" height="9" rx="2" />
                               <path d="M8 11V7a4 4 0 0 1 8 0v4" />

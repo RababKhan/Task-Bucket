@@ -956,7 +956,8 @@ function BoardPage() {
                   type="button"
                   className="tl-addtype"
                   style={{ borderColor: TASK_TYPE_COLORS[newTask.type] }}
-                  title={`Type: ${TASK_TYPE_LABELS[newTask.type]} (click to change)`}
+                  data-tip={`Type: ${TASK_TYPE_LABELS[newTask.type]} (click to change)`}
+                  aria-label={`Type: ${TASK_TYPE_LABELS[newTask.type]} (click to change)`}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() =>
                     setNewTask((n) => ({ ...n, type: nextTaskType(n.type) }))

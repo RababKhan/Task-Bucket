@@ -158,21 +158,23 @@ export default function ProfilePage() {
       <div className="settings-card">
         <div className="settings-card-head">
           {editing ? (
-            <label className="profile-avatar editable" title="Change photo">
-              {form.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={form.image} alt="" />
-              ) : (
-                initials(name || email || "?")
-              )}
-              <span className="profile-avatar-cam" aria-hidden>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                  <circle cx="12" cy="13" r="4" />
-                </svg>
-              </span>
-              <input type="file" accept="image/*" onChange={pickImage} hidden />
-            </label>
+            <span className="profile-avatar-wrap" data-tip="Change photo">
+              <label className="profile-avatar editable" aria-label="Change photo">
+                {form.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={form.image} alt="" />
+                ) : (
+                  initials(name || email || "?")
+                )}
+                <span className="profile-avatar-cam" aria-hidden>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                </span>
+                <input type="file" accept="image/*" onChange={pickImage} hidden />
+              </label>
+            </span>
           ) : (
             <span className="profile-avatar">
               {user?.image ? (

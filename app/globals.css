@@ -2156,3 +2156,71 @@ select,
     transition: none;
   }
 }
+
+/* ===== Global custom tooltip ==========================================
+   Replaces native browser `title` tooltips app-wide. Usage: add
+   data-tip="Label" to any element; optionally set the side with
+   data-tip-pos="top|bottom|left|right" (default: bottom). Dark pill,
+   matching the app's bespoke tooltips.
+   The composer/editor/topbar tooltips have their own styling on the same
+   `data-tip` attribute, so they're excluded here to avoid double-styling. */
+[data-tip]:not(.cm-action):not(.cm-tool):not(.cm-fbtn):not(.cm-box-send):not(.rte-tool):not(.topbar-crumb-copy) {
+  position: relative;
+}
+[data-tip]:not(.cm-action):not(.cm-tool):not(.cm-fbtn):not(.cm-box-send):not(.rte-tool):not(.topbar-crumb-copy)::after {
+  content: attr(data-tip);
+  position: absolute;
+  z-index: 200;
+  top: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-3px);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--text);
+  color: var(--canvas-bg);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+[data-tip]:not(.cm-action):not(.cm-tool):not(.cm-fbtn):not(.cm-box-send):not(.rte-tool):not(.topbar-crumb-copy):hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+/* Above the element */
+[data-tip][data-tip-pos="top"]:not(.cm-action):not(.cm-tool):not(.cm-fbtn):not(.cm-box-send):not(.rte-tool):not(.topbar-crumb-copy)::after {
+  top: auto;
+  bottom: calc(100% + 7px);
+  transform: translateX(-50%) translateY(3px);
+}
+[data-tip][data-tip-pos="top"]:not(.cm-action):not(.cm-tool):not(.cm-fbtn):not(.cm-box-send):not(.rte-tool):not(.topbar-crumb-copy):hover::after {
+  transform: translateX(-50%) translateY(0);
+}
+/* Left of the element */
+[data-tip][data-tip-pos="left"]:not(.cm-action):not(.cm-tool):not(.cm-fbtn):not(.cm-box-send):not(.rte-tool):not(.topbar-crumb-copy)::after {
+  top: 50%;
+  left: auto;
+  right: calc(100% + 7px);
+  transform: translateY(-50%) translateX(3px);
+}
+[data-tip][data-tip-pos="left"]:not(.cm-action):not(.cm-tool):not(.cm-fbtn):not(.cm-box-send):not(.rte-tool):not(.topbar-crumb-copy):hover::after {
+  transform: translateY(-50%) translateX(0);
+}
+/* Right of the element */
+[data-tip][data-tip-pos="right"]:not(.cm-action):not(.cm-tool):not(.cm-fbtn):not(.cm-box-send):not(.rte-tool):not(.topbar-crumb-copy)::after {
+  top: 50%;
+  left: calc(100% + 7px);
+  transform: translateY(-50%) translateX(-3px);
+}
+[data-tip][data-tip-pos="right"]:not(.cm-action):not(.cm-tool):not(.cm-fbtn):not(.cm-box-send):not(.rte-tool):not(.topbar-crumb-copy):hover::after {
+  transform: translateY(-50%) translateX(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-tip]:not(.cm-action):not(.cm-tool):not(.cm-fbtn):not(.cm-box-send):not(.rte-tool):not(.topbar-crumb-copy)::after {
+    transition: opacity 0.12s ease;
+  }
+}

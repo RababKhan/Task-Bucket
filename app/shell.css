@@ -911,6 +911,10 @@
   height: 100%;
   object-fit: cover;
 }
+.profile-avatar-wrap {
+  display: inline-flex;
+  flex-shrink: 0;
+}
 .profile-avatar.editable {
   cursor: pointer;
   position: relative;

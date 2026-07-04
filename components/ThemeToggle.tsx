@@ -27,7 +27,7 @@ export default function ThemeToggle({ className = "" }: { className?: string }) 
       className={`theme-toggle ${className}`}
       onClick={toggle}
       aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-      title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+      data-tip={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
     >
       <svg
         className="ic-sun"

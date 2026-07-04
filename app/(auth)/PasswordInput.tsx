@@ -45,7 +45,8 @@ export default function PasswordInput({
         className="pw-toggle"
         onClick={() => setShow((s) => !s)}
         aria-label={show ? "Hide password" : "Show password"}
-        title={show ? "Hide password" : "Show password"}
+        data-tip={show ? "Hide password" : "Show password"}
+        data-tip-pos="left"
         tabIndex={-1}
       >
         {show ? (

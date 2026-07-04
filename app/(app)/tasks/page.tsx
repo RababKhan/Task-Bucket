@@ -179,7 +179,7 @@ export default function TasksPage() {
                     const m = memberMap.get(id);
                     const label = m?.name || m?.email || "?";
                     return (
-                      <span key={id} className="pv-avatar" title={label}>
+                      <span key={id} className="pv-avatar" data-tip={label} aria-label={label}>
                         {initials(label)}
                       </span>
                     );
