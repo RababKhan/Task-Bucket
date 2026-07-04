@@ -7383,6 +7383,10 @@ textarea::placeholder {
   max-width: none;
   margin-bottom: 0;
 }
+.security-pw-strength {
+  margin-top: 12px;
+  max-width: 340px;
+}
 .security-panel .security-desc + .security-field {
   margin-top: 10px;
 }

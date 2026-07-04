@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { currentUserId } from "@/lib/session";
 import { getUserById, verifyPassword } from "@/lib/auth-db";
 import { changePassword } from "@/lib/security-db";
+import { passwordMeetsRules } from "@/lib/password";
 
 // Change (or, for OAuth-only accounts, set) the signed-in user's password.
 export async function POST(request: Request) {
@@ -34,9 +35,13 @@ export async function POST(request: Request) {
     }
   }
 
-  if (next.length < 8) {
+  if (!passwordMeetsRules(next)) {
     return NextResponse.json(
-      { error: "Password must be at least 8 characters.", field: "next" },
+      {
+        error:
+          "Password must be 8+ characters with an uppercase letter, a lowercase letter, and a number.",
+        field: "next",
+      },
       { status: 400 }
     );
   }

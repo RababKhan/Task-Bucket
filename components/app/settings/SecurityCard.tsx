@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Spinner from "@/components/Spinner";
 import FieldError from "@/components/FieldError";
 import OtpInput from "@/app/(auth)/OtpInput";
+import PasswordStrength from "@/app/(auth)/PasswordStrength";
+import { passwordMeetsRules } from "@/lib/password";
 
 type Info = { hasPassword: boolean; mfaEnabled: boolean };
 type Setup = { qr: string; secret: string; otpauthUrl: string };
@@ -180,7 +182,11 @@ export default function SecurityCard() {
             <button
               className="btn btn-sm btn-primary"
               onClick={savePassword}
-              disabled={pwBusy || !pw.next || !pw.confirm}
+              disabled={
+                pwBusy ||
+                !passwordMeetsRules(pw.next) ||
+                pw.next !== pw.confirm
+              }
             >
               {pwBusy ? <Spinner /> : "Update password"}
             </button>
@@ -246,6 +252,11 @@ export default function SecurityCard() {
               <FieldError message={pwErr?.field === "confirm" ? pwErr.msg : undefined} />
             </div>
           </div>
+          {pw.next && (
+            <div className="security-pw-strength">
+              <PasswordStrength password={pw.next} />
+            </div>
+          )}
         </div>
       )}
 
