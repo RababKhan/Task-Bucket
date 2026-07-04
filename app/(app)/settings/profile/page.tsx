@@ -296,11 +296,23 @@ export default function ProfilePage() {
             <>
               <div className="settings-field">
                 <label>Designation</label>
-                <div className="settings-value">{extra.designation || "—"}</div>
+                {extra.designation ? (
+                  <div className="settings-value">{extra.designation}</div>
+                ) : (
+                  <div className="settings-value settings-empty">
+                    Add your designation in Edit
+                  </div>
+                )}
               </div>
               <div className="settings-field">
                 <label>Phone number</label>
-                <div className="settings-value">{extra.phone || "—"}</div>
+                {extra.phone ? (
+                  <div className="settings-value">{extra.phone}</div>
+                ) : (
+                  <div className="settings-value settings-empty">
+                    Add a phone number in Edit
+                  </div>
+                )}
               </div>
             </>
           )}
