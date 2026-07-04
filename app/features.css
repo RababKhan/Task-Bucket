@@ -7488,6 +7488,7 @@ textarea::placeholder {
 }
 .secpw:focus-within {
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--ring);
 }
 .secpw.invalid {
   border-color: var(--danger);
@@ -7497,11 +7498,18 @@ textarea::placeholder {
   min-width: 0;
   height: 100%;
   border: none;
+  border-radius: 0;
   background: none;
   color: inherit;
   font: inherit;
   padding: 0;
   outline: none;
+  box-shadow: none;
+}
+/* The inner input is transparent — the wrapper shows the focus ring, not this. */
+.secpw-input:focus {
+  box-shadow: none;
+  border-color: transparent;
 }
 .secpw-eye {
   flex-shrink: 0;
