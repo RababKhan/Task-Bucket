@@ -7388,7 +7388,8 @@ textarea::placeholder {
 }
 .security-pw-strength .pw-rules {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: max-content max-content;
+  justify-content: space-between;
   gap: 6px 14px;
 }
 .pw-match {
