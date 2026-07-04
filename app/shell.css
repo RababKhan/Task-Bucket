@@ -373,6 +373,13 @@
 .app-main::-webkit-scrollbar {
   display: none; /* Chrome/Safari/Edge */
 }
+/* Settings has a sticky sub-nav. Drop the scroll container's top padding so the
+   sub-nav's containing block starts flush under the topbar — otherwise the 6px
+   padding leaves a strip where scrolling content peeks above the sub-nav. The
+   sub-nav's own top padding supplies the breathing room. */
+.app-main:has(.settings-shell) {
+  padding-top: 0;
+}
 /* The list/board page has a sticky add-task footer. Drop the scroll container's
    bottom padding so the footer pins flush with the scroll bottom (no row peeks
    beneath it), and move the breathing room below it to .app-body's padding —
