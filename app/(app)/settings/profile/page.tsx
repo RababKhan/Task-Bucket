@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
-import { WORKSPACE_DOMAIN } from "@/lib/subdomain";
 import Spinner from "@/components/Spinner";
 
 function initials(text: string) {
@@ -78,10 +77,8 @@ export default function ProfilePage() {
                 <div className="settings-value">{ws.name}</div>
               </div>
               <div className="settings-field">
-                <label>Workspace URL</label>
-                <div className="settings-value">
-                  {ws.subdomain}.{WORKSPACE_DOMAIN}
-                </div>
+                <label>Subdomain</label>
+                <div className="settings-value">{ws.subdomain}</div>
               </div>
             </>
           )}
