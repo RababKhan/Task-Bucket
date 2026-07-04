@@ -196,33 +196,35 @@ export default function SecurityCard() {
               <FieldError message={pwErr?.field === "current" ? pwErr.msg : undefined} />
             </div>
           )}
-          <div className="security-field">
-            <label>New password</label>
-            <input
-              type="password"
-              autoComplete="new-password"
-              className={`cf-input${pwErr?.field === "next" ? " invalid" : ""}`}
-              value={pw.next}
-              onChange={(e) => {
-                setPw((p) => ({ ...p, next: e.target.value }));
-                if (pwErr?.field === "next") setPwErr(null);
-              }}
-            />
-            <FieldError message={pwErr?.field === "next" ? pwErr.msg : undefined} />
-          </div>
-          <div className="security-field">
-            <label>Confirm new password</label>
-            <input
-              type="password"
-              autoComplete="new-password"
-              className={`cf-input${pwErr?.field === "confirm" ? " invalid" : ""}`}
-              value={pw.confirm}
-              onChange={(e) => {
-                setPw((p) => ({ ...p, confirm: e.target.value }));
-                if (pwErr?.field === "confirm") setPwErr(null);
-              }}
-            />
-            <FieldError message={pwErr?.field === "confirm" ? pwErr.msg : undefined} />
+          <div className="security-row-2">
+            <div className="security-field">
+              <label>New password</label>
+              <input
+                type="password"
+                autoComplete="new-password"
+                className={`cf-input${pwErr?.field === "next" ? " invalid" : ""}`}
+                value={pw.next}
+                onChange={(e) => {
+                  setPw((p) => ({ ...p, next: e.target.value }));
+                  if (pwErr?.field === "next") setPwErr(null);
+                }}
+              />
+              <FieldError message={pwErr?.field === "next" ? pwErr.msg : undefined} />
+            </div>
+            <div className="security-field">
+              <label>Confirm new password</label>
+              <input
+                type="password"
+                autoComplete="new-password"
+                className={`cf-input${pwErr?.field === "confirm" ? " invalid" : ""}`}
+                value={pw.confirm}
+                onChange={(e) => {
+                  setPw((p) => ({ ...p, confirm: e.target.value }));
+                  if (pwErr?.field === "confirm") setPwErr(null);
+                }}
+              />
+              <FieldError message={pwErr?.field === "confirm" ? pwErr.msg : undefined} />
+            </div>
           </div>
           <div className="security-actions">
             <button

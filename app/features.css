@@ -7374,6 +7374,15 @@ textarea::placeholder {
   margin-bottom: 12px;
   max-width: 340px;
 }
+.security-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.security-row-2 .security-field {
+  max-width: none;
+  margin-bottom: 0;
+}
 .security-panel .security-desc + .security-field {
   margin-top: 10px;
 }
