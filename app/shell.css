@@ -880,7 +880,7 @@
 .settings-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 8px;
   padding: 22px 24px;
   margin-bottom: 16px;
   max-width: 720px;
