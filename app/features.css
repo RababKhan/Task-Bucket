@@ -7451,6 +7451,10 @@ textarea::placeholder {
   border-radius: 8px;
   width: 100%;
 }
+/* Backup-code input matches the OTP field width (6 boxes * 28 + 5 gaps * 7). */
+.security-field .cf-input.security-backup-input {
+  width: 203px;
+}
 .security-actions {
   display: flex;
   justify-content: flex-end;

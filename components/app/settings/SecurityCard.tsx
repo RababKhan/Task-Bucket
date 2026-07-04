@@ -432,7 +432,7 @@ export default function SecurityCard() {
               <input
                 autoFocus
                 autoComplete="one-time-code"
-                className={`cf-input${mfaErr?.field === "code" ? " invalid" : ""}`}
+                className={`cf-input security-backup-input${mfaErr?.field === "code" ? " invalid" : ""}`}
                 value={code}
                 onChange={(e) => {
                   setCode(e.target.value);
