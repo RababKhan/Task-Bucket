@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Spinner from "@/components/Spinner";
 import FieldError from "@/components/FieldError";
+import OtpInput from "@/app/(auth)/OtpInput";
 
 type Info = { hasPassword: boolean; mfaEnabled: boolean };
 type Setup = { qr: string; secret: string; otpauthUrl: string };
@@ -25,6 +26,7 @@ export default function SecurityCard() {
   const [mfaErr, setMfaErr] = useState<FieldErr>(null);
   const [mfaBusy, setMfaBusy] = useState(false);
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [useBackup, setUseBackup] = useState(false); // disable via backup code
 
   async function load() {
     const res = await fetch("/api/security");
@@ -44,6 +46,7 @@ export default function SecurityCard() {
     setCode("");
     setMfaErr(null);
     setBackupCodes([]);
+    setUseBackup(false);
   }
 
   async function savePassword() {
@@ -295,18 +298,16 @@ export default function SecurityCard() {
           </div>
           <div className="security-field">
             <label>Enter the 6-digit code to confirm</label>
-            <input
-              autoFocus
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              className={`cf-input${mfaErr?.field === "code" ? " invalid" : ""}`}
-              value={code}
-              onChange={(e) => {
-                setCode(e.target.value);
-                if (mfaErr) setMfaErr(null);
-              }}
-              placeholder="123456"
-            />
+            <div className="security-otp">
+              <OtpInput
+                value={code}
+                onChange={(v) => {
+                  setCode(v);
+                  if (mfaErr) setMfaErr(null);
+                }}
+                invalid={mfaErr?.field === "code"}
+              />
+            </div>
             <FieldError message={mfaErr?.field === "code" ? mfaErr.msg : undefined} />
           </div>
           <div className="security-actions">
@@ -323,7 +324,7 @@ export default function SecurityCard() {
             <button
               className="btn btn-sm btn-primary"
               onClick={confirmMfa}
-              disabled={mfaBusy || !code.trim()}
+              disabled={mfaBusy || code.length < 6}
             >
               {mfaBusy ? <Spinner /> : "Verify & enable"}
             </button>
@@ -370,23 +371,47 @@ export default function SecurityCard() {
       {mode === "mfa-disable" && (
         <div className="security-panel">
           <div className="security-desc">
-            Enter a code from your authenticator (or a backup code) to turn off
-            two-factor authentication.
+            {useBackup
+              ? "Enter one of your backup codes to turn off two-factor authentication."
+              : "Enter the 6-digit code from your authenticator app to turn off two-factor authentication."}
           </div>
           <div className="security-field">
-            <input
-              autoFocus
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              className={`cf-input${mfaErr?.field === "code" ? " invalid" : ""}`}
-              value={code}
-              onChange={(e) => {
-                setCode(e.target.value);
-                if (mfaErr) setMfaErr(null);
-              }}
-              placeholder="123456"
-            />
+            {useBackup ? (
+              <input
+                autoFocus
+                autoComplete="one-time-code"
+                className={`cf-input${mfaErr?.field === "code" ? " invalid" : ""}`}
+                value={code}
+                onChange={(e) => {
+                  setCode(e.target.value);
+                  if (mfaErr) setMfaErr(null);
+                }}
+                placeholder="xxxxx-xxxxx"
+              />
+            ) : (
+              <div className="security-otp">
+                <OtpInput
+                  value={code}
+                  onChange={(v) => {
+                    setCode(v);
+                    if (mfaErr) setMfaErr(null);
+                  }}
+                  invalid={mfaErr?.field === "code"}
+                />
+              </div>
+            )}
             <FieldError message={mfaErr?.field === "code" ? mfaErr.msg : undefined} />
+            <button
+              type="button"
+              className="security-link"
+              onClick={() => {
+                setUseBackup((b) => !b);
+                setCode("");
+                setMfaErr(null);
+              }}
+            >
+              {useBackup ? "Use authenticator code" : "Use a backup code"}
+            </button>
           </div>
           <div className="security-actions">
             <button
@@ -402,7 +427,7 @@ export default function SecurityCard() {
             <button
               className="btn btn-sm btn-danger"
               onClick={confirmDisable}
-              disabled={mfaBusy || !code.trim()}
+              disabled={mfaBusy || (useBackup ? !code.trim() : code.length < 6)}
             >
               {mfaBusy ? <Spinner /> : "Disable 2FA"}
             </button>

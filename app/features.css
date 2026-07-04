@@ -7373,6 +7373,30 @@ textarea::placeholder {
 .security-panel .security-desc + .security-field {
   margin-top: 10px;
 }
+.security-otp .otp-input {
+  justify-content: flex-start;
+  gap: 7px;
+  margin-bottom: 0;
+}
+.security-otp .otp-box {
+  width: 38px;
+  height: 40px;
+  font-size: 16px;
+  border-radius: 8px;
+}
+.security-link {
+  display: inline-block;
+  margin-top: 9px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 11.375px;
+  color: var(--link);
+}
+.security-link:hover {
+  text-decoration: underline;
+}
 .security-field label {
   display: block;
   font-size: 11.375px;
