@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 
-// Password input with a show/hide eye, self-contained (unique classes) so it
-// doesn't depend on the auth-page .password-input/.pw-toggle styles.
+// Password input with a show/hide eye. The wrapper carries the field styling
+// (.cf-input) and lays out the transparent input + eye as flex items, so the
+// eye is a normal flow element pinned to the right — no absolute positioning.
 export default function SecPasswordInput({
   value,
   onChange,
@@ -18,10 +19,10 @@ export default function SecPasswordInput({
   const [show, setShow] = useState(false);
 
   return (
-    <div className="secpw">
+    <div className={`secpw cf-input${invalid ? " invalid" : ""}`}>
       <input
         type={show ? "text" : "password"}
-        className={`cf-input secpw-input${invalid ? " invalid" : ""}`}
+        className="secpw-input"
         value={value}
         autoComplete={autoComplete}
         onChange={(e) => onChange(e.target.value)}
