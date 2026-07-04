@@ -305,10 +305,14 @@ export default function ProfilePage() {
                   />
                   <input
                     className="cf-input phone-number"
-                    inputMode="tel"
+                    inputMode="numeric"
+                    maxLength={15}
                     value={form.phoneNumber}
                     onChange={(e) =>
-                      setForm((f) => ({ ...f, phoneNumber: e.target.value }))
+                      setForm((f) => ({
+                        ...f,
+                        phoneNumber: e.target.value.replace(/\D/g, ""),
+                      }))
                     }
                     placeholder="1760533424"
                   />
