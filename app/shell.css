@@ -945,20 +945,6 @@
   font-size: 13px;
   color: var(--text-dim);
 }
-.settings-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 180px;
-  color: var(--text-dim);
-}
-.settings-loading .loading-dots {
-  gap: 5px;
-}
-.settings-loading .loading-dots span {
-  width: 7px;
-  height: 7px;
-}
 .settings-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

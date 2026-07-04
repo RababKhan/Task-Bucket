@@ -158,7 +158,7 @@ export default function ProfilePage() {
   // Session still resolving — show a loader rather than an empty account card.
   if (status === "loading") {
     return (
-      <div className="settings-loading">
+      <div className="page-loading">
         <Spinner />
       </div>
     );
