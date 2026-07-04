@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Spinner from "@/components/Spinner";
 import FieldError from "@/components/FieldError";
 import OtpInput from "@/app/(auth)/OtpInput";
+import PasswordInput from "@/app/(auth)/PasswordInput";
 import PasswordStrength from "@/app/(auth)/PasswordStrength";
 import { passwordMeetsRules } from "@/lib/password";
 import { CheckIcon } from "@/components/StatusIcon";
@@ -210,13 +211,13 @@ export default function SecurityCard() {
           {info.hasPassword && (
             <div className="security-field">
               <label>Current password</label>
-              <input
-                type="password"
+              <PasswordInput
+                className="cf-input"
                 autoComplete="current-password"
-                className={`cf-input${pwErr?.field === "current" ? " invalid" : ""}`}
                 value={pw.current}
-                onChange={(e) => {
-                  setPw((p) => ({ ...p, current: e.target.value }));
+                invalid={pwErr?.field === "current"}
+                onChange={(v) => {
+                  setPw((p) => ({ ...p, current: v }));
                   if (pwErr?.field === "current") setPwErr(null);
                 }}
               />
@@ -226,13 +227,13 @@ export default function SecurityCard() {
           <div className="security-row-2">
             <div className="security-field">
               <label>New password</label>
-              <input
-                type="password"
+              <PasswordInput
+                className="cf-input"
                 autoComplete="new-password"
-                className={`cf-input${pwErr?.field === "next" ? " invalid" : ""}`}
                 value={pw.next}
-                onChange={(e) => {
-                  setPw((p) => ({ ...p, next: e.target.value }));
+                invalid={pwErr?.field === "next"}
+                onChange={(v) => {
+                  setPw((p) => ({ ...p, next: v }));
                   if (pwErr?.field === "next") setPwErr(null);
                 }}
               />
@@ -245,13 +246,13 @@ export default function SecurityCard() {
             </div>
             <div className="security-field">
               <label>Confirm new password</label>
-              <input
-                type="password"
+              <PasswordInput
+                className="cf-input"
                 autoComplete="new-password"
-                className={`cf-input${pwErr?.field === "confirm" ? " invalid" : ""}`}
                 value={pw.confirm}
-                onChange={(e) => {
-                  setPw((p) => ({ ...p, confirm: e.target.value }));
+                invalid={pwErr?.field === "confirm"}
+                onChange={(v) => {
+                  setPw((p) => ({ ...p, confirm: v }));
                   if (pwErr?.field === "confirm") setPwErr(null);
                 }}
               />

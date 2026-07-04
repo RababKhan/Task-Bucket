@@ -12,6 +12,7 @@ export default function PasswordInput({
   id,
   invalid = false,
   describedBy,
+  className = "",
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -22,6 +23,7 @@ export default function PasswordInput({
   id?: string;
   invalid?: boolean;
   describedBy?: string;
+  className?: string;
 }) {
   const [show, setShow] = useState(false);
 
@@ -29,7 +31,7 @@ export default function PasswordInput({
     <div className="password-input">
       <input
         id={id}
-        className={invalid ? "invalid" : ""}
+        className={[className, invalid && "invalid"].filter(Boolean).join(" ")}
         type={show ? "text" : "password"}
         value={value}
         onChange={(e) => onChange(e.target.value)}

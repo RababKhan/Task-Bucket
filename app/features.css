@@ -7451,6 +7451,19 @@ textarea::placeholder {
   border-radius: 8px;
   width: 100%;
 }
+/* Show/hide toggle sized down for the 28px security password fields. */
+.security-field .password-input input {
+  padding-right: 32px;
+}
+.security-field .pw-toggle {
+  width: 24px;
+  height: 24px;
+  right: 3px;
+}
+.security-field .pw-toggle svg {
+  width: 15px;
+  height: 15px;
+}
 /* Backup-code input matches the OTP field width (6 boxes * 28 + 5 gaps * 7).
    display:block so the "Use authenticator code" link wraps below it (like the
    OTP screen) instead of sitting beside the narrow field. */
