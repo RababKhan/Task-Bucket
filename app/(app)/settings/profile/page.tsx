@@ -58,8 +58,6 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     name: "",
-    workspaceName: "",
-    subdomain: "",
     image: "",
   });
   const [saving, setSaving] = useState(false);
@@ -72,8 +70,6 @@ export default function ProfilePage() {
   function startEdit() {
     setForm({
       name,
-      workspaceName: ws?.name ?? "",
-      subdomain: ws?.subdomain ?? "",
       image: user?.image ?? "",
     });
     setFieldErr(null);
@@ -112,10 +108,6 @@ export default function ProfilePage() {
     setFieldErr(null);
     const body: Record<string, string> = { name: form.name.trim() };
     if (form.image !== (user?.image ?? "")) body.image = form.image;
-    if (isAdmin && ws) {
-      body.workspace_name = form.workspaceName.trim();
-      body.subdomain = form.subdomain.trim().toLowerCase();
-    }
     const res = await fetch("/api/profile", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -160,11 +152,7 @@ export default function ProfilePage() {
   // dirty; otherwise it's disabled with a tooltip explaining why.
   const dirty =
     form.name.trim() !== (name || "").trim() ||
-    form.image !== (user?.image ?? "") ||
-    (isAdmin && ws
-      ? form.workspaceName.trim() !== (ws.name ?? "") ||
-        form.subdomain.trim().toLowerCase() !== (ws.subdomain ?? "")
-      : false);
+    form.image !== (user?.image ?? "");
   const updateTip = saving
     ? undefined
     : !form.name.trim()
@@ -185,7 +173,7 @@ export default function ProfilePage() {
   return (
     <>
       <div className="settings-card">
-        <div className="settings-card-head">
+        <div className={`settings-card-head${editing ? "" : " head-plain"}`}>
           {editing ? (
             <span className="profile-avatar-wrap" data-tip="Change photo">
               <label className="profile-avatar editable" aria-label="Change photo">
@@ -245,74 +233,26 @@ export default function ProfilePage() {
           )}
         </div>
 
-        <div className="settings-grid">
-          {editing && (
-            <>
-              <div className="settings-field">
-                <label>
-                  Full Name<span className="req"> *</span>
-                </label>
-                <input
-                  className={`cf-input${errFor("name") ? " invalid" : ""}`}
-                  value={form.name}
-                  onChange={(e) => edit("name", "name", e.target.value)}
-                  placeholder="Your name"
-                />
-                <FieldError message={errFor("name")} />
-              </div>
-              <div className="settings-field">
-                <label>Email Address</label>
-                <div className="settings-value">{email || "—"}</div>
-              </div>
-            </>
-          )}
-          {ws && (
-            <>
-              <div className="settings-field">
-                <label>
-                  Workspace
-                  {editing && isAdmin && <span className="req"> *</span>}
-                </label>
-                {editing && isAdmin ? (
-                  <>
-                    <input
-                      className={`cf-input${errFor("workspace_name") ? " invalid" : ""}`}
-                      value={form.workspaceName}
-                      onChange={(e) =>
-                        edit("workspaceName", "workspace_name", e.target.value)
-                      }
-                      placeholder="Workspace name"
-                    />
-                    <FieldError message={errFor("workspace_name")} />
-                  </>
-                ) : (
-                  <div className="settings-value">{ws.name}</div>
-                )}
-              </div>
-              <div className="settings-field">
-                <label>
-                  Subdomain
-                  {editing && isAdmin && <span className="req"> *</span>}
-                </label>
-                {editing && isAdmin ? (
-                  <>
-                    <input
-                      className={`cf-input${errFor("subdomain") ? " invalid" : ""}`}
-                      value={form.subdomain}
-                      onChange={(e) =>
-                        edit("subdomain", "subdomain", e.target.value)
-                      }
-                      placeholder="your-workspace"
-                    />
-                    <FieldError message={errFor("subdomain")} />
-                  </>
-                ) : (
-                  <div className="settings-value">{ws.subdomain}</div>
-                )}
-              </div>
-            </>
-          )}
-        </div>
+        {editing && (
+          <div className="settings-grid">
+            <div className="settings-field">
+              <label>
+                Full Name<span className="req"> *</span>
+              </label>
+              <input
+                className={`cf-input${errFor("name") ? " invalid" : ""}`}
+                value={form.name}
+                onChange={(e) => edit("name", "name", e.target.value)}
+                placeholder="Your name"
+              />
+              <FieldError message={errFor("name")} />
+            </div>
+            <div className="settings-field">
+              <label>Email Address</label>
+              <div className="settings-value">{email || "—"}</div>
+            </div>
+          </div>
+        )}
       </div>
 
       <SecurityCard />
