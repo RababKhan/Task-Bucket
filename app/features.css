@@ -5690,6 +5690,7 @@ textarea::placeholder {
 .confirm-modal .cf-input {
   height: 28px;
   font-size: 11.375px;
+  border-radius: 8px;
 }
 .confirm-text strong {
   color: var(--text);
