@@ -236,6 +236,11 @@ export default function SecurityCard() {
                 }}
               />
               <FieldError message={pwErr?.field === "next" ? pwErr.msg : undefined} />
+              {pw.next && (
+                <div className="security-pw-strength">
+                  <PasswordStrength password={pw.next} />
+                </div>
+              )}
             </div>
             <div className="security-field">
               <label>Confirm new password</label>
@@ -252,11 +257,6 @@ export default function SecurityCard() {
               <FieldError message={pwErr?.field === "confirm" ? pwErr.msg : undefined} />
             </div>
           </div>
-          {pw.next && (
-            <div className="security-pw-strength">
-              <PasswordStrength password={pw.next} />
-            </div>
-          )}
         </div>
       )}
 
