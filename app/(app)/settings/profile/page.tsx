@@ -41,7 +41,7 @@ function resizeToDataUrl(file: File): Promise<string> {
 }
 
 export default function ProfilePage() {
-  const { data: session, update } = useSession();
+  const { data: session, status, update } = useSession();
   const user = session?.user;
   const name = user?.name || "";
   const email = user?.email || "";
@@ -153,6 +153,15 @@ export default function ProfilePage() {
     }
     // Workspace (and this session's backing data) is gone — sign out.
     signOut({ callbackUrl: "/login" });
+  }
+
+  // Session still resolving — show a loader rather than an empty account card.
+  if (status === "loading") {
+    return (
+      <div className="settings-loading">
+        <Spinner />
+      </div>
+    );
   }
 
   return (
