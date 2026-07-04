@@ -5708,6 +5708,13 @@ textarea::placeholder {
   background: transparent;
   cursor: not-allowed;
 }
+/* Center the divider line vertically between the input and the buttons
+   (equal space above/below). Overrides the generic .confirm-actions
+   margin-top so the icon modal's line isn't pulled toward the input. */
+.confirm-modal:has(.confirm-icon) .confirm-actions {
+  margin-top: 12px;
+  padding-top: 12px;
+}
 
 /* ====================================================================
    View drawer (page size + visible columns)
