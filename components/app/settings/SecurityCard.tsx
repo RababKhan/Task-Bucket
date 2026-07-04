@@ -291,8 +291,28 @@ export default function SecurityCard() {
             when you sign in.
           </div>
         </div>
-        {mode === "idle" &&
-          (info.mfaEnabled ? (
+        {mode === "mfa-disable" ? (
+          <div className="security-actions">
+            <button
+              className="btn btn-sm"
+              onClick={() => {
+                resetMfa();
+                setMode("idle");
+              }}
+              disabled={mfaBusy}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn btn-sm btn-danger"
+              onClick={confirmDisable}
+              disabled={mfaBusy || (useBackup ? !code.trim() : code.length < 6)}
+            >
+              {mfaBusy ? <Spinner /> : "Disable 2FA"}
+            </button>
+          </div>
+        ) : mode === "idle" ? (
+          info.mfaEnabled ? (
             <button
               className="btn btn-sm btn-danger"
               onClick={() => {
@@ -306,7 +326,8 @@ export default function SecurityCard() {
             <button className="btn btn-sm btn-primary" onClick={beginMfaSetup} disabled={mfaBusy}>
               {mfaBusy ? <Spinner /> : "Enable"}
             </button>
-          ))}
+          )
+        ) : null}
       </div>
 
       {mfaErr && !mfaErr.field && mode === "idle" && (
@@ -442,25 +463,6 @@ export default function SecurityCard() {
               }}
             >
               {useBackup ? "Use authenticator code" : "Use a backup code"}
-            </button>
-          </div>
-          <div className="security-actions">
-            <button
-              className="btn btn-sm"
-              onClick={() => {
-                resetMfa();
-                setMode("idle");
-              }}
-              disabled={mfaBusy}
-            >
-              Cancel
-            </button>
-            <button
-              className="btn btn-sm btn-danger"
-              onClick={confirmDisable}
-              disabled={mfaBusy || (useBackup ? !code.trim() : code.length < 6)}
-            >
-              {mfaBusy ? <Spinner /> : "Disable 2FA"}
             </button>
           </div>
         </div>
