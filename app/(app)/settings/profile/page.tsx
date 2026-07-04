@@ -364,11 +364,21 @@ export default function ProfilePage() {
                 Cancel
               </button>
               <button
-                className="btn-outline confirm-del"
+                className="btn btn-danger btn-sm confirm-del"
                 disabled={deleting || confirmText.trim() !== ws.name}
                 onClick={deleteWorkspace}
               >
-                {deleting ? <Spinner /> : "Delete workspace"}
+                {deleting ? (
+                  <Spinner />
+                ) : (
+                  <>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                      <path d="M10 11v6M14 11v6" />
+                    </svg>
+                    Delete workspace
+                  </>
+                )}
               </button>
             </div>
           </div>

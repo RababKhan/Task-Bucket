@@ -7286,7 +7286,8 @@ textarea::placeholder {
   height: 16px;
   flex-shrink: 0;
 }
-.settings-danger .btn-danger svg {
+.settings-danger .btn-danger svg,
+.confirm-del svg {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
