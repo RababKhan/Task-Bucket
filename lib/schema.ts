@@ -25,6 +25,8 @@ export const users = pgTable("users", {
   name: text("name"),
   email: text("email").unique(),
   image: text("image"),
+  designation: text("designation"),
+  phone: text("phone"),
   passwordHash: text("password_hash"),
   emailVerified: text("email_verified"),
   mfaEnabled: boolean("mfa_enabled").notNull().default(false),

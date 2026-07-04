@@ -1,12 +1,26 @@
 import { NextResponse } from "next/server";
 import { dbRun } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
+import { getUserById } from "@/lib/auth-db";
 import { getMembership } from "@/lib/membership";
 import {
   getWorkspaceByOwner,
   isSubdomainAvailable,
   validateSubdomain,
 } from "@/lib/workspace";
+
+// Profile fields that don't live on the session token (fetched on demand).
+export async function GET() {
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const user = await getUserById(userId);
+  return NextResponse.json({
+    designation: user?.designation ?? "",
+    phone: user?.phone ?? "",
+  });
+}
 
 // Update the signed-in user's profile: their display name (self), and — for a
 // workspace admin/owner — the workspace name and subdomain.
@@ -27,6 +41,20 @@ export async function PATCH(request: Request) {
       );
     }
     await dbRun("UPDATE users SET name = ? WHERE id = ?", [name, userId]);
+  }
+
+  // 1a. Designation + phone (self). Free text; empty string clears the field.
+  if (typeof body.designation === "string") {
+    await dbRun("UPDATE users SET designation = ? WHERE id = ?", [
+      body.designation.trim().slice(0, 100) || null,
+      userId,
+    ]);
+  }
+  if (typeof body.phone === "string") {
+    await dbRun("UPDATE users SET phone = ? WHERE id = ?", [
+      body.phone.trim().slice(0, 30) || null,
+      userId,
+    ]);
   }
 
   // 1b. Avatar image (self). Accepts a small data-URL image, or "" to clear it.

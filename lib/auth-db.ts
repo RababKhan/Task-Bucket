@@ -11,6 +11,8 @@ export type DbUser = {
   name: string | null;
   email: string | null;
   image: string | null;
+  designation: string | null;
+  phone: string | null;
   password_hash: string | null;
   email_verified: string | null;
   mfa_enabled: boolean;

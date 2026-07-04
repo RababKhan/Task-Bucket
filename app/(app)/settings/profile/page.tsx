@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Spinner from "@/components/Spinner";
 import FieldError from "@/components/FieldError";
@@ -59,7 +59,19 @@ export default function ProfilePage() {
   const [form, setForm] = useState({
     name: "",
     image: "",
+    designation: "",
+    phone: "",
   });
+  // Designation + phone aren't on the session token — load them on demand.
+  const [extra, setExtra] = useState({ designation: "", phone: "" });
+  useEffect(() => {
+    fetch("/api/profile")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d) setExtra({ designation: d.designation || "", phone: d.phone || "" });
+      })
+      .catch(() => {});
+  }, []);
   const [saving, setSaving] = useState(false);
   const [fieldErr, setFieldErr] = useState<{ field: string; msg: string } | null>(
     null
@@ -71,6 +83,8 @@ export default function ProfilePage() {
     setForm({
       name,
       image: user?.image ?? "",
+      designation: extra.designation,
+      phone: extra.phone,
     });
     setFieldErr(null);
     setEditing(true);
@@ -106,7 +120,11 @@ export default function ProfilePage() {
     if (saving) return;
     setSaving(true);
     setFieldErr(null);
-    const body: Record<string, string> = { name: form.name.trim() };
+    const body: Record<string, string> = {
+      name: form.name.trim(),
+      designation: form.designation.trim(),
+      phone: form.phone.trim(),
+    };
     if (form.image !== (user?.image ?? "")) body.image = form.image;
     const res = await fetch("/api/profile", {
       method: "PATCH",
@@ -122,9 +140,10 @@ export default function ProfilePage() {
       setSaving(false);
       return;
     }
+    setExtra({ designation: form.designation.trim(), phone: form.phone.trim() });
     // Pass an argument so next-auth fires the jwt `trigger === "update"`
     // branch (a bare update() only refetches and won't re-read the DB).
-    await update({}); // refresh the session (name + workspace + avatar)
+    await update({}); // refresh the session (name + avatar)
     setSaving(false);
     setEditing(false);
   }
@@ -152,7 +171,9 @@ export default function ProfilePage() {
   // dirty; otherwise it's disabled with a tooltip explaining why.
   const dirty =
     form.name.trim() !== (name || "").trim() ||
-    form.image !== (user?.image ?? "");
+    form.image !== (user?.image ?? "") ||
+    form.designation.trim() !== extra.designation.trim() ||
+    form.phone.trim() !== extra.phone.trim();
   const updateTip = saving
     ? undefined
     : !form.name.trim()
@@ -173,7 +194,7 @@ export default function ProfilePage() {
   return (
     <>
       <div className="settings-card">
-        <div className={`settings-card-head${editing ? "" : " head-plain"}`}>
+        <div className="settings-card-head">
           {editing ? (
             <span className="profile-avatar-wrap" data-tip="Change photo">
               <label className="profile-avatar editable" aria-label="Change photo">
@@ -233,26 +254,57 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {editing && (
-          <div className="settings-grid">
-            <div className="settings-field">
-              <label>
-                Full Name<span className="req"> *</span>
-              </label>
-              <input
-                className={`cf-input${errFor("name") ? " invalid" : ""}`}
-                value={form.name}
-                onChange={(e) => edit("name", "name", e.target.value)}
-                placeholder="Your name"
-              />
-              <FieldError message={errFor("name")} />
-            </div>
-            <div className="settings-field">
-              <label>Email Address</label>
-              <div className="settings-value">{email || "—"}</div>
-            </div>
-          </div>
-        )}
+        <div className="settings-grid">
+          {editing ? (
+            <>
+              <div className="settings-field">
+                <label>
+                  Full Name<span className="req"> *</span>
+                </label>
+                <input
+                  className={`cf-input${errFor("name") ? " invalid" : ""}`}
+                  value={form.name}
+                  onChange={(e) => edit("name", "name", e.target.value)}
+                  placeholder="Your name"
+                />
+                <FieldError message={errFor("name")} />
+              </div>
+              <div className="settings-field">
+                <label>Email Address</label>
+                <div className="settings-value">{email || "—"}</div>
+              </div>
+              <div className="settings-field">
+                <label>Designation</label>
+                <input
+                  className="cf-input"
+                  value={form.designation}
+                  onChange={(e) => edit("designation", "designation", e.target.value)}
+                  placeholder="e.g. Product Manager"
+                />
+              </div>
+              <div className="settings-field">
+                <label>Phone number</label>
+                <input
+                  className="cf-input"
+                  value={form.phone}
+                  onChange={(e) => edit("phone", "phone", e.target.value)}
+                  placeholder="e.g. +1 555 123 4567"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="settings-field">
+                <label>Designation</label>
+                <div className="settings-value">{extra.designation || "—"}</div>
+              </div>
+              <div className="settings-field">
+                <label>Phone number</label>
+                <div className="settings-value">{extra.phone || "—"}</div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <SecurityCard />

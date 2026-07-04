@@ -893,11 +893,6 @@
   margin-bottom: 12px;
   border-bottom: 1px solid var(--border);
 }
-.settings-card-head.head-plain {
-  padding-bottom: 0;
-  margin-bottom: 0;
-  border-bottom: none;
-}
 .profile-avatar {
   width: 56px;
   height: 56px;
