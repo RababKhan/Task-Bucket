@@ -976,8 +976,9 @@
   gap: 6px;
 }
 .phone-code {
+  flex: 0 0 96px;
+  width: 96px;
   height: 28px;
-  flex-shrink: 0;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--input-bg);
@@ -987,7 +988,8 @@
   cursor: pointer;
 }
 .phone-number {
-  flex: 1;
+  flex: 1 1 auto;
+  width: auto;
   min-width: 0;
 }
 .settings-card-title {
