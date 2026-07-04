@@ -165,7 +165,27 @@ export default function SecurityCard() {
               : "You signed in with a connected account. Set a password to also sign in with email."}
           </div>
         </div>
-        {mode !== "password" && (
+        {mode === "password" ? (
+          <div className="security-actions">
+            <button
+              className="btn btn-sm"
+              onClick={() => {
+                resetPw();
+                setMode("idle");
+              }}
+              disabled={pwBusy}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn btn-sm btn-primary"
+              onClick={savePassword}
+              disabled={pwBusy || !pw.next || !pw.confirm}
+            >
+              {pwBusy ? <Spinner /> : "Update password"}
+            </button>
+          </div>
+        ) : (
           <button
             className="btn btn-sm"
             onClick={() => {
@@ -225,25 +245,6 @@ export default function SecurityCard() {
               />
               <FieldError message={pwErr?.field === "confirm" ? pwErr.msg : undefined} />
             </div>
-          </div>
-          <div className="security-actions">
-            <button
-              className="btn btn-sm"
-              onClick={() => {
-                resetPw();
-                setMode("idle");
-              }}
-              disabled={pwBusy}
-            >
-              Cancel
-            </button>
-            <button
-              className="btn btn-sm btn-primary"
-              onClick={savePassword}
-              disabled={pwBusy || !pw.next || !pw.confirm}
-            >
-              {pwBusy ? <Spinner /> : "Update password"}
-            </button>
           </div>
         </div>
       )}
