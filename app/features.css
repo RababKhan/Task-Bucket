@@ -7301,6 +7301,10 @@ textarea::placeholder {
 /* ---- Settings danger zone ---- */
 .settings-danger {
   border: 1px solid var(--danger);
+  padding: 16px 20px;
+}
+.settings-danger .settings-card-sub {
+  margin-bottom: 12px;
 }
 .settings-danger .settings-card-title {
   color: var(--danger);
