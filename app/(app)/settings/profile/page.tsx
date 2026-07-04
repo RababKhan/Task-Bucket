@@ -12,6 +12,34 @@ function initials(text: string) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+// Downscale + center-crop the chosen file to a small square avatar and return a
+// data URL, so it stores compactly in the DB (no object storage needed).
+function resizeToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = document.createElement("img");
+      img.onload = () => {
+        const size = 240;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("no canvas context"));
+        const scale = Math.max(size / img.width, size / img.height);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = () => reject(new Error("bad image"));
+      img.src = reader.result as string;
+    };
+    reader.onerror = () => reject(new Error("read failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function ProfilePage() {
   const { data: session, update } = useSession();
   const user = session?.user;
@@ -27,7 +55,12 @@ export default function ProfilePage() {
 
   // Profile editing.
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ name: "", workspaceName: "", subdomain: "" });
+  const [form, setForm] = useState({
+    name: "",
+    workspaceName: "",
+    subdomain: "",
+    image: "",
+  });
   const [saving, setSaving] = useState(false);
   const [fieldErr, setFieldErr] = useState<{ field: string; msg: string } | null>(
     null
@@ -40,6 +73,7 @@ export default function ProfilePage() {
       name,
       workspaceName: ws?.name ?? "",
       subdomain: ws?.subdomain ?? "",
+      image: user?.image ?? "",
     });
     setFieldErr(null);
     setEditing(true);
@@ -50,11 +84,33 @@ export default function ProfilePage() {
     setFieldErr((e) => (e && e.field === key ? null : e));
   }
 
+  async function pickImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-picking the same file
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setFieldErr({ field: "image", msg: "Please choose an image file." });
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setFieldErr({ field: "image", msg: "Image must be under 8 MB." });
+      return;
+    }
+    try {
+      const dataUrl = await resizeToDataUrl(file);
+      setForm((f) => ({ ...f, image: dataUrl }));
+      setFieldErr((er) => (er && er.field === "image" ? null : er));
+    } catch {
+      setFieldErr({ field: "image", msg: "Could not read that image." });
+    }
+  }
+
   async function save() {
     if (saving) return;
     setSaving(true);
     setFieldErr(null);
     const body: Record<string, string> = { name: form.name.trim() };
+    if (form.image !== (user?.image ?? "")) body.image = form.image;
     if (isAdmin && ws) {
       body.workspace_name = form.workspaceName.trim();
       body.subdomain = form.subdomain.trim().toLowerCase();
@@ -101,17 +157,36 @@ export default function ProfilePage() {
     <>
       <div className="settings-card">
         <div className="settings-card-head">
-          <span className="profile-avatar">
-            {user?.image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.image} alt="" />
-            ) : (
-              initials(name || email || "?")
-            )}
-          </span>
+          {editing ? (
+            <label className="profile-avatar editable" title="Change photo">
+              {form.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={form.image} alt="" />
+              ) : (
+                initials(name || email || "?")
+              )}
+              <span className="profile-avatar-cam" aria-hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+              </span>
+              <input type="file" accept="image/*" onChange={pickImage} hidden />
+            </label>
+          ) : (
+            <span className="profile-avatar">
+              {user?.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.image} alt="" />
+              ) : (
+                initials(name || email || "?")
+              )}
+            </span>
+          )}
           <div className="profile-headinfo">
             <div className="profile-name">{name || "Your account"}</div>
             <div className="profile-email">{email}</div>
+            {editing && <FieldError message={errFor("image")} />}
           </div>
           {!editing ? (
             <button className="btn btn-sm profile-edit-btn" onClick={startEdit}>

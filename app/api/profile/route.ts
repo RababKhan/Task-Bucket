@@ -29,6 +29,26 @@ export async function PATCH(request: Request) {
     await dbRun("UPDATE users SET name = ? WHERE id = ?", [name, userId]);
   }
 
+  // 1b. Avatar image (self). Accepts a small data-URL image, or "" to clear it.
+  if (typeof body.image === "string") {
+    const img = body.image.trim();
+    if (img) {
+      if (!/^data:image\/(png|jpe?g|webp);base64,/.test(img)) {
+        return NextResponse.json(
+          { error: "Unsupported image format.", field: "image" },
+          { status: 400 }
+        );
+      }
+      if (img.length > 700_000) {
+        return NextResponse.json(
+          { error: "Image is too large. Please choose a smaller one.", field: "image" },
+          { status: 400 }
+        );
+      }
+    }
+    await dbRun("UPDATE users SET image = ? WHERE id = ?", [img || null, userId]);
+  }
+
   const membership = await getMembership(userId);
 
   // 2. Workspace name — admins only.

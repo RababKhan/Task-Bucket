@@ -911,6 +911,27 @@
   height: 100%;
   object-fit: cover;
 }
+.profile-avatar.editable {
+  cursor: pointer;
+  position: relative;
+}
+.profile-avatar-cam {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.profile-avatar.editable:hover .profile-avatar-cam {
+  opacity: 1;
+}
+.profile-avatar-cam svg {
+  width: 20px;
+  height: 20px;
+}
 .profile-name {
   font-size: 16px;
   font-weight: 600;

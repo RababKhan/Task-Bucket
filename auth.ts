@@ -10,6 +10,15 @@ import {
 import { ensureWorkspaceForUser } from "@/lib/workspace";
 import { getMembership } from "@/lib/membership";
 
+// Keep the session cookie small: uploaded avatars are stored as data URLs in
+// the DB, so reference them by endpoint (versioned by length to bust the cache
+// on change) instead of embedding the bytes. Remote OAuth URLs pass through.
+function avatarRef(uid: string, image: string | null | undefined): string | null {
+  if (!image) return null;
+  if (image.startsWith("data:")) return `/api/avatar/${uid}?v=${image.length}`;
+  return image;
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   providers: [
@@ -58,10 +67,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.uid = dbUser.id;
         token.name = dbUser.name;
         token.email = dbUser.email;
-        token.picture = dbUser.image;
+        token.picture = avatarRef(dbUser.id, dbUser.image);
       } else if (user) {
-        // Credentials sign-in: user.id is already our internal id.
+        // Credentials sign-in: user.id is already our internal id. Normalize the
+        // avatar so a data-URL image doesn't get baked into the token verbatim.
         token.uid = user.id;
+        token.picture = avatarRef(user.id as string, user.image);
       }
 
       // On an explicit session.update() (e.g. after editing the profile),
@@ -71,7 +82,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (u) {
           token.name = u.name;
           token.email = u.email;
-          token.picture = u.image;
+          token.picture = avatarRef(token.uid as string, u.image);
         }
       }
 
