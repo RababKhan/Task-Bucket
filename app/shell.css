@@ -971,6 +971,25 @@
   font-size: 11.375px;
   border-radius: 8px;
 }
+.phone-input {
+  display: flex;
+  gap: 6px;
+}
+.phone-code {
+  height: 28px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 11.375px;
+  padding: 0 6px;
+  cursor: pointer;
+}
+.phone-number {
+  flex: 1;
+  min-width: 0;
+}
 .settings-card-title {
   font-size: 15px;
   font-weight: 600;

@@ -5,6 +5,7 @@ import { useSession, signOut } from "next-auth/react";
 import Spinner from "@/components/Spinner";
 import FieldError from "@/components/FieldError";
 import SecurityCard from "@/components/app/settings/SecurityCard";
+import { COUNTRY_CODES, parsePhone, DEFAULT_DIAL_CODE } from "@/lib/countryCodes";
 
 function initials(text: string) {
   const parts = text.trim().split(/\s+/).filter(Boolean);
@@ -60,7 +61,8 @@ export default function ProfilePage() {
     name: "",
     image: "",
     designation: "",
-    phone: "",
+    phoneCode: DEFAULT_DIAL_CODE,
+    phoneNumber: "",
   });
   // Designation + phone aren't on the session token — load them on demand.
   const [extra, setExtra] = useState({ designation: "", phone: "" });
@@ -80,11 +82,13 @@ export default function ProfilePage() {
     fieldErr?.field === f ? fieldErr.msg : undefined;
 
   function startEdit() {
+    const parsed = parsePhone(extra.phone);
     setForm({
       name,
       image: user?.image ?? "",
       designation: extra.designation,
-      phone: extra.phone,
+      phoneCode: parsed.code,
+      phoneNumber: parsed.number,
     });
     setFieldErr(null);
     setEditing(true);
@@ -120,10 +124,13 @@ export default function ProfilePage() {
     if (saving) return;
     setSaving(true);
     setFieldErr(null);
+    const combinedPhone = form.phoneNumber.trim()
+      ? `${form.phoneCode} ${form.phoneNumber.trim()}`
+      : "";
     const body: Record<string, string> = {
       name: form.name.trim(),
       designation: form.designation.trim(),
-      phone: form.phone.trim(),
+      phone: combinedPhone,
     };
     if (form.image !== (user?.image ?? "")) body.image = form.image;
     const res = await fetch("/api/profile", {
@@ -140,7 +147,7 @@ export default function ProfilePage() {
       setSaving(false);
       return;
     }
-    setExtra({ designation: form.designation.trim(), phone: form.phone.trim() });
+    setExtra({ designation: form.designation.trim(), phone: combinedPhone });
     // Pass an argument so next-auth fires the jwt `trigger === "update"`
     // branch (a bare update() only refetches and won't re-read the DB).
     await update({}); // refresh the session (name + avatar)
@@ -169,11 +176,13 @@ export default function ProfilePage() {
 
   // Has the user actually changed anything? The Update button only enables when
   // dirty; otherwise it's disabled with a tooltip explaining why.
+  const origPhone = parsePhone(extra.phone);
   const dirty =
     form.name.trim() !== (name || "").trim() ||
     form.image !== (user?.image ?? "") ||
     form.designation.trim() !== extra.designation.trim() ||
-    form.phone.trim() !== extra.phone.trim();
+    form.phoneCode !== origPhone.code ||
+    form.phoneNumber.trim() !== origPhone.number;
   const updateTip = saving
     ? undefined
     : !form.name.trim()
@@ -286,12 +295,30 @@ export default function ProfilePage() {
               </div>
               <div className="settings-field">
                 <label>Phone number</label>
-                <input
-                  className="cf-input"
-                  value={form.phone}
-                  onChange={(e) => edit("phone", "phone", e.target.value)}
-                  placeholder="e.g. +1 555 123 4567"
-                />
+                <div className="phone-input">
+                  <select
+                    className="phone-code"
+                    value={form.phoneCode}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, phoneCode: e.target.value }))
+                    }
+                  >
+                    {COUNTRY_CODES.map((c) => (
+                      <option key={`${c.name}${c.code}`} value={c.code}>
+                        {c.flag} {c.code}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className="cf-input phone-number"
+                    inputMode="tel"
+                    value={form.phoneNumber}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, phoneNumber: e.target.value }))
+                    }
+                    placeholder="1760533424"
+                  />
+                </div>
               </div>
             </>
           ) : (
