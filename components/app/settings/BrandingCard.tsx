@@ -87,6 +87,7 @@ export default function BrandingCard() {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<{ field: string; msg: string } | null>(null);
   const [ok, setOk] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     fetch("/api/workspace/branding")
@@ -108,6 +109,17 @@ export default function BrandingCard() {
 
   const dirty = JSON.stringify(form) !== JSON.stringify(original);
   const errFor = (f: string) => (err?.field === f ? err.msg : undefined);
+
+  function startEdit() {
+    setForm(original);
+    setErr(null);
+    setEditing(true);
+  }
+  function cancel() {
+    setForm(original);
+    setErr(null);
+    setEditing(false);
+  }
 
   async function pickLogo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -146,6 +158,7 @@ export default function BrandingCard() {
       return;
     }
     setOriginal(form);
+    setEditing(false);
     refresh(); // re-apply branding across the app
     setOk(true);
     setTimeout(() => setOk(false), 2500);
@@ -167,23 +180,79 @@ export default function BrandingCard() {
         <div className="profile-headinfo">
           <div className="settings-card-title">Branding</div>
           <div className="security-desc">
-            Customize the app name, logo, and primary color your team sees.
+            {ok
+              ? "Branding updated."
+              : "Customize the app name, logo, and primary color your team sees."}
           </div>
         </div>
-        <span
-          className="profile-update-wrap"
-          data-tip={!dirty && !saving ? "No changes to save" : undefined}
-        >
-          <button
-            className="btn btn-sm btn-primary"
-            onClick={save}
-            disabled={saving || !dirty}
-          >
-            {saving ? <Spinner /> : ok ? "Saved" : "Save"}
+        {!editing ? (
+          <button className="btn btn-sm profile-edit-btn" onClick={startEdit}>
+            Edit
           </button>
-        </span>
+        ) : (
+          <div className="profile-edit-actions">
+            <button className="btn btn-sm" onClick={cancel} disabled={saving}>
+              Cancel
+            </button>
+            <span
+              className="profile-update-wrap"
+              data-tip={!dirty && !saving ? "No changes to save" : undefined}
+            >
+              <button
+                className="btn btn-sm btn-primary"
+                onClick={save}
+                disabled={saving || !dirty}
+              >
+                {saving ? <Spinner /> : "Save"}
+              </button>
+            </span>
+          </div>
+        )}
       </div>
 
+      {!editing ? (
+        <div className="settings-grid">
+          <div className="settings-field">
+            <label>App name</label>
+            <div className="settings-value">{original.name || "Task Bucket"}</div>
+          </div>
+          <div className="settings-field">
+            <label>Logo</label>
+            <span className="brand-logo-preview">
+              {original.logo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={original.logo} alt="" />
+              ) : (
+                <svg viewBox="0 0 40 40" fill="none" aria-hidden>
+                  <rect x="2" y="7" width="36" height="7" rx="3.5" fill="#3f3f46" />
+                  <rect x="2" y="17" width="26" height="7" rx="3.5" fill="#71717a" />
+                  <rect x="2" y="27" width="17" height="7" rx="3.5" fill="#a1a1aa" />
+                </svg>
+              )}
+            </span>
+          </div>
+          <div className="settings-field">
+            <label>Primary color · Dark mode</label>
+            <div className="brand-view-color">
+              <span
+                className="brand-view-swatch"
+                style={{ background: original.colorDark || DEFAULT_ACCENT }}
+              />
+              {original.colorDark || DEFAULT_ACCENT}
+            </div>
+          </div>
+          <div className="settings-field">
+            <label>Primary color · Light mode</label>
+            <div className="brand-view-color">
+              <span
+                className="brand-view-swatch"
+                style={{ background: original.colorLight || DEFAULT_ACCENT }}
+              />
+              {original.colorLight || DEFAULT_ACCENT}
+            </div>
+          </div>
+        </div>
+      ) : (
       <div className="brand-fields">
         <div className="settings-field">
           <label>App name</label>
@@ -259,6 +328,7 @@ export default function BrandingCard() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }
