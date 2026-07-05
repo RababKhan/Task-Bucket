@@ -7014,7 +7014,7 @@ textarea::placeholder {
 /* ---- Billing ---- */
 .billing-pv {
   max-width: 780px;
-  padding: 24px 32px 44px;
+  padding: 0 0 8px;
 }
 
 /* Current plan */
@@ -7025,7 +7025,7 @@ textarea::placeholder {
   gap: 16px;
   padding: 18px 20px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 8px;
   background: var(--surface);
 }
 .bill-hero-label {
@@ -7080,7 +7080,7 @@ textarea::placeholder {
 .bill-meter {
   padding: 14px 16px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--surface);
 }
 .bill-meter-top {
@@ -7090,7 +7090,7 @@ textarea::placeholder {
   margin-bottom: 9px;
 }
 .bill-meter-label {
-  font-size: 12.5px;
+  font-size: 11.375px;
   font-weight: 500;
   color: var(--text);
 }
@@ -7124,7 +7124,7 @@ textarea::placeholder {
   padding: 3px;
   margin: 24px 0 16px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--surface-2);
 }
 .bill-toggle button {
@@ -7160,7 +7160,7 @@ textarea::placeholder {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 0;
 }
 .bill-card {
   position: relative;
@@ -7168,7 +7168,7 @@ textarea::placeholder {
   flex-direction: column;
   padding: 22px;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 8px;
   background: var(--surface);
 }
 .bill-card.featured {
@@ -7183,7 +7183,7 @@ textarea::placeholder {
   right: 18px;
   padding: 3px 10px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 11.375px;
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -7231,7 +7231,7 @@ textarea::placeholder {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  font-size: 12.5px;
+  font-size: 11.375px;
   color: var(--text);
 }
 .bill-check {
@@ -7247,13 +7247,15 @@ textarea::placeholder {
 .bill-btn {
   width: 100%;
   justify-content: center;
+  font-size: 11.375px;
 }
 
 /* Notes / pending */
 .bill-note {
+  margin-top: 20px;
   padding: 14px 16px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--surface);
   font-size: 12.5px;
   line-height: 1.55;
@@ -7263,11 +7265,12 @@ textarea::placeholder {
   color: var(--text);
 }
 .bill-pending {
+  margin-top: 20px;
   display: flex;
   gap: 12px;
   padding: 16px;
   border: 1px solid var(--accent);
-  border-radius: 12px;
+  border-radius: 8px;
   background: color-mix(in srgb, var(--accent) 8%, var(--surface));
   font-size: 12.5px;
   line-height: 1.55;
@@ -7286,33 +7289,6 @@ textarea::placeholder {
 }
 
 /* Bank transfer upgrade */
-.bill-upgrade {
-  padding: 22px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--surface);
-}
-.bill-upgrade-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.bill-upgrade-head h2 {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-}
-.bill-upgrade-amount {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text);
-}
-.bill-upgrade-amount span {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-dim);
-}
 .bill-steps {
   list-style: none;
   margin: 16px 0;
@@ -7357,7 +7333,7 @@ textarea::placeholder {
 .bill-bank {
   margin: 0 0 18px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
 }
 .bill-bank-row {
@@ -7383,6 +7359,222 @@ textarea::placeholder {
   word-break: break-word;
 }
 
+/* Bank-transfer upgrade modal (opened from the Pro card CTA). Reuses the
+   .bill-upgrade-head / .bill-steps / .bill-bank inner styles above. */
+.bill-modal {
+  max-width: 860px;
+  padding: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  max-height: calc(100vh - 40px);
+}
+.bill-modal-main {
+  padding: 26px 28px;
+  overflow-y: auto;
+}
+.bill-co-h1 {
+  margin: 0 0 22px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+.bill-co-h2 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Selectable payment-method card */
+.bill-pay-method {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.bill-pay-method:hover {
+  border-color: var(--accent);
+}
+.bill-pay-method.selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+.bill-pay-ic {
+  display: grid;
+  place-items: center;
+  color: var(--done);
+}
+.bill-pay-ic svg {
+  width: 22px;
+  height: 22px;
+}
+.bill-pay-name {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text);
+}
+.bill-pay-check {
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+}
+.bill-pay-check svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Manual banking instruction (revealed on select) */
+.bill-instr {
+  margin-top: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  animation: bill-instr-in 0.2s ease;
+}
+@keyframes bill-instr-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.bill-instr-h {
+  margin: 0 0 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.bill-instr-sub {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.bill-instr-body ul {
+  margin: 0 0 12px;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+.bill-instr-body li strong {
+  color: var(--text);
+}
+.bill-instr-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+.bill-instr-note strong {
+  color: var(--text);
+}
+
+/* Left-column action row */
+.bill-co-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* Right order-summary panel */
+.bill-modal-summary {
+  padding: 26px 24px;
+  background: var(--surface-2);
+  border-left: 1px solid var(--border);
+}
+.bill-sum-title {
+  margin: 0 0 22px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+.bill-sum-plan-block {
+  margin-bottom: 16px;
+}
+.bill-sum-plan {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.bill-sum-cycle {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.bill-sum-divider {
+  height: 1px;
+  margin: 16px 0;
+  background: var(--border);
+}
+.bill-sum-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12.5px;
+  color: var(--text);
+}
+.bill-sum-row + .bill-sum-row {
+  margin-top: 8px;
+}
+.bill-sum-muted {
+  color: var(--text-dim);
+}
+.bill-sum-total-line {
+  font-weight: 600;
+}
+.bill-sum-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.bill-sum-amount {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.bill-sum-amount span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+@media (max-width: 620px) {
+  .bill-modal {
+    grid-template-columns: 1fr;
+    max-height: calc(100vh - 32px);
+  }
+  .bill-modal-summary {
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+}
+
 @media (max-width: 680px) {
   .bill-hero {
     flex-direction: column;
@@ -7394,6 +7586,144 @@ textarea::placeholder {
   .bill-meters,
   .bill-plans {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ---- Platform-owner billing console ---- */
+.owner-pv {
+  max-width: 900px;
+  padding: 6px 0 40px;
+}
+.owner-head {
+  margin-bottom: 22px;
+}
+.owner-h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.owner-sub {
+  margin: 6px 0 0;
+  max-width: 560px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+.owner-section {
+  margin-top: 24px;
+}
+.owner-h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.owner-count {
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+}
+.owner-pending-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.owner-pending {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+}
+.owner-ws-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.owner-ws-sub {
+  margin-top: 2px;
+  font-size: 11.375px;
+  color: var(--text-dim);
+}
+.owner-table {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.owner-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 84px 130px 110px 210px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 12.5px;
+  color: var(--text);
+}
+.owner-row:first-child {
+  border-top: none;
+}
+.owner-head-row {
+  background: var(--surface-2);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-dim);
+}
+.owner-usage,
+.owner-renews {
+  color: var(--text-dim);
+}
+.owner-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.owner-actions-h {
+  text-align: right;
+}
+.owner-iv {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--input-bg, var(--surface));
+  color: var(--text);
+  font-size: 11.375px;
+  cursor: pointer;
+}
+@media (max-width: 720px) {
+  .owner-row {
+    grid-template-columns: minmax(0, 1fr) 74px 150px;
+  }
+  .owner-row > .owner-renews,
+  .owner-head-row > span:nth-child(4) {
+    display: none;
+  }
+  .owner-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+  .owner-head-row > .owner-actions-h {
+    display: none;
   }
 }
 
