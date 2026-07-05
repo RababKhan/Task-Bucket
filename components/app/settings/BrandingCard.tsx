@@ -295,14 +295,14 @@ export default function BrandingCard() {
             </button>
             <span
               className="profile-update-wrap"
-              data-tip={!dirty && !saving ? "No changes to save" : undefined}
+              data-tip={!dirty && !saving ? "No changes to update" : undefined}
             >
               <button
                 className="btn btn-sm btn-primary"
                 onClick={save}
                 disabled={saving || !dirty}
               >
-                {saving ? <Spinner /> : "Save"}
+                {saving ? <Spinner /> : "Update"}
               </button>
             </span>
           </div>
