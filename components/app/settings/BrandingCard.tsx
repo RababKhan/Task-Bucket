@@ -349,7 +349,7 @@ export default function BrandingCard() {
         <div className="settings-field">
           <label>App name</label>
           <input
-            className="cf-input"
+            className="cf-input brand-name-input"
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             placeholder="Task Bucket"

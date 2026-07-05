@@ -7326,6 +7326,9 @@ textarea::placeholder {
   border-radius: 8px;
   width: 100%;
 }
+.brand-name-input {
+  max-width: 280px;
+}
 .brand-logo-row {
   display: flex;
   align-items: center;
