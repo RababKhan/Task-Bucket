@@ -42,8 +42,53 @@ function fileToLogo(file: File): Promise<string> {
   });
 }
 
-type Form = { name: string; logo: string; colorDark: string; colorLight: string };
-const EMPTY: Form = { name: "", logo: "", colorDark: "", colorLight: "" };
+// Center-crop to a square 64px favicon (keeps SVG/ICO as-is).
+function fileToFavicon(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    if (file.type === "image/svg+xml" || file.type.includes("icon")) {
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("read failed"));
+      reader.readAsDataURL(file);
+      return;
+    }
+    reader.onload = () => {
+      const img = document.createElement("img");
+      img.onload = () => {
+        const size = 64;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("no ctx"));
+        const scale = Math.max(size / img.width, size / img.height);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+        resolve(canvas.toDataURL("image/png"));
+      };
+      img.onerror = () => reject(new Error("bad image"));
+      img.src = reader.result as string;
+    };
+    reader.onerror = () => reject(new Error("read failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
+type Form = {
+  name: string;
+  logo: string;
+  favicon: string;
+  colorDark: string;
+  colorLight: string;
+};
+const EMPTY: Form = {
+  name: "",
+  logo: "",
+  favicon: "",
+  colorDark: "",
+  colorLight: "",
+};
 
 function ColorField({
   value,
@@ -101,6 +146,7 @@ export default function BrandingCard() {
           const v: Form = {
             name: d.name || "",
             logo: d.logo || "",
+            favicon: d.favicon || "",
             colorDark: d.colorDark || "",
             colorLight: d.colorLight || "",
           };
@@ -143,6 +189,27 @@ export default function BrandingCard() {
       setErr((e) => (e?.field === "logo" ? null : e));
     } catch {
       setErr({ field: "logo", msg: "Could not read that image." });
+    }
+  }
+
+  async function pickFavicon(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setErr({ field: "favicon", msg: "Please choose an image file." });
+      return;
+    }
+    if (file.size > 1024 * 1024) {
+      setErr({ field: "favicon", msg: "Favicon must be under 1 MB." });
+      return;
+    }
+    try {
+      const favicon = await fileToFavicon(file);
+      setForm((f) => ({ ...f, favicon }));
+      setErr((e) => (e?.field === "favicon" ? null : e));
+    } catch {
+      setErr({ field: "favicon", msg: "Could not read that image." });
     }
   }
 
@@ -236,6 +303,21 @@ export default function BrandingCard() {
             </span>
           </div>
           <div className="settings-field">
+            <label>Favicon</label>
+            <span className="brand-logo-preview">
+              {original.favicon ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={original.favicon} alt="" />
+              ) : (
+                <svg viewBox="0 0 40 40" fill="none" aria-hidden>
+                  <rect x="2" y="7" width="36" height="7" rx="3.5" fill="#3f3f46" />
+                  <rect x="2" y="17" width="26" height="7" rx="3.5" fill="#71717a" />
+                  <rect x="2" y="27" width="17" height="7" rx="3.5" fill="#a1a1aa" />
+                </svg>
+              )}
+            </span>
+          </div>
+          <div className="settings-field">
             <label>Primary color · Dark mode</label>
             <div className="brand-view-color">
               <span
@@ -305,6 +387,47 @@ export default function BrandingCard() {
             )}
           </div>
           <FieldError message={errFor("logo")} />
+        </div>
+
+        <div className="settings-field">
+          <label>Favicon</label>
+          <div className="brand-logo-row">
+            <span className="brand-logo-preview">
+              {form.favicon ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={form.favicon} alt="" />
+              ) : (
+                <svg viewBox="0 0 40 40" fill="none" aria-hidden>
+                  <rect x="2" y="7" width="36" height="7" rx="3.5" fill="#3f3f46" />
+                  <rect x="2" y="17" width="26" height="7" rx="3.5" fill="#71717a" />
+                  <rect x="2" y="27" width="17" height="7" rx="3.5" fill="#a1a1aa" />
+                </svg>
+              )}
+            </span>
+            <input
+              id="brand-favicon-file"
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={pickFavicon}
+            />
+            <label
+              htmlFor="brand-favicon-file"
+              className="btn btn-sm brand-upload"
+            >
+              Upload favicon
+            </label>
+            {form.favicon && (
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() => setForm((f) => ({ ...f, favicon: "" }))}
+              >
+                Remove
+              </button>
+            )}
+          </div>
+          <FieldError message={errFor("favicon")} />
         </div>
 
         <div className="brand-colors">

@@ -88,6 +88,7 @@ export const workspaces = pgTable("workspaces", {
   subdomain: text("subdomain").notNull().unique(),
   brandName: text("brand_name"),
   brandLogo: text("brand_logo"),
+  brandFavicon: text("brand_favicon"),
   brandColorDark: text("brand_color_dark"),
   brandColorLight: text("brand_color_light"),
   createdAt: text("created_at").notNull().default(nowText),

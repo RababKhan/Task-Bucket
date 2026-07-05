@@ -7,17 +7,19 @@ type BrandRow = {
   id: string;
   brand_name: string | null;
   brand_logo: string | null;
+  brand_favicon: string | null;
   brand_color_dark: string | null;
   brand_color_light: string | null;
 };
 
 const HEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
-const LOGO = /^data:image\/(png|jpe?g|webp|svg\+xml);base64,/;
+const LOGO = /^data:image\/(png|jpe?g|webp|svg\+xml|x-icon|vnd\.microsoft\.icon);base64,/;
 
 function payload(w: BrandRow | undefined) {
   return {
     name: w?.brand_name ?? "",
     logo: w?.brand_logo ?? "",
+    favicon: w?.brand_favicon ?? "",
     colorDark: w?.brand_color_dark ?? "",
     colorLight: w?.brand_color_light ?? "",
   };
@@ -27,7 +29,7 @@ async function currentWorkspace(userId: string) {
   const m = await getMembership(userId);
   if (!m) return null;
   const w = await dbGet<BrandRow>(
-    "SELECT id, brand_name, brand_logo, brand_color_dark, brand_color_light FROM workspaces WHERE id = ?",
+    "SELECT id, brand_name, brand_logo, brand_favicon, brand_color_dark, brand_color_light FROM workspaces WHERE id = ?",
     [m.workspace_id]
   );
   return { m, w };
@@ -64,22 +66,28 @@ export async function PATCH(request: Request) {
   const name =
     typeof body.name === "string" ? body.name.trim().slice(0, 40) : "";
   const logo = typeof body.logo === "string" ? body.logo.trim() : "";
+  const favicon = typeof body.favicon === "string" ? body.favicon.trim() : "";
   const colorDark =
     typeof body.colorDark === "string" ? body.colorDark.trim() : "";
   const colorLight =
     typeof body.colorLight === "string" ? body.colorLight.trim() : "";
 
-  if (logo && !LOGO.test(logo)) {
-    return NextResponse.json(
-      { error: "Unsupported logo image.", field: "logo" },
-      { status: 400 }
-    );
-  }
-  if (logo && logo.length > 400_000) {
-    return NextResponse.json(
-      { error: "Logo is too large. Use a smaller image.", field: "logo" },
-      { status: 400 }
-    );
+  for (const [img, field, label] of [
+    [logo, "logo", "Logo"],
+    [favicon, "favicon", "Favicon"],
+  ] as const) {
+    if (img && !LOGO.test(img)) {
+      return NextResponse.json(
+        { error: `Unsupported ${label.toLowerCase()} image.`, field },
+        { status: 400 }
+      );
+    }
+    if (img && img.length > 400_000) {
+      return NextResponse.json(
+        { error: `${label} is too large. Use a smaller image.`, field },
+        { status: 400 }
+      );
+    }
   }
   for (const [val, field] of [
     [colorDark, "colorDark"],
@@ -94,8 +102,15 @@ export async function PATCH(request: Request) {
   }
 
   await dbRun(
-    "UPDATE workspaces SET brand_name = ?, brand_logo = ?, brand_color_dark = ?, brand_color_light = ? WHERE id = ?",
-    [name || null, logo || null, colorDark || null, colorLight || null, cw.w.id]
+    "UPDATE workspaces SET brand_name = ?, brand_logo = ?, brand_favicon = ?, brand_color_dark = ?, brand_color_light = ? WHERE id = ?",
+    [
+      name || null,
+      logo || null,
+      favicon || null,
+      colorDark || null,
+      colorLight || null,
+      cw.w.id,
+    ]
   );
 
   return NextResponse.json({ ok: true });

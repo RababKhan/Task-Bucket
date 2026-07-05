@@ -11,11 +11,18 @@ import {
 export type Branding = {
   name: string;
   logo: string;
+  favicon: string;
   colorDark: string;
   colorLight: string;
 };
 
-const EMPTY: Branding = { name: "", logo: "", colorDark: "", colorLight: "" };
+const EMPTY: Branding = {
+  name: "",
+  logo: "",
+  favicon: "",
+  colorDark: "",
+  colorLight: "",
+};
 const CACHE_KEY = "tb-branding";
 
 const BrandingCtx = createContext<{
@@ -88,6 +95,23 @@ function applyColors(b: Branding) {
   el.textContent = rules.join("");
 }
 
+function applyFavicon(favicon: string) {
+  if (typeof document === "undefined") return;
+  let link = document.getElementById("brand-favicon") as HTMLLinkElement | null;
+  if (!favicon) {
+    // Cleared — drop the override so the app's default favicon applies.
+    if (link) link.remove();
+    return;
+  }
+  if (!link) {
+    link = document.createElement("link");
+    link.id = "brand-favicon";
+    link.rel = "icon";
+    document.head.appendChild(link);
+  }
+  link.href = favicon;
+}
+
 export default function BrandingProvider({
   children,
 }: {
@@ -103,6 +127,7 @@ export default function BrandingProvider({
         const b = { ...EMPTY, ...JSON.parse(cached) } as Branding;
         setBranding(b);
         applyColors(b);
+        applyFavicon(b.favicon);
       }
     } catch {}
   }, []);
@@ -115,6 +140,7 @@ export default function BrandingProvider({
         const b = { ...EMPTY, ...d } as Branding;
         setBranding(b);
         applyColors(b);
+        applyFavicon(b.favicon);
         try {
           localStorage.setItem(CACHE_KEY, JSON.stringify(b));
         } catch {}
