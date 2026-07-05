@@ -2676,9 +2676,6 @@ img.cm-tw-emoji {
   color: var(--text);
   border-bottom-color: var(--accent);
 }
-[data-theme="light"] .ptab.active {
-  border-bottom-color: var(--text);
-}
 
 /* Header action buttons: icon + label */
 .header-actions .btn svg {
