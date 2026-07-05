@@ -284,10 +284,11 @@ export default function BrandingCard() {
       {!editing ? (
         <>
         <div className="brand-view-top">
-          <div className="settings-field brand-view-name">
+          <div className="settings-field">
             <label>App name</label>
             <div className="settings-value">{original.name || "Task Bucket"}</div>
           </div>
+          <div className="brand-logo-pair">
           <div className="settings-field">
             <label>Logo</label>
             <span className="brand-logo-preview">
@@ -317,6 +318,7 @@ export default function BrandingCard() {
                 </svg>
               )}
             </span>
+          </div>
           </div>
         </div>
         <div className="settings-grid">

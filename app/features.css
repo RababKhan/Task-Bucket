@@ -7399,14 +7399,14 @@ textarea::placeholder {
   filter: brightness(1.2);
 }
 .brand-view-top {
-  display: flex;
-  align-items: flex-start;
-  gap: 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
   margin-bottom: 16px;
 }
-.brand-view-name {
-  flex: 1;
-  min-width: 0;
+.brand-logo-pair {
+  display: flex;
+  gap: 28px;
 }
 .brand-view-color {
   display: flex;
