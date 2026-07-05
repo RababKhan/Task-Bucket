@@ -123,8 +123,8 @@ function ColorField({
           onClick={() => onChange("")}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M3 2v6h6" />
-            <path d="M3.51 9a9 9 0 1 0 2.13-3.36L3 8" />
+            <polyline points="1 4 1 10 7 10" />
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
           </svg>
         </button>
       )}
