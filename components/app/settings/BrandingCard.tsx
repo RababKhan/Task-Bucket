@@ -415,10 +415,14 @@ export default function BrandingCard() {
             {form.logo && (
               <button
                 type="button"
-                className="btn btn-sm"
+                className="brand-img-remove"
+                data-tip="Remove"
+                aria-label="Remove logo"
                 onClick={() => setForm((f) => ({ ...f, logo: "" }))}
               >
-                Remove
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
               </button>
             )}
           </div>
@@ -456,10 +460,14 @@ export default function BrandingCard() {
             {form.favicon && (
               <button
                 type="button"
-                className="btn btn-sm"
+                className="brand-img-remove"
+                data-tip="Remove"
+                aria-label="Remove favicon"
                 onClick={() => setForm((f) => ({ ...f, favicon: "" }))}
               >
-                Remove
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
               </button>
             )}
           </div>
