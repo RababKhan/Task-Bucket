@@ -7398,6 +7398,9 @@ textarea::placeholder {
 .brand-color-reset:hover {
   filter: brightness(1.2);
 }
+.brand-span2 {
+  grid-column: 1 / -1;
+}
 .brand-view-color {
   display: flex;
   align-items: center;
