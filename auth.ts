@@ -11,6 +11,7 @@ import { ensureWorkspaceForUser } from "@/lib/workspace";
 import { getMembership } from "@/lib/membership";
 import { verifyTotp } from "@/lib/totp";
 import { consumeBackupCode } from "@/lib/security-db";
+import { isSuperAdminEmail } from "@/lib/owner";
 
 // Keep the session cookie small: uploaded avatars are stored as data URLs in
 // the DB, so reference them by endpoint (versioned by length to bust the cache
@@ -115,6 +116,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           role: m?.role ?? "admin",
         };
       }
+      // Platform-owner flag, recomputed from the current email on every pass.
+      token.super = isSuperAdminEmail((token.email as string | null) ?? null);
       return token;
     },
     async session({ session, token }) {
@@ -129,6 +132,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           role: "admin" | "manager" | "assignee";
         };
       }
+      session.is_superadmin = Boolean(token.super);
       return session;
     },
   },

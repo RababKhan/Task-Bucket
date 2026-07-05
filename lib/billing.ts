@@ -1,5 +1,5 @@
 import "server-only";
-import { dbGet, dbRun } from "@/lib/db";
+import { dbAll, dbGet, dbRun } from "@/lib/db";
 import { getMembership } from "@/lib/membership";
 import { isExpired } from "@/lib/invites";
 import {
@@ -8,6 +8,14 @@ import {
   type PlanId,
   type BillingInterval,
 } from "@/lib/plans";
+
+// "now + N months" in the app's stored timestamp format ("YYYY-MM-DD HH:MM:SS",
+// UTC) — the same shape isExpired() parses.
+function plusMonths(n: number): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() + n);
+  return d.toISOString().replace("T", " ").slice(0, 19);
+}
 
 export type Subscription = {
   workspace_id: string;
@@ -81,6 +89,120 @@ export async function getPendingRequest(
 ): Promise<{ interval: string; created_at: string } | undefined> {
   return dbGet<{ interval: string; created_at: string }>(
     "SELECT interval, created_at FROM billing_requests WHERE workspace_id = ? AND status = 'pending' ORDER BY id DESC LIMIT 1",
+    [workspaceId]
+  );
+}
+
+// ---- Owner (super-admin) activation ----
+
+export type OwnerBillingRow = {
+  workspace_id: string;
+  subdomain: string;
+  name: string;
+  plan: PlanId;
+  status: string;
+  interval: string | null;
+  current_period_end: string | null;
+  projects: number;
+  members: number;
+  pending_interval: string | null;
+  pending_created_at: string | null;
+};
+
+// Every workspace with its plan, usage, and any pending upgrade request. Pending
+// requests sort first so the owner sees what needs action at the top.
+export async function ownerBillingOverview(): Promise<OwnerBillingRow[]> {
+  return dbAll<OwnerBillingRow>(`
+    SELECT w.id AS workspace_id, w.subdomain, w.name,
+           COALESCE(s.plan, 'free') AS plan,
+           COALESCE(s.status, 'active') AS status,
+           s.interval AS interval,
+           s.current_period_end,
+           (SELECT COUNT(*) FROM projects p WHERE p.workspace_id = w.id) AS projects,
+           (SELECT COUNT(*) FROM workspace_members m
+              WHERE m.workspace_id = w.id AND m.active = 1) AS members,
+           pr.interval AS pending_interval,
+           pr.created_at AS pending_created_at
+    FROM workspaces w
+    LEFT JOIN subscriptions s ON s.workspace_id = w.id
+    LEFT JOIN LATERAL (
+      SELECT interval, created_at FROM billing_requests
+      WHERE workspace_id = w.id AND status = 'pending'
+      ORDER BY id DESC LIMIT 1
+    ) pr ON true
+    ORDER BY (pr.created_at IS NULL), w.created_at
+  `);
+}
+
+// Flip a workspace to Pro (mirrors the owner CLI). interval "year"/"month" sets a
+// 12- or 1-month expiry unless months is given; null interval => perpetual.
+export async function activateSubscription(
+  workspaceId: string,
+  opts: {
+    interval?: BillingInterval | null;
+    months?: number | null;
+    note?: string | null;
+    activatedBy: string;
+  }
+): Promise<{ expiry: string | null }> {
+  const interval =
+    opts.interval === "year" ? "year" : opts.interval === "month" ? "month" : null;
+  const months =
+    opts.months != null
+      ? opts.months
+      : interval === "year"
+        ? 12
+        : interval === "month"
+          ? 1
+          : null;
+  const expiry = months ? plusMonths(months) : null;
+  const note = opts.note ?? null;
+  await dbRun(
+    `INSERT INTO subscriptions
+       (workspace_id, plan, status, interval, current_period_end, note, activated_by, updated_at)
+     VALUES (?, 'pro', 'active', ?, ?, ?, ?, datetime('now'))
+     ON CONFLICT (workspace_id) DO UPDATE SET
+       plan = 'pro', status = 'active', interval = ?, current_period_end = ?,
+       note = ?, activated_by = ?, updated_at = datetime('now')`,
+    [workspaceId, interval, expiry, note, opts.activatedBy, interval, expiry, note, opts.activatedBy]
+  );
+  await dbRun(
+    "UPDATE billing_requests SET status = 'resolved', resolved_at = datetime('now') WHERE workspace_id = ? AND status = 'pending'",
+    [workspaceId]
+  );
+  return { expiry };
+}
+
+// Revert a workspace to Free.
+export async function deactivateSubscription(
+  workspaceId: string
+): Promise<void> {
+  await dbRun(
+    `INSERT INTO subscriptions (workspace_id, plan, status, updated_at)
+     VALUES (?, 'free', 'free', datetime('now'))
+     ON CONFLICT (workspace_id) DO UPDATE SET
+       plan = 'free', status = 'free', current_period_end = NULL, updated_at = datetime('now')`,
+    [workspaceId]
+  );
+}
+
+export async function getWorkspaceMeta(
+  workspaceId: string
+): Promise<{ subdomain: string; name: string } | undefined> {
+  return dbGet<{ subdomain: string; name: string }>(
+    "SELECT subdomain, name FROM workspaces WHERE id = ?",
+    [workspaceId]
+  );
+}
+
+// Active admins of a workspace — recipients of the "you're on Pro" email.
+export async function workspaceAdminEmails(
+  workspaceId: string
+): Promise<{ email: string; name: string | null }[]> {
+  return dbAll<{ email: string; name: string | null }>(
+    `SELECT u.email, u.name FROM workspace_members m
+       JOIN users u ON u.id = m.user_id
+      WHERE m.workspace_id = ? AND m.active = 1 AND m.role = 'admin'`,
     [workspaceId]
   );
 }

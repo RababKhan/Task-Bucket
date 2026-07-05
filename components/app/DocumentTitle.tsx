@@ -10,6 +10,7 @@ function pageTitle(pathname: string): string {
   if (pathname.startsWith("/tasks")) return "Tasks";
   if (pathname.startsWith("/directory")) return "Employee Directory";
   if (pathname.startsWith("/timesheet")) return "Time Sheet";
+  if (pathname.startsWith("/owner")) return "Platform billing";
   if (pathname.startsWith("/settings")) return "Settings";
   if (pathname.startsWith("/task/")) return "Task";
   if (pathname.startsWith("/project")) return "Project";

@@ -69,6 +69,13 @@ const HelpIcon = (
     <path d="M12 17h.01" />
   </svg>
 );
+const PlatformIcon = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M3 21h18" />
+    <path d="M5 21V10l7-5 7 5v11" />
+    <path d="M9 21v-6h6v6" />
+  </svg>
+);
 
 function NavLink({
   href,
@@ -128,6 +135,10 @@ function Sidebar({
   // The Employee Directory requires team_member:view.
   const canViewDirectory = useCan("team_member", "view");
 
+  // Platform-owner console — only for super-admins (allowlisted email).
+  const { data: session } = useSession();
+  const isSuperAdmin = Boolean(session?.is_superadmin);
+
   const prefetch = usePrefetch();
   const { branding } = useBranding();
 
@@ -172,6 +183,14 @@ function Sidebar({
       </nav>
 
       <div className="sidebar-bottom">
+        {isSuperAdmin && (
+          <NavLink
+            href="/owner"
+            label="Platform"
+            icon={PlatformIcon}
+            active={isActive("/owner")}
+          />
+        )}
         <NavLink
           href="/settings"
           label="Settings"
@@ -198,6 +217,7 @@ function sectionTitle(pathname: string) {
   if (pathname.startsWith("/tasks")) return "Tasks";
   if (pathname.startsWith("/directory")) return "Employee Directory";
   if (pathname.startsWith("/timesheet")) return "Time Sheet";
+  if (pathname.startsWith("/owner")) return "Platform billing";
   // The settings sub-nav already names the section; the topbar stays "Settings".
   if (pathname.startsWith("/settings")) return "Settings";
   if (pathname.startsWith("/task")) return "Task";

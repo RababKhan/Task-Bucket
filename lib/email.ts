@@ -113,6 +113,28 @@ export function inviteEmail(
   return { subject, html, text };
 }
 
+export function billingActivatedEmail(
+  workspaceName: string,
+  expiry: string | null
+): { subject: string; html: string; text: string } {
+  const subject = `Your ${workspaceName} workspace is now on Pro 🎉`;
+  const renews = expiry
+    ? `Your plan is active until ${expiry.slice(0, 10)}.`
+    : "Your plan is active with no expiry.";
+  const text =
+    `Good news — we've verified your bank transfer and upgraded the "${workspaceName}" workspace to Pro.\n\n` +
+    `${renews}\n\n` +
+    `You now have unlimited projects and members, plus Sprints, custom fields, and RBAC. Thanks for your support!`;
+  const html = `
+    <div style="font-family:system-ui,sans-serif;max-width:480px;margin:auto;padding:24px;color:#1a1a1a">
+      <h2 style="margin:0 0 12px">You're on Pro 🎉</h2>
+      <p style="color:#555">We've verified your bank transfer and upgraded the <strong>${workspaceName}</strong> workspace to <strong>Pro</strong>.</p>
+      <p style="color:#555">${renews}</p>
+      <p style="color:#555">You now have unlimited projects and members, plus Sprints, custom fields, and RBAC. Thanks for your support!</p>
+    </div>`;
+  return { subject, html, text };
+}
+
 export function passwordResetEmail(resetUrl: string): {
   subject: string;
   html: string;

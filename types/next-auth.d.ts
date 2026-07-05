@@ -12,6 +12,7 @@ declare module "next-auth" {
       id: string;
     } & DefaultSession["user"];
     workspace?: WorkspaceClaim;
+    is_superadmin?: boolean;
   }
 }
 
@@ -19,5 +20,6 @@ declare module "next-auth/jwt" {
   interface JWT {
     uid?: string;
     ws?: WorkspaceClaim;
+    super?: boolean;
   }
 }
