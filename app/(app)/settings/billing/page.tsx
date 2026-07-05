@@ -104,13 +104,6 @@ export default function BillingPage() {
 
   return (
     <div className="pv billing-pv">
-      <div className="billing-head">
-        <h1>Billing &amp; Plan</h1>
-        <p className="settings-card-sub">
-          Manage your workspace subscription and see your usage.
-        </p>
-      </div>
-
       {error && <p className="invite-err">{error}</p>}
 
       {/* Current plan + usage */}
