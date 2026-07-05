@@ -5,7 +5,9 @@ import Spinner from "@/components/Spinner";
 import FieldError from "@/components/FieldError";
 import { useBranding } from "@/components/app/BrandingProvider";
 
-const DEFAULT_ACCENT = "#1f6feb";
+// Theme defaults must match globals.css (:root dark, [data-theme="light"]).
+const DEFAULT_DARK = "#1f6feb";
+const DEFAULT_LIGHT = "#44403c";
 
 // Rasterize a bitmap logo to fit 128px (keeps SVGs as-is to preserve vectors).
 function fileToLogo(file: File): Promise<string> {
@@ -46,16 +48,18 @@ const EMPTY: Form = { name: "", logo: "", colorDark: "", colorLight: "" };
 function ColorField({
   value,
   onChange,
+  defaultColor,
 }: {
   value: string;
   onChange: (v: string) => void;
+  defaultColor: string;
 }) {
   return (
     <div className="brand-color">
       <input
         type="color"
         className="brand-color-swatch"
-        value={value || DEFAULT_ACCENT}
+        value={value || defaultColor}
         onChange={(e) => onChange(e.target.value)}
         aria-label="Pick color"
       />
@@ -63,7 +67,7 @@ function ColorField({
         className="cf-input brand-color-hex"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={DEFAULT_ACCENT}
+        placeholder={defaultColor}
       />
       {value && (
         <button
@@ -236,9 +240,9 @@ export default function BrandingCard() {
             <div className="brand-view-color">
               <span
                 className="brand-view-swatch"
-                style={{ background: original.colorDark || DEFAULT_ACCENT }}
+                style={{ background: original.colorDark || DEFAULT_DARK }}
               />
-              {original.colorDark || DEFAULT_ACCENT}
+              {original.colorDark || DEFAULT_DARK}
             </div>
           </div>
           <div className="settings-field">
@@ -246,9 +250,9 @@ export default function BrandingCard() {
             <div className="brand-view-color">
               <span
                 className="brand-view-swatch"
-                style={{ background: original.colorLight || DEFAULT_ACCENT }}
+                style={{ background: original.colorLight || DEFAULT_LIGHT }}
               />
-              {original.colorLight || DEFAULT_ACCENT}
+              {original.colorLight || DEFAULT_LIGHT}
             </div>
           </div>
         </div>
@@ -308,6 +312,7 @@ export default function BrandingCard() {
             <label>Primary color · Dark mode</label>
             <ColorField
               value={form.colorDark}
+              defaultColor={DEFAULT_DARK}
               onChange={(v) => {
                 setForm((f) => ({ ...f, colorDark: v }));
                 if (err?.field === "colorDark") setErr(null);
@@ -319,6 +324,7 @@ export default function BrandingCard() {
             <label>Primary color · Light mode</label>
             <ColorField
               value={form.colorLight}
+              defaultColor={DEFAULT_LIGHT}
               onChange={(v) => {
                 setForm((f) => ({ ...f, colorLight: v }));
                 if (err?.field === "colorLight") setErr(null);
