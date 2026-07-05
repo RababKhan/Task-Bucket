@@ -321,7 +321,7 @@ export default function BrandingCard() {
           </div>
           </div>
         </div>
-        <div className="settings-grid">
+        <div className="brand-colors">
           <div className="settings-field">
             <label>Primary color · Dark mode</label>
             <div className="brand-view-color">
@@ -345,7 +345,8 @@ export default function BrandingCard() {
         </div>
         </>
       ) : (
-      <div className="brand-fields">
+      <>
+      <div className="brand-view-top">
         <div className="settings-field">
           <label>App name</label>
           <input
@@ -357,6 +358,7 @@ export default function BrandingCard() {
           />
         </div>
 
+        <div className="brand-logo-pair">
         <div className="settings-field">
           <label>Logo</label>
           <div className="brand-logo-row">
@@ -380,7 +382,7 @@ export default function BrandingCard() {
               onChange={pickLogo}
             />
             <label htmlFor="brand-logo-file" className="btn btn-sm brand-upload">
-              Upload logo
+              Upload
             </label>
             {form.logo && (
               <button
@@ -421,7 +423,7 @@ export default function BrandingCard() {
               htmlFor="brand-favicon-file"
               className="btn btn-sm brand-upload"
             >
-              Upload favicon
+              Upload
             </label>
             {form.favicon && (
               <button
@@ -435,6 +437,8 @@ export default function BrandingCard() {
           </div>
           <FieldError message={errFor("favicon")} />
         </div>
+        </div>
+      </div>
 
         <div className="brand-colors">
           <div className="settings-field">
@@ -462,7 +466,7 @@ export default function BrandingCard() {
             <FieldError message={errFor("colorLight")} />
           </div>
         </div>
-      </div>
+      </>
       )}
     </div>
   );

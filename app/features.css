@@ -7409,7 +7409,20 @@ textarea::placeholder {
 }
 .brand-logo-pair {
   display: flex;
-  gap: 28px;
+  gap: 20px;
+}
+.brand-logo-pair .settings-field {
+  min-width: 0;
+}
+/* Inputs keep the compact 28px look now that .brand-fields no longer wraps them. */
+.brand-view-top .cf-input,
+.brand-color .cf-input {
+  height: 28px;
+  font-size: 11.375px;
+  border-radius: 8px;
+}
+.brand-view-top .brand-logo-row {
+  flex-wrap: wrap;
 }
 .brand-view-color {
   display: flex;
