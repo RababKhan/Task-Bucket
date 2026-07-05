@@ -13,8 +13,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Task Bucket — Project & Task Manager",
-  description: "A simple project and task manager built with Next.js + SQLite.",
+  title: "Task Bucket",
+  description: "Project and task management for your team.",
 };
 
 export default function RootLayout({
