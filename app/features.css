@@ -7372,6 +7372,7 @@ textarea::placeholder {
   display: flex;
   align-items: center;
   gap: 8px;
+  max-width: 280px;
 }
 .brand-color-swatch {
   width: 30px;
