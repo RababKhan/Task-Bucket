@@ -7425,6 +7425,20 @@ textarea::placeholder {
   gap: 16px;
   margin-bottom: 16px;
 }
+.field-info {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: 4px;
+  color: var(--text-dim);
+  cursor: help;
+}
+.field-info:hover {
+  color: var(--text);
+}
+.field-info svg {
+  width: 12px;
+  height: 12px;
+}
 .brand-logo-pair {
   display: flex;
   gap: 20px;
