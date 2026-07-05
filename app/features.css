@@ -7013,198 +7013,388 @@ textarea::placeholder {
 
 /* ---- Billing ---- */
 .billing-pv {
-  max-width: 720px;
-  padding: 24px 32px;
+  max-width: 780px;
+  padding: 24px 32px 44px;
 }
-.billing-head h1 {
-  font-size: 20px;
-  font-weight: 600;
-  margin: 0 0 4px;
-}
-.billing-current {
+
+/* Current plan */
+.bill-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 16px;
-  margin: 16px 0;
+  border-radius: 12px;
   background: var(--surface);
 }
-.billing-current-row {
+.bill-hero-label {
+  font-size: 11.375px;
+  color: var(--text-dim);
+  margin-bottom: 7px;
+}
+.bill-hero-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 6px 0;
-  font-size: 13px;
-  color: var(--text-dim);
+  gap: 10px;
 }
-.billing-current-row strong {
-  color: var(--text);
-}
-.plan-badge {
-  padding: 2px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-}
-.plan-badge.plan-free {
-  background: var(--surface-2);
-  color: var(--text-dim);
-}
-.plan-badge.plan-pro {
-  background: rgba(31, 111, 235, 0.15);
-  color: var(--link);
-}
-.billing-usage {
-  display: flex;
-  gap: 24px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border);
+.bill-hero-cycle {
   font-size: 12.5px;
   color: var(--text-dim);
 }
-.billing-plans {
+.bill-hero-renew {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 11.375px;
+  color: var(--text-dim);
+}
+.bill-hero-renew strong {
+  color: var(--text);
+  font-size: 13px;
+}
+.bill-badge {
+  padding: 3px 11px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.bill-badge-free {
+  background: var(--surface-2);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+.bill-badge-pro {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+/* Usage meters */
+.bill-meters {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
-  margin: 16px 0;
+  margin-top: 14px;
 }
-.billing-plan-card {
+.bill-meter {
+  padding: 14px 16px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 18px;
   background: var(--surface);
 }
-.billing-plan-card.current {
-  border-color: var(--accent);
+.bill-meter-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 9px;
 }
-.billing-plan-name {
+.bill-meter-label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+}
+.bill-meter-count {
+  font-size: 11.375px;
+  color: var(--text-dim);
+}
+.bill-meter-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.bill-meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.45s ease;
+}
+.bill-meter-fill.near {
+  background: var(--warning, #d29922);
+}
+.bill-meter-fill.unlimited {
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+/* Billing period toggle */
+.bill-toggle {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  margin: 24px 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.bill-toggle button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 16px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.bill-toggle button.active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+.bill-save {
+  font-size: 10px;
   font-weight: 600;
-  font-size: 15px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--done) 18%, transparent);
+  color: var(--done);
 }
-.billing-plan-price {
-  font-size: 26px;
+
+/* Plan cards */
+.bill-plans {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.bill-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.bill-card.featured {
+  border-color: var(--accent);
+  box-shadow:
+    inset 0 0 0 1px var(--accent),
+    0 8px 26px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.bill-card-tag {
+  position: absolute;
+  top: -10px;
+  right: 18px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  background: var(--accent);
+  color: #fff;
+}
+.bill-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.bill-card-price {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 8px;
+}
+.bill-amount {
+  font-size: 30px;
   font-weight: 700;
-  margin: 6px 0 12px;
+  letter-spacing: -0.02em;
+  color: var(--text);
 }
-.billing-plan-per {
+.bill-per {
   font-size: 13px;
   font-weight: 500;
   color: var(--text-dim);
 }
-.billing-plan-features {
+.bill-card-sub {
+  min-height: 16px;
+  margin-top: 3px;
+  font-size: 11.375px;
+  color: var(--text-dim);
+}
+.bill-features {
   list-style: none;
-  margin: 0;
+  margin: 16px 0 20px;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-size: 12.5px;
-  color: var(--text-dim);
+  gap: 9px;
+  flex: 1;
 }
-.billing-plan-features li::before {
-  content: "✓";
-  color: var(--done);
-  margin-right: 6px;
-}
-.billing-plan-current {
-  margin-top: 12px;
-  font-size: 12px;
-  color: var(--accent);
-  font-weight: 600;
-}
-.billing-actions {
+.bill-features li {
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 8px;
-}
-
-/* ---- Billing: manual bank transfer ---- */
-.billing-sec-title {
-  font-size: 15px;
-  font-weight: 600;
-  margin: 0 0 12px;
-}
-.billing-upgrade {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 18px;
-  background: var(--surface);
-}
-.billing-interval {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 14px;
-}
-.billing-int-opt {
-  display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 13px;
-  cursor: pointer;
-}
-.billing-int-opt.sel {
-  border-color: var(--accent);
-  background: var(--surface-2);
-}
-.billing-steps {
-  margin: 0 0 14px;
-  padding-left: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--text-dim);
-}
-.billing-steps strong,
-.billing-steps code {
+  font-size: 12.5px;
   color: var(--text);
 }
-.billing-domain {
+.bill-check {
+  width: 15px;
+  height: 15px;
+  margin-top: 1px;
+  flex-shrink: 0;
+  color: var(--done);
+}
+.bill-card-cta {
+  margin-top: auto;
+}
+.bill-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Notes / pending */
+.bill-note {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+.bill-note strong {
+  color: var(--text);
+}
+.bill-pending {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+.bill-pending strong {
+  color: var(--text);
+}
+.bill-pending-ic {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.bill-pending-ic svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Bank transfer upgrade */
+.bill-upgrade {
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.bill-upgrade-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.bill-upgrade-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.bill-upgrade-amount {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+}
+.bill-upgrade-amount span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+.bill-steps {
+  list-style: none;
+  margin: 16px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+.bill-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.bill-steps strong,
+.bill-steps code {
+  color: var(--text);
+}
+.bill-step-n {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+}
+.bill-domain {
   padding: 1px 7px;
   border-radius: 5px;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  font-family: var(--font-mono, monospace);
-  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
 }
-.billing-bank {
-  margin: 0 0 16px;
+.bill-bank {
+  margin: 0 0 18px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
 }
-.billing-bank-row {
+.bill-bank-row {
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  padding: 9px 14px;
-  font-size: 13px;
+  padding: 10px 14px;
+  font-size: 12.5px;
   border-top: 1px solid var(--border);
 }
-.billing-bank-row:first-child {
+.bill-bank-row:first-child {
   border-top: none;
 }
-.billing-bank-row dt {
-  color: var(--text-dim);
-  margin: 0;
+.bill-bank-row:nth-child(even) {
+  background: color-mix(in srgb, var(--surface-2) 45%, transparent);
 }
-.billing-bank-row dd {
-  margin: 0;
+.bill-bank-k {
+  color: var(--text-dim);
+}
+.bill-bank-v {
   font-weight: 500;
   text-align: right;
+  word-break: break-word;
 }
-.billing-pending {
-  border: 1px solid var(--accent);
-  border-radius: 10px;
-  padding: 16px;
-  background: var(--surface-2);
-  font-size: 13px;
-  line-height: 1.5;
+
+@media (max-width: 680px) {
+  .bill-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .bill-hero-renew {
+    align-items: flex-start;
+  }
+  .bill-meters,
+  .bill-plans {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ---- Settings sub-navigation ---- */
