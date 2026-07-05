@@ -14,11 +14,19 @@ export type PlanLimits = {
 export type Plan = {
   id: PlanId;
   name: string;
-  // Display price in whole currency units (USD). 0 for free.
+  // Display price in whole currency units (BDT). 0 for free.
   price: { month: number; year: number };
   limits: PlanLimits;
   features: string[];
 };
+
+// Display currency for all plan prices. The workspace bills in Bangladeshi Taka.
+export const CURRENCY = { code: "BDT", symbol: "৳" } as const;
+
+// Format a whole-taka amount for display, e.g. 12000 -> "৳12,000".
+export function fmtPrice(amount: number): string {
+  return `${CURRENCY.symbol}${amount.toLocaleString("en-US")}`;
+}
 
 export const PLANS: Record<PlanId, Plan> = {
   free: {
@@ -31,7 +39,7 @@ export const PLANS: Record<PlanId, Plan> = {
   pro: {
     id: "pro",
     name: "Pro",
-    price: { month: 12, year: 120 },
+    price: { month: 1500, year: 15000 },
     limits: { projects: null, members: null },
     features: [
       "Unlimited projects",

@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Spinner from "@/components/Spinner";
-import { PLANS, type PlanId, type BillingInterval } from "@/lib/plans";
+import { PLANS, fmtPrice, type PlanId, type BillingInterval } from "@/lib/plans";
 
 type Bank = {
   beneficiary: string;
@@ -101,7 +101,8 @@ export default function BillingPage() {
   const [interval, setInterval] = useState<BillingInterval>("month");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const upgradeRef = useRef<HTMLDivElement>(null);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [paySelected, setPaySelected] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/billing");
@@ -112,6 +113,15 @@ export default function BillingPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Close the upgrade modal on Escape.
+  useEffect(() => {
+    if (!upgradeOpen) return;
+    const onKey = (e: KeyboardEvent) =>
+      e.key === "Escape" && setUpgradeOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [upgradeOpen]);
 
   async function requestUpgrade() {
     setBusy(true);
@@ -127,6 +137,7 @@ export default function BillingPage() {
       setError(data.error || "Could not submit your request.");
       return;
     }
+    setUpgradeOpen(false);
     load();
   }
 
@@ -148,14 +159,14 @@ export default function BillingPage() {
   );
 
   function priceFor(id: PlanId) {
-    if (id === "free") return { amount: "$0", per: "/mo", sub: "" };
+    if (id === "free") return { amount: fmtPrice(0), per: "/mo", sub: "" };
     if (interval === "year")
       return {
-        amount: `$${PLANS.pro.price.year}`,
+        amount: fmtPrice(PLANS.pro.price.year),
         per: "/yr",
-        sub: `$${Math.round(PLANS.pro.price.year / 12)}/mo, billed annually`,
+        sub: `${fmtPrice(Math.round(PLANS.pro.price.year / 12))}/mo, billed annually`,
       };
-    return { amount: `$${PLANS.pro.price.month}`, per: "/mo", sub: "" };
+    return { amount: fmtPrice(PLANS.pro.price.month), per: "/mo", sub: "" };
   }
 
   return (
@@ -254,12 +265,10 @@ export default function BillingPage() {
                 ) : featured && canUpgrade ? (
                   <button
                     className="btn btn-primary bill-btn"
-                    onClick={() =>
-                      upgradeRef.current?.scrollIntoView({
-                        behavior: "smooth",
-                        block: "start",
-                      })
-                    }
+                    onClick={() => {
+                      setPaySelected(false);
+                      setUpgradeOpen(true);
+                    }}
                   >
                     Upgrade to Pro
                   </button>
@@ -304,64 +313,147 @@ export default function BillingPage() {
             domain to {info.contact.email || "us"}.
           </div>
         </div>
-      ) : (
-        <div className="bill-upgrade" ref={upgradeRef}>
-          <div className="bill-upgrade-head">
-            <h2>Upgrade to Pro by bank transfer</h2>
-            <span className="bill-upgrade-amount">
-              ${amount}
-              <span>/{interval === "year" ? "yr" : "mo"}</span>
-            </span>
-          </div>
-          <ol className="bill-steps">
-            <li>
-              <span className="bill-step-n">1</span>
-              <span>
-                Transfer <strong>${amount}</strong> to the account below.
-              </span>
-            </li>
-            <li>
-              <span className="bill-step-n">2</span>
-              <span>
-                Email your payment invoice and workspace domain{" "}
-                <code className="bill-domain">{info.workspace.subdomain}</code>{" "}
-                to{" "}
-                {info.contact.email ? (
-                  <strong>{info.contact.email}</strong>
-                ) : (
-                  "our billing contact"
-                )}
-                .
-              </span>
-            </li>
-            <li>
-              <span className="bill-step-n">3</span>
-              <span>Click the button below so we know to expect it.</span>
-            </li>
-          </ol>
+      ) : null}
 
-          {bankLines.length > 0 ? (
-            <div className="bill-bank">
-              {bankLines.map((f) => (
-                <div key={f.key} className="bill-bank-row">
-                  <span className="bill-bank-k">{f.label}</span>
-                  <span className="bill-bank-v">{info.contact.bank[f.key]}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="invite-err">
-              Bank details aren&apos;t configured yet. See BILLING.md.
-            </p>
-          )}
-
-          <button
-            className="btn btn-primary"
-            onClick={requestUpgrade}
-            disabled={busy}
+      {/* Upgrade-by-bank-transfer modal (opened from the Pro card CTA) */}
+      {upgradeOpen && canUpgrade && (
+        <div
+          className="overlay"
+          onMouseDown={() => !busy && setUpgradeOpen(false)}
+        >
+          <div
+            className="modal bill-modal"
+            onMouseDown={(e) => e.stopPropagation()}
           >
-            {busy ? <Spinner /> : "I've made the transfer — request activation"}
-          </button>
+            {/* Left: payment method + instructions */}
+            <div className="bill-modal-main">
+              <h2 className="bill-co-h1">Let&apos;s complete the payment process!</h2>
+
+              <h3 className="bill-co-h2">Select Payment Method</h3>
+              <button
+                type="button"
+                className={`bill-pay-method${paySelected ? " selected" : ""}`}
+                onClick={() => setPaySelected(true)}
+              >
+                <span className="bill-pay-ic" aria-hidden>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 21h18" />
+                    <path d="M5 21V10l7-5 7 5v11" />
+                    <path d="M9 21v-6h6v6" />
+                  </svg>
+                </span>
+                <span className="bill-pay-name">Bank Payment</span>
+                {paySelected && (
+                  <span className="bill-pay-check" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                  </span>
+                )}
+              </button>
+
+              {paySelected && (
+                <div className="bill-instr">
+                  <h4 className="bill-instr-h">Manual Banking Instruction</h4>
+                  {bankLines.length > 0 ? (
+                    <div className="bill-instr-body">
+                      <p className="bill-instr-sub">Bank transfer details</p>
+                      <ul>
+                        {bankLines.map((f) => (
+                          <li key={f.key}>
+                            <strong>{f.label}:</strong>{" "}
+                            {info.contact.bank[f.key]}
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="bill-instr-note">
+                        Please send payment within 3 business days and email your
+                        invoice with workspace domain{" "}
+                        <code className="bill-domain">
+                          {info.workspace.subdomain}
+                        </code>{" "}
+                        to{" "}
+                        {info.contact.email ? (
+                          <strong>{info.contact.email}</strong>
+                        ) : (
+                          "our billing contact"
+                        )}{" "}
+                        once complete.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="invite-err">
+                      Bank details aren&apos;t configured yet. See BILLING.md.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="bill-co-actions">
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => setUpgradeOpen(false)}
+                  disabled={busy}
+                >
+                  Back
+                </button>
+                {paySelected && bankLines.length > 0 && (
+                  <button
+                    className="btn btn-primary"
+                    onClick={requestUpgrade}
+                    disabled={busy}
+                  >
+                    {busy ? <Spinner /> : "I've made the transfer"}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Right: order summary */}
+            <aside className="bill-modal-summary">
+              <h3 className="bill-sum-title">Order Summary</h3>
+
+              <div className="bill-sum-plan-block">
+                <div className="bill-sum-plan">Pro</div>
+                <div className="bill-sum-cycle">
+                  {interval === "year" ? "Yearly billing" : "Monthly billing"}
+                </div>
+              </div>
+
+              <div className="bill-sum-row">
+                <span>Pro ({interval === "year" ? "Yearly" : "Monthly"})</span>
+                <span>{fmtPrice(amount)}</span>
+              </div>
+              {interval === "year" && (
+                <div className="bill-sum-row bill-sum-muted">
+                  <span>Effective monthly</span>
+                  <span>{fmtPrice(Math.round(amount / 12))}/mo</span>
+                </div>
+              )}
+
+              <div className="bill-sum-divider" />
+
+              <div className="bill-sum-row">
+                <span>Subtotal</span>
+                <span>{fmtPrice(amount)}</span>
+              </div>
+              <div className="bill-sum-row bill-sum-total-line">
+                <span>Total</span>
+                <span>{fmtPrice(amount)}</span>
+              </div>
+
+              <div className="bill-sum-divider" />
+
+              <div className="bill-sum-total">
+                <span>Total Amount</span>
+                <span className="bill-sum-amount">
+                  {fmtPrice(amount)}
+                  <span>/{interval === "year" ? "yr" : "mo"}</span>
+                </span>
+              </div>
+            </aside>
+          </div>
         </div>
       )}
     </div>
