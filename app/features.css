@@ -7398,8 +7398,15 @@ textarea::placeholder {
 .brand-color-reset:hover {
   filter: brightness(1.2);
 }
-.brand-span2 {
-  grid-column: 1 / -1;
+.brand-view-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  margin-bottom: 16px;
+}
+.brand-view-name {
+  flex: 1;
+  min-width: 0;
 }
 .brand-view-color {
   display: flex;

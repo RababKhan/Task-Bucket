@@ -282,8 +282,8 @@ export default function BrandingCard() {
       </div>
 
       {!editing ? (
-        <div className="settings-grid">
-          <div className="settings-field brand-span2">
+        <div className="brand-view-top">
+          <div className="settings-field brand-view-name">
             <label>App name</label>
             <div className="settings-value">{original.name || "Task Bucket"}</div>
           </div>
@@ -317,6 +317,8 @@ export default function BrandingCard() {
               )}
             </span>
           </div>
+        </div>
+        <div className="settings-grid">
           <div className="settings-field">
             <label>Primary color · Dark mode</label>
             <div className="brand-view-color">
