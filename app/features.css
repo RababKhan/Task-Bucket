@@ -7354,7 +7354,16 @@ textarea::placeholder {
   width: 16px;
   height: 16px;
 }
-.brand-upload {
+/* The upload control is a <label>, so the generic .settings-field label styles
+   hit it — restore the button look (centered text, btn font/color, no margin). */
+.brand-logo-row .brand-upload {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--text);
   cursor: pointer;
 }
 .brand-colors {
