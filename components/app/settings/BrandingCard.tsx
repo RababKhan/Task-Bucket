@@ -129,7 +129,7 @@ function ColorField({
 }
 
 export default function BrandingCard() {
-  const { refresh } = useBranding();
+  const { setPreview, commit } = useBranding();
   const [original, setOriginal] = useState<Form>(EMPTY);
   const [form, setForm] = useState<Form>(EMPTY);
   const [loaded, setLoaded] = useState(false);
@@ -157,6 +157,13 @@ export default function BrandingCard() {
       .finally(() => setLoaded(true));
   }, []);
 
+  // Live-preview the unsaved branding (sidebar name/logo/favicon + theme colors)
+  // while editing; clear it when leaving the card.
+  useEffect(() => {
+    if (editing) setPreview(form);
+  }, [editing, form, setPreview]);
+  useEffect(() => () => setPreview(null), [setPreview]);
+
   const dirty = JSON.stringify(form) !== JSON.stringify(original);
   const errFor = (f: string) => (err?.field === f ? err.msg : undefined);
 
@@ -169,6 +176,7 @@ export default function BrandingCard() {
     setForm(original);
     setErr(null);
     setEditing(false);
+    setPreview(null);
   }
 
   async function pickLogo(e: React.ChangeEvent<HTMLInputElement>) {
@@ -230,7 +238,7 @@ export default function BrandingCard() {
     }
     setOriginal(form);
     setEditing(false);
-    refresh(); // re-apply branding across the app
+    commit(form); // make it the saved branding across the app (no flicker)
     setOk(true);
     setTimeout(() => setOk(false), 2500);
   }

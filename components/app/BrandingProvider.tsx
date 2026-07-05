@@ -28,7 +28,14 @@ const CACHE_KEY = "tb-branding";
 const BrandingCtx = createContext<{
   branding: Branding;
   refresh: () => void;
-}>({ branding: EMPTY, refresh: () => {} });
+  setPreview: (b: Branding | null) => void;
+  commit: (b: Branding) => void;
+}>({
+  branding: EMPTY,
+  refresh: () => {},
+  setPreview: () => {},
+  commit: () => {},
+});
 
 export function useBranding() {
   return useContext(BrandingCtx);
@@ -117,18 +124,23 @@ export default function BrandingProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [branding, setBranding] = useState<Branding>(EMPTY);
+  // `base` is the saved branding; `preview` is a live (unsaved) overlay the
+  // settings form pushes while editing. The effective branding is preview ?? base.
+  const [base, setBase] = useState<Branding>(EMPTY);
+  const [preview, setPreview] = useState<Branding | null>(null);
+  const branding = preview ?? base;
 
-  // Instant hydrate from cache (avoids a flash of default branding), then apply.
+  // Re-apply colors + favicon whenever the effective branding changes.
+  useEffect(() => {
+    applyColors(branding);
+    applyFavicon(branding.favicon);
+  }, [branding]);
+
+  // Instant hydrate from cache (avoids a flash of default branding).
   useEffect(() => {
     try {
       const cached = localStorage.getItem(CACHE_KEY);
-      if (cached) {
-        const b = { ...EMPTY, ...JSON.parse(cached) } as Branding;
-        setBranding(b);
-        applyColors(b);
-        applyFavicon(b.favicon);
-      }
+      if (cached) setBase({ ...EMPTY, ...JSON.parse(cached) } as Branding);
     } catch {}
   }, []);
 
@@ -138,9 +150,7 @@ export default function BrandingProvider({
       .then((d) => {
         if (!d) return;
         const b = { ...EMPTY, ...d } as Branding;
-        setBranding(b);
-        applyColors(b);
-        applyFavicon(b.favicon);
+        setBase(b);
         try {
           localStorage.setItem(CACHE_KEY, JSON.stringify(b));
         } catch {}
@@ -152,8 +162,21 @@ export default function BrandingProvider({
     refresh();
   }, [refresh]);
 
+  // Commit a saved value: make it the base and drop the preview (no flicker).
+  const commit = useCallback((b: Branding) => {
+    setBase(b);
+    setPreview(null);
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify(b));
+    } catch {}
+  }, []);
+
+  const setPreviewCb = useCallback((b: Branding | null) => setPreview(b), []);
+
   return (
-    <BrandingCtx.Provider value={{ branding, refresh }}>
+    <BrandingCtx.Provider
+      value={{ branding, refresh, setPreview: setPreviewCb, commit }}
+    >
       {children}
     </BrandingCtx.Provider>
   );
