@@ -7306,6 +7306,104 @@ textarea::placeholder {
   background: transparent;
 }
 
+/* ---- Settings branding card ---- */
+.brand-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 420px;
+}
+.brand-fields label {
+  display: block;
+  font-size: 11.375px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 5px;
+}
+.brand-fields .cf-input {
+  height: 28px;
+  font-size: 11.375px;
+  border-radius: 8px;
+  width: 100%;
+}
+.brand-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-logo-preview {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.brand-logo-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.brand-logo-preview svg {
+  width: 20px;
+  height: 20px;
+}
+.brand-upload {
+  cursor: pointer;
+}
+.brand-colors {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.brand-color {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.brand-color-swatch {
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.brand-color-swatch::-webkit-color-swatch-wrapper {
+  padding: 3px;
+}
+.brand-color-swatch::-webkit-color-swatch {
+  border: none;
+  border-radius: 5px;
+}
+.brand-color-hex {
+  flex: 1;
+  min-width: 0;
+  text-transform: lowercase;
+}
+.brand-color-reset {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--link);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.brand-color-reset:hover {
+  filter: brightness(1.2);
+}
+@media (max-width: 620px) {
+  .brand-colors {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ---- Settings security card ---- */
 .security-head {
   padding-bottom: 12px;

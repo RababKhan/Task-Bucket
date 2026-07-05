@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useCan } from "@/components/app/PermissionProvider";
+import { useBranding } from "@/components/app/BrandingProvider";
 import { usePrefetch } from "@/lib/queries";
 
 function initials(text: string) {
@@ -128,16 +129,22 @@ function Sidebar({
   const canViewDirectory = useCan("team_member", "view");
 
   const prefetch = usePrefetch();
+  const { branding } = useBranding();
 
   return (
     <aside className="app-sidebar">
       <div className="sidebar-logo">
-        <svg className="sidebar-logo-icon" viewBox="0 0 40 40" fill="none" aria-hidden>
-          <rect x="2" y="7" width="36" height="7" rx="3.5" fill="#3f3f46" />
-          <rect x="2" y="17" width="26" height="7" rx="3.5" fill="#71717a" />
-          <rect x="2" y="27" width="17" height="7" rx="3.5" fill="#a1a1aa" />
-        </svg>
-        <span className="sidebar-logo-text">Task Bucket</span>
+        {branding.logo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img className="sidebar-logo-img" src={branding.logo} alt="" />
+        ) : (
+          <svg className="sidebar-logo-icon" viewBox="0 0 40 40" fill="none" aria-hidden>
+            <rect x="2" y="7" width="36" height="7" rx="3.5" fill="#3f3f46" />
+            <rect x="2" y="17" width="26" height="7" rx="3.5" fill="#71717a" />
+            <rect x="2" y="27" width="17" height="7" rx="3.5" fill="#a1a1aa" />
+          </svg>
+        )}
+        <span className="sidebar-logo-text">{branding.name || "Task Bucket"}</span>
         <button
           type="button"
           className="sidebar-logo-collapse"

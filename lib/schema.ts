@@ -86,6 +86,10 @@ export const workspaces = pgTable("workspaces", {
     .references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   subdomain: text("subdomain").notNull().unique(),
+  brandName: text("brand_name"),
+  brandLogo: text("brand_logo"),
+  brandColorDark: text("brand_color_dark"),
+  brandColorLight: text("brand_color_light"),
   createdAt: text("created_at").notNull().default(nowText),
 });
 

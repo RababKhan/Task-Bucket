@@ -4,6 +4,7 @@ import { useState } from "react";
 import { SessionProvider } from "next-auth/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { makeQueryClient } from "@/lib/query-client";
+import BrandingProvider from "@/components/app/BrandingProvider";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   // One client per browser session (lazy-init via useState so it's stable
@@ -12,7 +13,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <SessionProvider>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <BrandingProvider>{children}</BrandingProvider>
+      </QueryClientProvider>
     </SessionProvider>
   );
 }

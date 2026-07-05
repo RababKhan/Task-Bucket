@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import Spinner from "@/components/Spinner";
 import FieldError from "@/components/FieldError";
+import BrandingCard from "@/components/app/settings/BrandingCard";
 
 export default function WorkspaceSettingsPage() {
   const { data: session, status, update } = useSession();
@@ -81,6 +82,7 @@ export default function WorkspaceSettingsPage() {
   if (!ws) return null;
 
   return (
+    <>
     <div className="settings-card">
       <div className="settings-card-head">
         <div className="profile-headinfo">
@@ -165,5 +167,8 @@ export default function WorkspaceSettingsPage() {
         </div>
       </div>
     </div>
+
+      {isAdmin && <BrandingCard />}
+    </>
   );
 }
