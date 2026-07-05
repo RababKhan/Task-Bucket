@@ -282,6 +282,7 @@ export default function BrandingCard() {
       </div>
 
       {!editing ? (
+        <>
         <div className="brand-view-top">
           <div className="settings-field brand-view-name">
             <label>App name</label>
@@ -340,6 +341,7 @@ export default function BrandingCard() {
             </div>
           </div>
         </div>
+        </>
       ) : (
       <div className="brand-fields">
         <div className="settings-field">
