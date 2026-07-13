@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
@@ -233,7 +233,7 @@ function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
     project: string;
     projectId: number;
     task: string;
-    parent?: { id: number; task: string } | null;
+    ancestors?: { id: number; task: string }[];
   } | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
 
@@ -256,7 +256,7 @@ function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
             project: string;
             projectId: number;
             task: string;
-            parent?: { id: number; task: string } | null;
+            ancestors?: { id: number; task: string }[];
           } | null>
         ).detail ?? null
       );
@@ -302,19 +302,25 @@ function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
             <svg className="topbar-crumb-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="m9 18 6-6-6-6" />
             </svg>
-            {taskCrumb!.parent && (
-              <>
-                <Link
-                  href={`/task/${taskCrumb!.parent.id}`}
-                  className="topbar-crumb-link"
-                >
-                  {taskCrumb!.parent.task}
-                </Link>
-                <svg className="topbar-crumb-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="m9 18 6-6-6-6" />
-                </svg>
-              </>
-            )}
+            {(taskCrumb!.ancestors ?? []).map((anc, i) => {
+              const upto = (taskCrumb!.ancestors ?? [])
+                .slice(0, i)
+                .map((a) => `${a.id}~${a.task}`)
+                .join(",");
+              const href = upto
+                ? `/task/${anc.id}?crumb=${encodeURIComponent(upto)}`
+                : `/task/${anc.id}`;
+              return (
+                <Fragment key={anc.id}>
+                  <Link href={href} className="topbar-crumb-link">
+                    {anc.task}
+                  </Link>
+                  <svg className="topbar-crumb-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="m9 18 6-6-6-6" />
+                  </svg>
+                </Fragment>
+              );
+            })}
             <span className="topbar-crumb-current">{taskCrumb!.task}</span>
             <button
               type="button"

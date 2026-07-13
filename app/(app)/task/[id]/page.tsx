@@ -558,17 +558,36 @@ export default function TaskDetailPage() {
     const code = (seq: number | null) =>
       seq != null ? `${prefix}-${String(seq).padStart(3, "0")}` : null;
     const crumbId = code(detail.seq) ?? detail.title;
-    const parent =
-      detail.parent && code(detail.parent.seq)
-        ? { id: detail.parent.id, task: code(detail.parent.seq)! }
+    // Show the drill-down ancestry only when we arrived via in-page links: they
+    // carry ?crumb=<id~code,...> accumulating each level (Story › Task › Bug).
+    // Direct/list opens (no crumb) show just Project › Item; the immediate
+    // parent is always in Properties.
+    const raw =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("crumb")
         : null;
+    const parsed = (raw ? raw.split(",") : [])
+      .map((s) => {
+        const idx = s.indexOf("~");
+        return idx > 0
+          ? { id: Number(s.slice(0, idx)), task: s.slice(idx + 1) }
+          : null;
+      })
+      .filter((a): a is { id: number; task: string } => !!a?.id && !!a.task);
+    // Trust the chain only if its last entry is this item's immediate parent.
+    const ancestors =
+      parsed.length > 0 &&
+      detail.parent &&
+      parsed[parsed.length - 1].id === detail.parent.id
+        ? parsed
+        : [];
     window.dispatchEvent(
       new CustomEvent("tb:task-crumb", {
         detail: {
           project: detail.project_name,
           projectId: detail.project_id,
           task: crumbId,
-          parent,
+          ancestors,
         },
       })
     );
@@ -706,6 +725,17 @@ export default function TaskDetailPage() {
   const taskCode = (seq: number | null) =>
     seq != null ? `${projectPrefix}-${String(seq).padStart(3, "0")}` : null;
   const itemId = taskCode(detail.seq);
+
+  // Breadcrumb path handed to child items: the ancestry we arrived with, plus
+  // this item. So Story → Task → Bug accumulates as ?crumb=<story>,<task>.
+  const incomingCrumb =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("crumb") ?? ""
+      : "";
+  const currentCrumbEntry = `${detail.id}~${itemId ?? detail.title}`;
+  const childCrumb = encodeURIComponent(
+    incomingCrumb ? `${incomingCrumb},${currentCrumbEntry}` : currentCrumbEntry
+  );
 
   const subDone = detail.subtasks.filter((s) => s.status === "done").length;
   // Derived progress = completed subtasks; a Done task counts as 100%.
@@ -1085,7 +1115,7 @@ export default function TaskDetailPage() {
                         {taskCode(t.seq) && (
                           <span className="sub-id">{taskCode(t.seq)}</span>
                         )}
-                        <Link href={`/task/${t.id}`} className="sub-title">
+                        <Link href={`/task/${t.id}?crumb=${childCrumb}`} className="sub-title">
                           {t.title}
                         </Link>
                         <span className="sub-meta">
@@ -1367,7 +1397,7 @@ export default function TaskDetailPage() {
                         {taskCode(b.seq) && (
                           <span className="sub-id">{taskCode(b.seq)}</span>
                         )}
-                        <Link href={`/task/${b.id}`} className="sub-title">
+                        <Link href={`/task/${b.id}?crumb=${childCrumb}`} className="sub-title">
                           {b.title}
                         </Link>
                         <span className="sub-meta">
@@ -1587,7 +1617,7 @@ export default function TaskDetailPage() {
                     {taskCode(s.seq) && (
                       <span className="sub-id">{taskCode(s.seq)}</span>
                     )}
-                    <Link href={`/task/${s.id}`} className="sub-title">
+                    <Link href={`/task/${s.id}?crumb=${childCrumb}`} className="sub-title">
                       {s.title}
                     </Link>
                     <span className="sub-meta">
@@ -1854,6 +1884,25 @@ export default function TaskDetailPage() {
                 )}
               </span>
             </div>
+            {detail.parent && (
+              <div className="td-prop">
+                <span className="td-prop-k">Parent Item</span>
+                <span className="td-prop-v td-prop-ro">
+                  <svg className="td-created-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M6 3v12" />
+                    <circle cx="6" cy="18" r="3" />
+                    <circle cx="18" cy="6" r="3" />
+                    <path d="M18 9a9 9 0 0 1-9 9" />
+                  </svg>
+                  <Link
+                    href={`/task/${detail.parent.id}`}
+                    className="td-parent-link"
+                  >
+                    {taskCode(detail.parent.seq) ?? `#${detail.parent.id}`}
+                  </Link>
+                </span>
+              </div>
+            )}
             <div className="td-prop">
               <span className="td-prop-k">Start Date</span>
               <span className="td-prop-v">
