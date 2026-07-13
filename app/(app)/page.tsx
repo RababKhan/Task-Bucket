@@ -145,6 +145,11 @@ function BoardPage() {
   // Delete-confirmation modal (single via kebab, or bulk via selection bar).
   const [deleteTaskTarget, setDeleteTaskTarget] = useState<BoardTask | null>(null);
   const [bulkDeleteTasks, setBulkDeleteTasks] = useState(false);
+  // Add-to-sprint modal (bulk from the selection bar).
+  const [sprintModalOpen, setSprintModalOpen] = useState(false);
+  const [sprintOptions, setSprintOptions] = useState<SelectOption[]>([]);
+  const [chosenSprint, setChosenSprint] = useState("");
+  const [addingSprint, setAddingSprint] = useState(false);
   const [deletingTasks, setDeletingTasks] = useState(false);
   const stickyRef = useRef<HTMLDivElement>(null);
 
@@ -342,7 +347,45 @@ function BoardPage() {
     setSavingTask(false);
     await loadTasks(activeId);
     await loadProjects();
-    addInputRef.current?.focus();
+    // The new item renders just above the add row; once the DOM has updated,
+    // scroll it into view and refocus the input (without a competing scroll).
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        addRowRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        addInputRef.current?.focus({ preventScroll: true });
+      })
+    );
+  }
+
+  async function openSprintModal() {
+    if (activeId == null) return;
+    setChosenSprint("");
+    setSprintOptions([]);
+    setSprintModalOpen(true);
+    const res = await fetch(`/api/sprints?project_id=${activeId}`);
+    if (res.ok) {
+      const list = (await res.json()) as { id: number; name: string }[];
+      setSprintOptions(list.map((s) => ({ value: String(s.id), label: s.name })));
+    }
+  }
+
+  async function addSelectedToSprint() {
+    if (!chosenSprint || addingSprint) return;
+    setAddingSprint(true);
+    const ids = [...selectedTasks];
+    await Promise.all(
+      ids.map((id) =>
+        fetch(`/api/tasks/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sprint_id: Number(chosenSprint) }),
+        })
+      )
+    );
+    setAddingSprint(false);
+    setSprintModalOpen(false);
+    setSelectedTasks(new Set());
+    if (activeId != null) await loadTasks(activeId);
   }
 
   async function deleteTask() {
@@ -457,6 +500,15 @@ function BoardPage() {
     () => STATUS_ORDER.flatMap((s) => tasksByStatus[s]),
     [tasksByStatus]
   );
+
+  // Header select-all: toggles every visible list item.
+  const allListSelected =
+    listTasks.length > 0 && listTasks.every((t) => selectedTasks.has(t.id));
+  function toggleSelectAll() {
+    setSelectedTasks(
+      allListSelected ? new Set() : new Set(listTasks.map((t) => t.id))
+    );
+  }
 
   // Previously-used labels in this project, offered as suggestions in the modal.
   const labelSuggestions = useMemo(
@@ -752,6 +804,18 @@ function BoardPage() {
           {selectedTasks.size > 0 && (
             <div className="pv-selbar">
               <span className="pv-selcount">{selectedTasks.size}</span>
+              <button
+                type="button"
+                className="pv-selact"
+                onClick={openSprintModal}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <circle cx="12" cy="12" r="9" />
+                  <circle cx="12" cy="12" r="4" />
+                  <circle cx="12" cy="12" r="0.5" fill="currentColor" />
+                </svg>
+                Add to Sprint
+              </button>
               {selectedTasks.size === 1 && (
                 <button
                   type="button"
@@ -783,7 +847,23 @@ function BoardPage() {
             </div>
           )}
           <div className="tl-head">
-            <span />
+            <span className="tl-head-check">
+              {selectedTasks.size > 0 && (
+                <input
+                  type="checkbox"
+                  className="pv-check"
+                  checked={allListSelected}
+                  ref={(el) => {
+                    if (el)
+                      el.indeterminate =
+                        selectedTasks.size > 0 && !allListSelected;
+                  }}
+                  onChange={toggleSelectAll}
+                  aria-label={allListSelected ? "Deselect all" : "Select all"}
+                  data-tip={allListSelected ? "Deselect all" : "Select all"}
+                />
+              )}
+            </span>
             <span>Title</span>
             <span>Assignee</span>
             <span>Status</span>
@@ -957,6 +1037,7 @@ function BoardPage() {
                   className="tl-addtype"
                   style={{ borderColor: TASK_TYPE_COLORS[newTask.type] }}
                   data-tip={`Type: ${TASK_TYPE_LABELS[newTask.type]} (click to change)`}
+                  data-tip-pos="right"
                   aria-label={`Type: ${TASK_TYPE_LABELS[newTask.type]} (click to change)`}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() =>
@@ -1172,6 +1253,57 @@ function BoardPage() {
                 disabled={deletingTasks}
               >
                 {deletingTasks ? <Spinner /> : "Yes, Delete it"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {sprintModalOpen && (
+        <div
+          className="overlay"
+          onMouseDown={() => {
+            if (!addingSprint) setSprintModalOpen(false);
+          }}
+        >
+          <div
+            className="modal sprint-modal"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <h2 className="sprint-modal-title">Add to Sprint</h2>
+            <p className="sprint-modal-sub">
+              Add{" "}
+              <strong>
+                {selectedTasks.size} item{selectedTasks.size === 1 ? "" : "s"}
+              </strong>{" "}
+              to a sprint.
+            </p>
+            <div className="sprint-modal-field">
+              <SelectField
+                value={chosenSprint}
+                options={sprintOptions}
+                onChange={setChosenSprint}
+                placeholder={
+                  sprintOptions.length
+                    ? "Select a sprint"
+                    : "No sprints in this project"
+                }
+              />
+            </div>
+            <div className="confirm-actions">
+              <button
+                className="btn btn-sm"
+                onClick={() => setSprintModalOpen(false)}
+                disabled={addingSprint}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-sm btn-primary"
+                onClick={addSelectedToSprint}
+                disabled={!chosenSprint || addingSprint}
+              >
+                {addingSprint ? <Spinner /> : "Add to Sprint"}
               </button>
             </div>
           </div>
