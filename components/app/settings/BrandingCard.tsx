@@ -157,6 +157,7 @@ export default function BrandingCard() {
   const [err, setErr] = useState<{ field: string; msg: string } | null>(null);
   const [ok, setOk] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [isFree, setIsFree] = useState(false);
 
   useEffect(() => {
     fetch("/api/workspace/branding")
@@ -172,6 +173,7 @@ export default function BrandingCard() {
           };
           setOriginal(v);
           setForm(v);
+          setIsFree(d.plan !== "pro");
         }
       })
       .finally(() => setLoaded(true));
@@ -285,9 +287,21 @@ export default function BrandingCard() {
           </div>
         </div>
         {!editing ? (
-          <button className="btn btn-sm profile-edit-btn" onClick={startEdit}>
-            Edit
-          </button>
+          isFree ? (
+            <span
+              className="profile-update-wrap"
+              style={{ marginLeft: "auto" }}
+              data-tip="Upgrade to Pro to customize branding"
+            >
+              <button className="btn btn-sm" disabled aria-disabled>
+                Edit
+              </button>
+            </span>
+          ) : (
+            <button className="btn btn-sm profile-edit-btn" onClick={startEdit}>
+              Edit
+            </button>
+          )
         ) : (
           <div className="profile-edit-actions">
             <button className="btn btn-sm" onClick={cancel} disabled={saving}>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { dbGet, dbRun } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 import { getMembership } from "@/lib/membership";
+import { getEffectivePlan } from "@/lib/billing";
 
 type BrandRow = {
   id: string;
@@ -42,7 +43,8 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const cw = await currentWorkspace(userId);
-  return NextResponse.json(payload(cw?.w));
+  const plan = cw ? await getEffectivePlan(cw.m.workspace_id) : "free";
+  return NextResponse.json({ ...payload(cw?.w), plan });
 }
 
 // Admins update the branding.
@@ -58,6 +60,13 @@ export async function PATCH(request: Request) {
   if (cw.m.role !== "admin") {
     return NextResponse.json(
       { error: "Only admins can change branding." },
+      { status: 403 }
+    );
+  }
+  // White-labeling is a Pro feature.
+  if ((await getEffectivePlan(cw.m.workspace_id)) !== "pro") {
+    return NextResponse.json(
+      { error: "Upgrade to Pro to customize branding." },
       { status: 403 }
     );
   }
