@@ -7,6 +7,8 @@ import {
   getEffectivePlan,
   projectCount,
   memberCount,
+  taskCountsByProject,
+  storageBytesUsed,
   billingContact,
   getPendingRequest,
 } from "@/lib/billing";
@@ -39,6 +41,8 @@ export async function GET() {
     usage: {
       projects: await projectCount(wsId),
       members: await memberCount(wsId),
+      tasks_by_project: await taskCountsByProject(wsId),
+      storage_bytes: await storageBytesUsed(wsId),
     },
     limits: PLANS[plan].limits,
     is_admin: m.role === "admin",

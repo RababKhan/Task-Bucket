@@ -93,6 +93,23 @@ export async function getPendingRequest(
   );
 }
 
+export type BillingHistoryRow = {
+  interval: string | null;
+  created_at: string;
+  resolved_at: string | null;
+};
+
+// Past activations = resolved upgrade requests. Each one is a payment/activation
+// event; amount + plan name are derived from the interval on the client.
+export async function getBillingHistory(
+  workspaceId: string
+): Promise<BillingHistoryRow[]> {
+  return dbAll<BillingHistoryRow>(
+    "SELECT interval, created_at, resolved_at FROM billing_requests WHERE workspace_id = ? AND status = 'resolved' ORDER BY id DESC",
+    [workspaceId]
+  );
+}
+
 // ---- Owner (super-admin) activation ----
 
 export type OwnerBillingRow = {
@@ -241,6 +258,55 @@ export async function memberCount(workspaceId: string): Promise<number> {
     [workspaceId]
   );
   return Number(r?.n ?? 0);
+}
+
+export async function taskCount(workspaceId: string): Promise<number> {
+  const r = await dbGet<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM tasks t
+       JOIN projects p ON p.id = t.project_id
+      WHERE p.workspace_id = ? AND t.parent_id IS NULL`,
+    [workspaceId]
+  );
+  return Number(r?.n ?? 0);
+}
+
+// Per-project task counts (busiest first) — the Tasks limit is per-project.
+// Counts top-level items only (story/task/bug); subtasks (parent_id set) are
+// excluded.
+export async function taskCountsByProject(
+  workspaceId: string
+): Promise<{ id: number; name: string; tasks: number }[]> {
+  return dbAll<{ id: number; name: string; tasks: number }>(
+    `SELECT p.id, p.name, COUNT(t.id) AS tasks
+       FROM projects p
+       LEFT JOIN tasks t ON t.project_id = p.id AND t.parent_id IS NULL
+      WHERE p.workspace_id = ?
+      GROUP BY p.id, p.name
+      ORDER BY COUNT(t.id) DESC, p.name ASC`,
+    [workspaceId]
+  );
+}
+
+// Approximate bytes of stored assets for a workspace: member avatars, the
+// branding logo/favicon, and comment attachments — all data URLs kept as text,
+// so their character length ≈ bytes on disk.
+export async function storageBytesUsed(workspaceId: string): Promise<number> {
+  const r = await dbGet<{ bytes: number }>(
+    `SELECT
+       COALESCE((SELECT SUM(LENGTH(u.image)) FROM users u
+                   JOIN workspace_members m ON m.user_id = u.id
+                  WHERE m.workspace_id = ? AND u.image IS NOT NULL), 0)
+     + COALESCE((SELECT COALESCE(LENGTH(brand_logo), 0) + COALESCE(LENGTH(brand_favicon), 0)
+                   FROM workspaces WHERE id = ?), 0)
+     + COALESCE((SELECT SUM(LENGTH(ca.data))
+                   FROM comment_attachments ca
+                   JOIN task_comments tc ON tc.id = ca.comment_id
+                   JOIN tasks t ON t.id = tc.task_id
+                   JOIN projects p ON p.id = t.project_id
+                  WHERE p.workspace_id = ?), 0) AS bytes`,
+    [workspaceId, workspaceId, workspaceId]
+  );
+  return Number(r?.bytes ?? 0);
 }
 
 export async function canAddProject(workspaceId: string): Promise<boolean> {

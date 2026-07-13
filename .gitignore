@@ -26,6 +26,7 @@ next-env.d.ts
 # local tooling / logs
 .claude/
 dev.log
+dev.err.log
 
 # playwright / e2e
 /test-results/

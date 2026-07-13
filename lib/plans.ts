@@ -9,6 +9,8 @@ export type PlanLimits = {
   // null = unlimited
   projects: number | null;
   members: number | null;
+  storage: number | null; // in GB
+  tasksPerProject: number | null;
 };
 
 export type Plan = {
@@ -17,8 +19,29 @@ export type Plan = {
   // Display price in whole currency units (BDT). 0 for free.
   price: { month: number; year: number };
   limits: PlanLimits;
-  features: string[];
 };
+
+// Feature-parity rows for the plan cards. Each row is either included on a plan
+// (a string = the label shown with a ✓) or not (false → shown greyed with a ✗).
+export type PlanFeature = {
+  label: string; // fallback label shown when a plan doesn't include the feature
+  free: string | false;
+  pro: string | false;
+};
+
+export const PLAN_FEATURES: PlanFeature[] = [
+  { label: "Dashboard", free: "Few Dashboard widgets", pro: "Full Dashboard" },
+  { label: "Projects", free: "2 Projects", pro: "Unlimited Projects" },
+  { label: "Tasks", free: "200 Tasks per project", pro: "Unlimited Tasks" },
+  { label: "Members", free: "5 Members", pro: "Unlimited Members" },
+  { label: "Storage", free: "2 GB Storage", pro: "32 GB Storage" },
+  { label: "White-labeling", free: false, pro: "White-labeling" },
+  {
+    label: "Custom Roles & Permissions",
+    free: false,
+    pro: "Custom Roles & Permissions",
+  },
+];
 
 // Display currency for all plan prices. The workspace bills in Bangladeshi Taka.
 export const CURRENCY = { code: "BDT", symbol: "৳" } as const;
@@ -33,20 +56,13 @@ export const PLANS: Record<PlanId, Plan> = {
     id: "free",
     name: "Free",
     price: { month: 0, year: 0 },
-    limits: { projects: 2, members: 3 },
-    features: ["Up to 2 projects", "Up to 3 members", "Core task management"],
+    limits: { projects: 2, members: 5, storage: 2, tasksPerProject: 200 },
   },
   pro: {
     id: "pro",
     name: "Pro",
     price: { month: 1500, year: 15000 },
-    limits: { projects: null, members: null },
-    features: [
-      "Unlimited projects",
-      "Unlimited members",
-      "Sprints, custom fields, RBAC",
-      "Priority support",
-    ],
+    limits: { projects: null, members: null, storage: 32, tasksPerProject: null },
   },
 };
 

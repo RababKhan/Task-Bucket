@@ -1,8 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Spinner from "@/components/Spinner";
-import { PLANS, fmtPrice, type PlanId, type BillingInterval } from "@/lib/plans";
+import {
+  PLANS,
+  PLAN_FEATURES,
+  fmtPrice,
+  type PlanId,
+  type BillingInterval,
+} from "@/lib/plans";
 
 type Bank = {
   beneficiary: string;
@@ -21,8 +27,18 @@ type BillingInfo = {
   status: string;
   interval: string | null;
   current_period_end: string | null;
-  usage: { projects: number; members: number };
-  limits: { projects: number | null; members: number | null };
+  usage: {
+    projects: number;
+    members: number;
+    tasks_by_project: { id: number; name: string; tasks: number }[];
+    storage_bytes: number;
+  };
+  limits: {
+    projects: number | null;
+    members: number | null;
+    storage: number | null;
+    tasksPerProject: number | null;
+  };
   is_admin: boolean;
   workspace: { subdomain: string; name: string };
   contact: { email: string; bank: Bank };
@@ -39,6 +55,113 @@ function fmtDate(iso: string | null) {
         month: "short",
         day: "numeric",
       });
+}
+
+// "05 April, 2026" — matches the subscription-history table style.
+function fmtDateLong(iso: string | null) {
+  if (!iso) return "—";
+  const d = new Date(iso.replace(" ", "T") + "Z");
+  if (Number.isNaN(d.getTime())) return "—";
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  const month = d.toLocaleDateString("en-US", {
+    month: "long",
+    timeZone: "UTC",
+  });
+  return `${day} ${month}, ${d.getUTCFullYear()}`;
+}
+
+function fmtBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  const kb = n / 1024;
+  if (kb < 1024) return `${kb.toFixed(kb < 10 ? 1 : 0)} KB`;
+  const mb = kb / 1024;
+  if (mb < 1024) return `${mb.toFixed(mb < 10 ? 1 : 0)} MB`;
+  return `${(mb / 1024).toFixed(2)} GB`;
+}
+
+// null limit = unlimited.
+function pctOf(used: number, limit: number | null): number {
+  if (limit == null) return 100;
+  return Math.min(100, Math.round((used / Math.max(1, limit)) * 100));
+}
+function nearOf(used: number, limit: number | null): boolean {
+  return limit != null && limit > 0 && used / limit >= 0.8;
+}
+
+type HistoryRow = {
+  interval: string | null;
+  created_at: string;
+  resolved_at: string | null;
+};
+
+const UsageIcon = {
+  projects: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      <path d="m3.3 7 8.7 5 8.7-5" />
+      <path d="M12 22V12" />
+    </svg>
+  ),
+  members: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  ),
+  tasks: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="m9 11 3 3L22 4" />
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+    </svg>
+  ),
+  storage: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <ellipse cx="12" cy="5" rx="9" ry="3" />
+      <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+    </svg>
+  ),
+};
+
+function UsageRow({
+  icon,
+  label,
+  used,
+  limit,
+  pct,
+  unlimited,
+  near,
+}: {
+  icon: ReactNode;
+  label: string;
+  used: string;
+  limit: string;
+  pct: number;
+  unlimited?: boolean;
+  near?: boolean;
+}) {
+  return (
+    <div className="bill-usage-row">
+      <div className="bill-usage-row-head">
+        <span className="bill-usage-ic">{icon}</span>
+        <span className="bill-usage-name">{label}</span>
+      </div>
+      <div className="bill-usage-track">
+        <div
+          className={`bill-usage-fill${near ? " near" : ""}${
+            unlimited ? " unlimited" : ""
+          }`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="bill-usage-nums">
+        <span>{used}</span>
+        <span>{limit}</span>
+      </div>
+    </div>
+  );
 }
 
 const BANK_FIELDS: { key: keyof Bank; label: string }[] = [
@@ -61,37 +184,11 @@ function Check() {
   );
 }
 
-function UsageMeter({
-  label,
-  used,
-  limit,
-}: {
-  label: string;
-  used: number;
-  limit: number | null;
-}) {
-  const unlimited = limit == null;
-  const pct = unlimited
-    ? 100
-    : Math.min(100, Math.round((used / Math.max(1, limit)) * 100));
-  const near = !unlimited && limit > 0 && used / limit >= 0.8;
+function Cross() {
   return (
-    <div className="bill-meter">
-      <div className="bill-meter-top">
-        <span className="bill-meter-label">{label}</span>
-        <span className="bill-meter-count">
-          {used} / {unlimited ? "Unlimited" : limit}
-        </span>
-      </div>
-      <div className="bill-meter-track">
-        <div
-          className={`bill-meter-fill${near ? " near" : ""}${
-            unlimited ? " unlimited" : ""
-          }`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
+    <svg className="bill-cross" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
   );
 }
 
@@ -103,6 +200,9 @@ export default function BillingPage() {
   const [error, setError] = useState("");
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [paySelected, setPaySelected] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [history, setHistory] = useState<HistoryRow[] | null>(null);
+  const [usageOpen, setUsageOpen] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/billing");
@@ -114,14 +214,30 @@ export default function BillingPage() {
     load();
   }, [load]);
 
-  // Close the upgrade modal on Escape.
+  async function openHistory() {
+    setHistoryOpen(true);
+    if (history) return; // already fetched
+    const res = await fetch("/api/billing/history");
+    if (res.ok) {
+      const d = await res.json();
+      setHistory(d.history as HistoryRow[]);
+    } else {
+      setHistory([]);
+    }
+  }
+
+  // Close whichever modal is open on Escape.
   useEffect(() => {
-    if (!upgradeOpen) return;
-    const onKey = (e: KeyboardEvent) =>
-      e.key === "Escape" && setUpgradeOpen(false);
+    if (!upgradeOpen && !historyOpen && !usageOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setUpgradeOpen(false);
+      setHistoryOpen(false);
+      setUsageOpen(false);
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [upgradeOpen]);
+  }, [upgradeOpen, historyOpen, usageOpen]);
 
   async function requestUpgrade() {
     setBusy(true);
@@ -164,47 +280,86 @@ export default function BillingPage() {
       return {
         amount: fmtPrice(PLANS.pro.price.year),
         per: "/yr",
-        sub: `${fmtPrice(Math.round(PLANS.pro.price.year / 12))}/mo, billed annually`,
+        sub: "",
       };
     return { amount: fmtPrice(PLANS.pro.price.month), per: "/mo", sub: "" };
   }
+
+  const subPeriod = isPro
+    ? info.interval === "year"
+      ? "Yearly"
+      : "Monthly"
+    : "—";
+  const subRenewal = isPro
+    ? info.current_period_end
+      ? fmtDate(info.current_period_end)
+      : "No expiry"
+    : "—";
+  const subAmount = isPro
+    ? fmtPrice(PLANS.pro.price[info.interval === "year" ? "year" : "month"])
+    : fmtPrice(0);
 
   return (
     <div className="pv billing-pv">
       {error && <p className="invite-err">{error}</p>}
 
-      {/* Current plan */}
-      <div className="bill-hero">
-        <div>
-          <div className="bill-hero-label">Current plan</div>
-          <div className="bill-hero-row">
-            <span className={`bill-badge bill-badge-${info.plan}`}>
-              {PLANS[info.plan].name}
-            </span>
-            {isPro && info.interval && (
-              <span className="bill-hero-cycle">Billed {info.interval}ly</span>
-            )}
+      {/* Current subscription details */}
+      <div className="bill-sub">
+        <h2 className="bill-sub-title">Current Subscription details</h2>
+
+        <div className="bill-sub-plan">
+          <div className="bill-sub-label">Plan Name</div>
+          <div className="bill-sub-plan-row">
+            <span className="bill-sub-plan-name">{PLANS[info.plan].name}</span>
+            <button
+              type="button"
+              className="bill-usage-dots"
+              onClick={() => setUsageOpen(true)}
+              data-tip="View usage"
+              aria-label="View usage"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                <circle cx="12" cy="5" r="1.6" />
+                <circle cx="12" cy="12" r="1.6" />
+                <circle cx="12" cy="19" r="1.6" />
+              </svg>
+            </button>
           </div>
         </div>
-        {isPro && info.current_period_end && (
-          <div className="bill-hero-renew">
-            <span>Renews</span>
-            <strong>{fmtDate(info.current_period_end)}</strong>
-          </div>
-        )}
-      </div>
 
-      <div className="bill-meters">
-        <UsageMeter
-          label="Projects"
-          used={info.usage.projects}
-          limit={info.limits.projects}
-        />
-        <UsageMeter
-          label="Members"
-          used={info.usage.members}
-          limit={info.limits.members}
-        />
+        {/* Period / renewal / amount only apply once a plan is purchased. */}
+        {isPro && (
+          <>
+            <div className="bill-sub-divider" />
+
+            <div className="bill-sub-grid">
+              <div className="bill-sub-col">
+                <div className="bill-sub-col-label">Plan Period</div>
+                <div className="bill-sub-col-value">{subPeriod}</div>
+              </div>
+              <div className="bill-sub-col">
+                <div className="bill-sub-col-label">Renewal Date</div>
+                <div className="bill-sub-col-value">{subRenewal}</div>
+              </div>
+              <div className="bill-sub-col">
+                <div className="bill-sub-col-label">Renewal Amount</div>
+                <div className="bill-sub-col-value">{subAmount}</div>
+              </div>
+            </div>
+
+            <div className="bill-sub-divider" />
+            <button
+              type="button"
+              className="bill-history-link"
+              onClick={openHistory}
+            >
+              View Subscription History
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="m9 18 6-6-6-6" />
+              </svg>
+            </button>
+          </>
+        )}
       </div>
 
       {/* Billing period toggle */}
@@ -249,14 +404,6 @@ export default function BillingPage() {
                 <span className="bill-per">{p.per}</span>
               </div>
               <div className="bill-card-sub">{p.sub || " "}</div>
-              <ul className="bill-features">
-                {plan.features.map((f) => (
-                  <li key={f}>
-                    <Check />
-                    {f}
-                  </li>
-                ))}
-              </ul>
               <div className="bill-card-cta">
                 {current ? (
                   <button className="btn bill-btn" disabled>
@@ -282,6 +429,26 @@ export default function BillingPage() {
                   </button>
                 ) : null}
               </div>
+              <div className="bill-card-includes">This plan includes</div>
+              <ul className="bill-features">
+                {PLAN_FEATURES.map((feat) => {
+                  const val = feat[id];
+                  const included = val !== false;
+                  return (
+                    <li
+                      key={feat.label}
+                      className={included ? "" : "bill-feature-off"}
+                    >
+                      <span
+                        className={`bill-feat-ic${included ? "" : " off"}`}
+                      >
+                        {included ? <Check /> : <Cross />}
+                      </span>
+                      {included ? val : feat.label}
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
           );
         })}
@@ -453,6 +620,179 @@ export default function BillingPage() {
                 </span>
               </div>
             </aside>
+          </div>
+        </div>
+      )}
+
+      {/* Subscription history modal (Pro only) */}
+      {historyOpen && (
+        <div className="overlay" onMouseDown={() => setHistoryOpen(false)}>
+          <div
+            className="modal bill-history-modal"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="bill-history-head">
+              <h2>Subscription History</h2>
+              <button
+                type="button"
+                className="bill-history-x"
+                onClick={() => setHistoryOpen(false)}
+                data-tip="Close"
+                aria-label="Close"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {history == null ? (
+              <div className="bill-history-empty">
+                <Spinner />
+              </div>
+            ) : history.length === 0 ? (
+              <div className="bill-history-empty">
+                No subscription history yet.
+              </div>
+            ) : (
+              <div className="bill-history-table">
+                <div className="bill-history-row bill-history-headrow">
+                  <span>Plan Name</span>
+                  <span>Plan Period</span>
+                  <span>Subscription Cost</span>
+                  <span>Payment Date</span>
+                </div>
+                {history.map((h, i) => (
+                  <div key={i} className="bill-history-row">
+                    <span>{PLANS.pro.name}</span>
+                    <span>
+                      {h.interval === "year"
+                        ? "Yearly"
+                        : h.interval === "month"
+                          ? "Monthly"
+                          : "—"}
+                    </span>
+                    <span>
+                      {h.interval === "year"
+                        ? fmtPrice(PLANS.pro.price.year)
+                        : h.interval === "month"
+                          ? fmtPrice(PLANS.pro.price.month)
+                          : "—"}
+                    </span>
+                    <span>{fmtDateLong(h.created_at)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Usage modal (opened from the ⋮ next to Plan Name) */}
+      {usageOpen && (
+        <div className="overlay" onMouseDown={() => setUsageOpen(false)}>
+          <div
+            className="modal bill-usage-modal"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="bill-usage-head">
+              <h2>Usage</h2>
+              <button
+                type="button"
+                className="bill-usage-x"
+                onClick={() => setUsageOpen(false)}
+                data-tip="Close"
+                aria-label="Close"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="bill-usage-body">
+              <UsageRow
+                icon={UsageIcon.projects}
+                label="Projects"
+                used={`Created: ${info.usage.projects}`}
+                limit={`Project Limit: ${info.limits.projects ?? "Unlimited"}`}
+                unlimited={info.limits.projects == null}
+                pct={pctOf(info.usage.projects, info.limits.projects)}
+                near={nearOf(info.usage.projects, info.limits.projects)}
+              />
+              <UsageRow
+                icon={UsageIcon.members}
+                label="Team Members"
+                used={`Joined: ${info.usage.members}`}
+                limit={`Member Limit: ${info.limits.members ?? "Unlimited"}`}
+                unlimited={info.limits.members == null}
+                pct={pctOf(info.usage.members, info.limits.members)}
+                near={nearOf(info.usage.members, info.limits.members)}
+              />
+              <UsageRow
+                icon={UsageIcon.storage}
+                label="Storage"
+                used={`Consumed: ${fmtBytes(info.usage.storage_bytes)}`}
+                limit={`Storage Limit: ${
+                  info.limits.storage != null
+                    ? `${info.limits.storage} GB`
+                    : "Unlimited"
+                }`}
+                unlimited={info.limits.storage == null}
+                pct={pctOf(
+                  info.usage.storage_bytes,
+                  info.limits.storage == null
+                    ? null
+                    : info.limits.storage * 1024 ** 3
+                )}
+                near={nearOf(
+                  info.usage.storage_bytes,
+                  info.limits.storage == null
+                    ? null
+                    : info.limits.storage * 1024 ** 3
+                )}
+              />
+              <div className="bill-usage-row">
+                <div className="bill-usage-row-head">
+                  <span className="bill-usage-ic">{UsageIcon.tasks}</span>
+                  <span className="bill-usage-name">Tasks</span>
+                  <span className="bill-usage-cap">
+                    {info.limits.tasksPerProject != null
+                      ? `${info.limits.tasksPerProject} / project`
+                      : "Unlimited"}
+                  </span>
+                </div>
+                {info.usage.tasks_by_project.length === 0 ? (
+                  <div className="bill-usage-empty">No projects yet.</div>
+                ) : (
+                  <div className="bill-usage-projects">
+                    {info.usage.tasks_by_project.map((p) => {
+                      const cap = info.limits.tasksPerProject;
+                      return (
+                        <div key={p.id} className="bill-usage-proj">
+                          <div className="bill-usage-proj-top">
+                            <span className="bill-usage-proj-name">
+                              {p.name}
+                            </span>
+                            <span className="bill-usage-proj-count">
+                              {p.tasks}
+                              {cap != null ? ` / ${cap}` : ""}
+                            </span>
+                          </div>
+                          <div className="bill-usage-track">
+                            <div
+                              className={`bill-usage-fill${
+                                nearOf(p.tasks, cap) ? " near" : ""
+                              }${cap == null ? " unlimited" : ""}`}
+                              style={{ width: `${pctOf(p.tasks, cap)}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
