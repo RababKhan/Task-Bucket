@@ -107,7 +107,7 @@ export async function GET(request: Request) {
     my_role: m.role,
     can_invite: has("invite"),
     can_update_role: has("update_role"),
-    can_update_project_access: has("update_project_access"),
+    can_update_project_access: has("invite"),
     can_deactivate: has("deactivate"),
     can_remove: has("remove"),
     can_resend: has("resend"),

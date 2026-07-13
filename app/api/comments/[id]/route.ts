@@ -55,7 +55,7 @@ export async function DELETE(_request: Request, { params }: Ctx) {
   const c = await getComment(id);
   if (!c) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const isAuthor = c.user_id === userId;
-  if (!isAuthor && !(await can(userId, "comments", "delete"))) {
+  if (!isAuthor && !(await can(userId, "tasks", "edit"))) {
     return NextResponse.json(
       { error: "You do not have permission to delete this comment." },
       { status: 403 }

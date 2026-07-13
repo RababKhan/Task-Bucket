@@ -50,7 +50,7 @@ export default function NewRolePage() {
     <div className="roles-page">
       <div className="roles-head">
         <div>
-          <h1 className="roles-title">Create role</h1>
+          <h1 className="roles-title">Create Role</h1>
           <p className="roles-sub">
             Name the role and choose what it can access.
           </p>
@@ -99,7 +99,7 @@ export default function NewRolePage() {
           onClick={save}
           disabled={saving || !name.trim()}
         >
-          {saving ? <Spinner /> : "Create role"}
+          {saving ? <Spinner /> : "Create Role"}
         </button>
       </div>
     </div>

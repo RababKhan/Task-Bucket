@@ -41,7 +41,7 @@ describe("permission catalog", () => {
   it("manager can invite but cannot remove or update roles by default", () => {
     const set = new Set(DEFAULT_PERMISSIONS.manager.map(([m, a]) => permKey(m, a)));
     expect(set.has("team_member:invite")).toBe(true);
-    expect(set.has("team_member:update_project_access")).toBe(true);
+    expect(set.has("team_member:resend")).toBe(true);
     expect(set.has("team_member:remove")).toBe(false);
     expect(set.has("team_member:update_role")).toBe(false);
     expect(set.has("team_member:deactivate")).toBe(false);

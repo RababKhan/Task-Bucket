@@ -21,7 +21,7 @@ export async function POST(request: Request, { params }: Ctx) {
   );
   if (!c) return NextResponse.json({ error: "Not found" }, { status: 404 });
   // Reacting is a comment-participation action on an accessible task.
-  const denied = await requirePermission(userId, "comments", "comment");
+  const denied = await requirePermission(userId, "tasks", "comment");
   if (denied) return denied;
   if (!(await canAccessTask(c.task_id, userId))) {
     return NextResponse.json({ error: ERR.NO_PROJECT_ACCESS }, { status: 403 });

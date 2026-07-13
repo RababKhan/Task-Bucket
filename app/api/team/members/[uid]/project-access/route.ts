@@ -14,11 +14,9 @@ export async function GET(_request: Request, { params }: Ctx) {
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const denied = await requirePermission(
-    userId,
-    "team_member",
-    "update_project_access"
-  );
+  // Re-gated under the Invite permission (Update Project Access was removed
+  // from the permission catalog).
+  const denied = await requirePermission(userId, "team_member", "invite");
   if (denied) return denied;
 
   const m = await getMembership(userId);
@@ -57,11 +55,9 @@ export async function PATCH(request: Request, { params }: Ctx) {
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const denied = await requirePermission(
-    userId,
-    "team_member",
-    "update_project_access"
-  );
+  // Re-gated under the Invite permission (Update Project Access was removed
+  // from the permission catalog).
+  const denied = await requirePermission(userId, "team_member", "invite");
   if (denied) return denied;
 
   const m = await getMembership(userId);

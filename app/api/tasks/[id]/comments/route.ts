@@ -13,7 +13,7 @@ export async function GET(_request: Request, { params }: Ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  const denied = await requirePermission(userId, "comments", "view");
+  const denied = await requirePermission(userId, "tasks", "view");
   if (denied) return denied;
   if (!(await canAccessTask(id, userId))) {
     return NextResponse.json({ error: ERR.NO_PROJECT_ACCESS }, { status: 403 });
@@ -27,7 +27,7 @@ export async function POST(request: Request, { params }: Ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  const denied = await requirePermission(userId, "comments", "create");
+  const denied = await requirePermission(userId, "tasks", "comment");
   if (denied) return denied;
   if (!(await canAccessTask(id, userId))) {
     return NextResponse.json({ error: ERR.NO_PROJECT_ACCESS }, { status: 403 });
@@ -53,11 +53,7 @@ export async function POST(request: Request, { params }: Ctx) {
   if (!text && attachments.length === 0) {
     return NextResponse.json({ error: "Empty comment" }, { status: 400 });
   }
-  // Attaching files requires the files:upload permission.
-  if (attachments.length > 0) {
-    const uploadDenied = await requirePermission(userId, "files", "upload");
-    if (uploadDenied) return uploadDenied;
-  }
+  // Attaching files is part of commenting (gated by tasks:comment above).
 
   // Replies attach to a top-level comment of the same task; resolve to that
   // comment's root so threads stay one level deep.

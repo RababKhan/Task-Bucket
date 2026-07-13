@@ -111,7 +111,7 @@ export default function MemberDetailPage() {
   const isSelf = data.user_id === data.my_id;
   const name = data.name || data.email || "Member";
   const canRole = perms.can("team_member", "update_role") && !isSelf;
-  const canAccess = perms.can("team_member", "update_project_access");
+  const canAccess = perms.can("team_member", "invite");
   const canDeactivate = perms.can("team_member", "deactivate") && !isSelf;
   const canRemove = perms.can("team_member", "remove") && !isSelf;
 
