@@ -3,6 +3,7 @@ import { dbAll, dbGet, dbRun, dbInsert, type RoleRow } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 import { getMembership } from "@/lib/membership";
 import { can, requirePermission, ERR } from "@/lib/rbac";
+import { getEffectivePlan } from "@/lib/billing";
 import { isSystemRoleKey, isValidPermission, parsePermKey } from "@/lib/permissions";
 
 type RoleWithCount = RoleRow & { member_count: number };
@@ -69,6 +70,13 @@ export async function POST(request: Request) {
 
   const m = await getMembership(userId);
   if (!m) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  // Custom roles are a Pro feature.
+  if ((await getEffectivePlan(m.workspace_id)) !== "pro") {
+    return NextResponse.json(
+      { error: "Upgrade to Pro to create custom roles." },
+      { status: 403 }
+    );
+  }
 
   const body = await request.json().catch(() => ({}));
   const name = String(body.name ?? "").trim();

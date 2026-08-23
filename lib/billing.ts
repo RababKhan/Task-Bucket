@@ -61,6 +61,36 @@ export async function getEffectivePlan(workspaceId: string): Promise<PlanId> {
   return "free";
 }
 
+// White-labeling is a Pro perk. When Pro lapses, the branding is kept for a 72h
+// grace period so the customer can renew; after that it's cleared. No scheduler
+// exists, so this runs lazily on branding reads. Returns true if it wiped it.
+const BRANDING_GRACE_MS = 72 * 60 * 60 * 1000;
+
+export async function resetBrandingIfLapsed(
+  workspaceId: string
+): Promise<boolean> {
+  const s = await getSubscription(workspaceId);
+  // Only an expired Pro window (a current_period_end that has passed) is subject
+  // to the grace period; never-Pro workspaces are left untouched here.
+  if (s.plan !== "pro" || !s.current_period_end) return false;
+  if (!isExpired(s.current_period_end)) return false; // still active
+  const endMs = new Date(
+    s.current_period_end.replace(" ", "T") + "Z"
+  ).getTime();
+  if (Date.now() <= endMs + BRANDING_GRACE_MS) return false; // within 72h grace
+  const r = await dbRun(
+    `UPDATE workspaces
+        SET brand_name = NULL, brand_logo = NULL, brand_favicon = NULL,
+            brand_color_dark = NULL, brand_color_light = NULL
+      WHERE id = ?
+        AND (brand_name IS NOT NULL OR brand_logo IS NOT NULL
+             OR brand_favicon IS NOT NULL OR brand_color_dark IS NOT NULL
+             OR brand_color_light IS NOT NULL)`,
+    [workspaceId]
+  );
+  return r.rowsAffected > 0;
+}
+
 // Billing management is workspace-admin only.
 export async function billingAdminWorkspace(
   userId: string
@@ -190,7 +220,10 @@ export async function activateSubscription(
   return { expiry };
 }
 
-// Revert a workspace to Free.
+// Revert a workspace to Free. Also drops white-labeling immediately — it's a
+// Pro-only perk, so a workspace back on Free must not keep showing custom
+// branding. (The 72h grace in resetBrandingIfLapsed covers *lapsed* Pro, not a
+// deliberate revert.)
 export async function deactivateSubscription(
   workspaceId: string
 ): Promise<void> {
@@ -199,6 +232,13 @@ export async function deactivateSubscription(
      VALUES (?, 'free', 'free', datetime('now'))
      ON CONFLICT (workspace_id) DO UPDATE SET
        plan = 'free', status = 'free', current_period_end = NULL, updated_at = datetime('now')`,
+    [workspaceId]
+  );
+  await dbRun(
+    `UPDATE workspaces
+        SET brand_name = NULL, brand_logo = NULL, brand_favicon = NULL,
+            brand_color_dark = NULL, brand_color_light = NULL
+      WHERE id = ?`,
     [workspaceId]
   );
 }

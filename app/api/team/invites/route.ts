@@ -36,16 +36,20 @@ export async function GET() {
     id: number;
     email: string;
     role: string;
+    role_name: string | null;
     status: PendingInvite["status"];
     project_access: string;
     message: string | null;
     expires_at: string;
     created_at: string;
   }>(
-    `SELECT id, email, role, status, project_access, message, expires_at, created_at
-     FROM workspace_invites
-     WHERE workspace_id = ? AND status = 'pending'
-     ORDER BY created_at DESC`,
+    `SELECT wi.id, wi.email, wi.role, r.name AS role_name, wi.status,
+            wi.project_access, wi.message, wi.expires_at, wi.created_at
+     FROM workspace_invites wi
+     LEFT JOIN roles r
+       ON r.workspace_id = wi.workspace_id AND r.key = wi.role
+     WHERE wi.workspace_id = ? AND wi.status = 'pending'
+     ORDER BY wi.created_at DESC`,
     [m.workspace_id]
   );
 
@@ -53,6 +57,7 @@ export async function GET() {
     id: r.id,
     email: r.email,
     role: r.role,
+    role_name: r.role_name ?? r.role,
     status: r.status,
     project_access: parseProjectAccess(r.project_access),
     message: r.message,

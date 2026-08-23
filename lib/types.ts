@@ -91,6 +91,7 @@ export type PendingInvite = {
   id: number;
   email: string;
   role: string; // a role key (system or custom)
+  role_name: string; // role display name (falls back to the key)
   status: InviteStatus;
   project_access: number[];
   message: string | null;

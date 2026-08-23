@@ -192,6 +192,41 @@ function Cross() {
   );
 }
 
+// Click-to-copy inline text with a hover tooltip ("Click to copy" → "Copied").
+function CopyText({
+  value,
+  className,
+  children,
+}: {
+  value: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard?.writeText(value);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1400);
+  };
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      className={`bill-copy${className ? ` ${className}` : ""}`}
+      data-tip={copied ? "Copied" : "Click to copy"}
+      onClick={copy}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          copy();
+        }
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
 export default function BillingPage() {
   const [info, setInfo] = useState<BillingInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -203,6 +238,7 @@ export default function BillingPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [history, setHistory] = useState<HistoryRow[] | null>(null);
   const [usageOpen, setUsageOpen] = useState(false);
+  const [downgradeOpen, setDowngradeOpen] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/billing");
@@ -228,16 +264,17 @@ export default function BillingPage() {
 
   // Close whichever modal is open on Escape.
   useEffect(() => {
-    if (!upgradeOpen && !historyOpen && !usageOpen) return;
+    if (!upgradeOpen && !historyOpen && !usageOpen && !downgradeOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       setUpgradeOpen(false);
       setHistoryOpen(false);
       setUsageOpen(false);
+      setDowngradeOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [upgradeOpen, historyOpen, usageOpen]);
+  }, [upgradeOpen, historyOpen, usageOpen, downgradeOpen]);
 
   async function requestUpgrade() {
     setBusy(true);
@@ -254,6 +291,20 @@ export default function BillingPage() {
       return;
     }
     setUpgradeOpen(false);
+    load();
+  }
+
+  async function confirmDowngrade() {
+    setBusy(true);
+    setError("");
+    const res = await fetch("/api/billing/downgrade", { method: "POST" });
+    const data = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) {
+      setError(data.error || "Could not switch to Free.");
+      return;
+    }
+    setDowngradeOpen(false);
     load();
   }
 
@@ -298,6 +349,15 @@ export default function BillingPage() {
   const subAmount = isPro
     ? fmtPrice(PLANS.pro.price[info.interval === "year" ? "year" : "month"])
     : fmtPrice(0);
+
+  // Whole days of paid Pro time still remaining (null = perpetual, no expiry).
+  const proDaysLeft = (() => {
+    if (!isPro || !info.current_period_end) return null;
+    const end = new Date(info.current_period_end.replace(" ", "T") + "Z").getTime();
+    if (Number.isNaN(end)) return null;
+    return Math.max(0, Math.ceil((end - Date.now()) / 86_400_000));
+  })();
+  const canDowngrade = isPro && info.is_admin;
 
   return (
     <div className="pv billing-pv">
@@ -361,6 +421,46 @@ export default function BillingPage() {
           </>
         )}
       </div>
+
+      {/* Plan state (upgrade pending / notes) — shown above the plans */}
+      {isPro ? (
+        <div className="bill-note">
+          You&apos;re on <strong>Pro</strong> — thank you! To renew or change your
+          plan, contact{" "}
+          {info.contact.email ? <strong>{info.contact.email}</strong> : "us"}.
+        </div>
+      ) : !info.is_admin ? (
+        <div className="bill-note">
+          Only workspace admins can change the plan.
+        </div>
+      ) : info.pending_request ? (
+        <div className="bill-pending">
+          <span className="bill-pending-ic" aria-hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+          </span>
+          <div>
+            <strong>Upgrade request received.</strong> We&apos;ll activate Pro (
+            {info.pending_request.interval}ly) once we&apos;ve verified your bank
+            transfer. Make sure you&apos;ve emailed your invoice and workspace
+            domain{" "}
+            <CopyText value={info.workspace.subdomain} className="bill-domain">
+              {info.workspace.subdomain}
+            </CopyText>{" "}
+            to{" "}
+            {info.contact.email ? (
+              <CopyText value={info.contact.email} className="bill-copy-email">
+                {info.contact.email}
+              </CopyText>
+            ) : (
+              "us"
+            )}
+            .
+          </div>
+        </div>
+      ) : null}
 
       {/* Billing period toggle */}
       {canUpgrade && (
@@ -427,6 +527,16 @@ export default function BillingPage() {
                   <button className="btn bill-btn" disabled>
                     Admins only
                   </button>
+                ) : !featured && canDowngrade ? (
+                  <button
+                    className="btn bill-btn bill-downgrade-btn"
+                    onClick={() => {
+                      setError("");
+                      setDowngradeOpen(true);
+                    }}
+                  >
+                    Downgrade to Free
+                  </button>
                 ) : null}
               </div>
               <div className="bill-card-includes">This plan includes</div>
@@ -453,34 +563,6 @@ export default function BillingPage() {
           );
         })}
       </div>
-
-      {/* Upgrade flow / states */}
-      {isPro ? (
-        <div className="bill-note">
-          You&apos;re on <strong>Pro</strong> — thank you! To renew or change your
-          plan, contact{" "}
-          {info.contact.email ? <strong>{info.contact.email}</strong> : "us"}.
-        </div>
-      ) : !info.is_admin ? (
-        <div className="bill-note">
-          Only workspace admins can change the plan.
-        </div>
-      ) : info.pending_request ? (
-        <div className="bill-pending">
-          <span className="bill-pending-ic" aria-hidden>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="9" />
-              <path d="M12 7v5l3 2" />
-            </svg>
-          </span>
-          <div>
-            <strong>Upgrade request received.</strong> We&apos;ll activate Pro (
-            {info.pending_request.interval}ly) once we&apos;ve verified your bank
-            transfer. Make sure you&apos;ve emailed your invoice and workspace
-            domain to {info.contact.email || "us"}.
-          </div>
-        </div>
-      ) : null}
 
       {/* Upgrade-by-bank-transfer modal (opened from the Pro card CTA) */}
       {upgradeOpen && canUpgrade && (
@@ -556,16 +638,8 @@ export default function BillingPage() {
                 </div>
               )}
 
-              <div className="bill-co-actions">
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={() => setUpgradeOpen(false)}
-                  disabled={busy}
-                >
-                  Back
-                </button>
-                {paySelected && bankLines.length > 0 && (
+              {paySelected && bankLines.length > 0 && (
+                <div className="bill-co-actions">
                   <button
                     className="btn btn-primary"
                     onClick={requestUpgrade}
@@ -573,8 +647,8 @@ export default function BillingPage() {
                   >
                     {busy ? <Spinner /> : "I've made the transfer"}
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
             {/* Right: order summary */}
@@ -710,24 +784,26 @@ export default function BillingPage() {
               </button>
             </div>
             <div className="bill-usage-body">
-              <UsageRow
-                icon={UsageIcon.projects}
-                label="Projects"
-                used={`Created: ${info.usage.projects}`}
-                limit={`Project Limit: ${info.limits.projects ?? "Unlimited"}`}
-                unlimited={info.limits.projects == null}
-                pct={pctOf(info.usage.projects, info.limits.projects)}
-                near={nearOf(info.usage.projects, info.limits.projects)}
-              />
-              <UsageRow
-                icon={UsageIcon.members}
-                label="Team Members"
-                used={`Joined: ${info.usage.members}`}
-                limit={`Member Limit: ${info.limits.members ?? "Unlimited"}`}
-                unlimited={info.limits.members == null}
-                pct={pctOf(info.usage.members, info.limits.members)}
-                near={nearOf(info.usage.members, info.limits.members)}
-              />
+              {info.limits.projects != null && (
+                <UsageRow
+                  icon={UsageIcon.projects}
+                  label="Projects"
+                  used={`Created: ${info.usage.projects}`}
+                  limit={`Project Limit: ${info.limits.projects}`}
+                  pct={pctOf(info.usage.projects, info.limits.projects)}
+                  near={nearOf(info.usage.projects, info.limits.projects)}
+                />
+              )}
+              {info.limits.members != null && (
+                <UsageRow
+                  icon={UsageIcon.members}
+                  label="Team Members"
+                  used={`Joined: ${info.usage.members}`}
+                  limit={`Member Limit: ${info.limits.members}`}
+                  pct={pctOf(info.usage.members, info.limits.members)}
+                  near={nearOf(info.usage.members, info.limits.members)}
+                />
+              )}
               <UsageRow
                 icon={UsageIcon.storage}
                 label="Storage"
@@ -751,47 +827,129 @@ export default function BillingPage() {
                     : info.limits.storage * 1024 ** 3
                 )}
               />
-              <div className="bill-usage-row">
-                <div className="bill-usage-row-head">
-                  <span className="bill-usage-ic">{UsageIcon.tasks}</span>
-                  <span className="bill-usage-name">Tasks</span>
-                  <span className="bill-usage-cap">
-                    {info.limits.tasksPerProject != null
-                      ? `${info.limits.tasksPerProject} / project`
-                      : "Unlimited"}
-                  </span>
-                </div>
-                {info.usage.tasks_by_project.length === 0 ? (
-                  <div className="bill-usage-empty">No projects yet.</div>
-                ) : (
-                  <div className="bill-usage-projects">
-                    {info.usage.tasks_by_project.map((p) => {
-                      const cap = info.limits.tasksPerProject;
-                      return (
-                        <div key={p.id} className="bill-usage-proj">
-                          <div className="bill-usage-proj-top">
-                            <span className="bill-usage-proj-name">
-                              {p.name}
-                            </span>
-                            <span className="bill-usage-proj-count">
-                              {p.tasks}
-                              {cap != null ? ` / ${cap}` : ""}
-                            </span>
-                          </div>
-                          <div className="bill-usage-track">
-                            <div
-                              className={`bill-usage-fill${
-                                nearOf(p.tasks, cap) ? " near" : ""
-                              }${cap == null ? " unlimited" : ""}`}
-                              style={{ width: `${pctOf(p.tasks, cap)}%` }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
+              {info.limits.tasksPerProject != null && (
+                <div className="bill-usage-row">
+                  <div className="bill-usage-row-head">
+                    <span className="bill-usage-ic">{UsageIcon.tasks}</span>
+                    <span className="bill-usage-name">Tasks</span>
+                    <span className="bill-usage-cap">
+                      {`${info.limits.tasksPerProject} / project`}
+                    </span>
                   </div>
-                )}
-              </div>
+                  {info.usage.tasks_by_project.length === 0 ? (
+                    <div className="bill-usage-empty">No projects yet.</div>
+                  ) : (
+                    <div className="bill-usage-projects">
+                      {info.usage.tasks_by_project.map((p) => {
+                        const cap = info.limits.tasksPerProject;
+                        return (
+                          <div key={p.id} className="bill-usage-proj">
+                            <div className="bill-usage-proj-top">
+                              <span className="bill-usage-proj-name">
+                                {p.name}
+                              </span>
+                              <span className="bill-usage-proj-count">
+                                {p.tasks}
+                                {cap != null ? ` / ${cap}` : ""}
+                              </span>
+                            </div>
+                            <div className="bill-usage-track">
+                              <div
+                                className={`bill-usage-fill${
+                                  nearOf(p.tasks, cap) ? " near" : ""
+                                }${cap == null ? " unlimited" : ""}`}
+                                style={{ width: `${pctOf(p.tasks, cap)}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Downgrade-to-Free confirmation (opened from the Free card CTA on Pro) */}
+      {downgradeOpen && canDowngrade && (
+        <div className="overlay" onMouseDown={() => !busy && setDowngradeOpen(false)}>
+          <div
+            className="modal bill-downgrade-modal"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="bill-dg-icon" aria-hidden>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+                <path d="M12 9v4" />
+                <path d="M12 17h.01" />
+              </svg>
+            </div>
+
+            <h2 className="bill-dg-title">Downgrade to Free?</h2>
+            <p className="bill-dg-lead">
+              You&apos;re about to move this workspace from <strong>Pro</strong> to{" "}
+              <strong>Free</strong>. This takes effect immediately.
+            </p>
+
+            <ul className="bill-dg-list">
+              <li>
+                <Cross />
+                <span>
+                  You&apos;ll lose <strong>Custom Roles &amp; Permissions</strong>{" "}
+                  and <strong>white-labeling</strong>. Any custom branding is
+                  removed right away.
+                </span>
+              </li>
+              <li>
+                <Cross />
+                <span>
+                  Free limits apply again: <strong>2 projects</strong>,{" "}
+                  <strong>200 tasks per project</strong>, <strong>5 members</strong>,
+                  and <strong>2 GB storage</strong>.
+                </span>
+              </li>
+              <li>
+                <Cross />
+                <span>
+                  {proDaysLeft != null ? (
+                    <>
+                      You still have{" "}
+                      <strong>
+                        {proDaysLeft} {proDaysLeft === 1 ? "day" : "days"}
+                      </strong>{" "}
+                      left on Pro. Switching now forfeits that time.{" "}
+                      <strong>No refund</strong> is issued.
+                    </>
+                  ) : (
+                    <>
+                      Switching now ends your Pro access. <strong>No refund</strong>{" "}
+                      is issued for any paid time.
+                    </>
+                  )}
+                </span>
+              </li>
+            </ul>
+
+            <div className="bill-dg-actions">
+              <button
+                type="button"
+                className="btn bill-dg-downgrade"
+                onClick={confirmDowngrade}
+                disabled={busy}
+              >
+                {busy ? <Spinner /> : "Yes, downgrade to Free"}
+              </button>
+              <button
+                type="button"
+                className="btn bill-dg-keep"
+                onClick={() => setDowngradeOpen(false)}
+                disabled={busy}
+              >
+                Keep Pro
+              </button>
             </div>
           </div>
         </div>

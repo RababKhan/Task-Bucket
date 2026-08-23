@@ -3,6 +3,7 @@ import { dbAll } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 import { getMembership } from "@/lib/membership";
 import { can, requirePermission } from "@/lib/rbac";
+import { getEffectivePlan } from "@/lib/billing";
 import { ALL_PERM_KEYS, permKey, type Module, type Action } from "@/lib/permissions";
 
 // GET /api/roles/matrix — every workspace role plus its granted permissions, in
@@ -57,5 +58,6 @@ export async function GET() {
     grants,
     can_manage_permissions: await can(userId, "roles", "manage_permissions"),
     can_manage_roles: await can(userId, "roles", "manage_roles"),
+    plan: await getEffectivePlan(m.workspace_id),
   });
 }

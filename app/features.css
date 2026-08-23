@@ -5085,8 +5085,32 @@ textarea::placeholder {
   width: 14px;
   height: 14px;
 }
+.pv-tool-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transition: none;
+}
+.tl-add-lock {
+  display: inline-flex;
+}
+/* Disabled buttons don't react to hover — pin hover to the resting look. */
+.pv-tool-btn:disabled:hover {
+  background: var(--surface);
+  color: var(--text-dim);
+  border-color: var(--border);
+}
+.pv-invite-btn:disabled:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
 .pv-view {
   margin-left: auto;
+}
+/* Locked "Create Role" wrapper (Free plan) — keeps the button right-aligned. */
+.roles-create-lock {
+  margin-left: auto;
+  display: inline-flex;
 }
 .pv-clear-all {
   color: var(--danger);
@@ -6342,11 +6366,14 @@ textarea::placeholder {
   width: 14px;
   height: 14px;
   border-radius: 4px;
-  border: 1.5px solid var(--border);
+  border: 1.5px solid color-mix(in srgb, var(--text-dim) 60%, transparent);
   display: grid;
   place-items: center;
   color: transparent;
   transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.perm-checkbox:hover input:not(:disabled) + .perm-checkbox-box {
+  border-color: var(--text-dim);
 }
 .perm-checkbox-box svg {
   width: 10px;
@@ -6356,6 +6383,21 @@ textarea::placeholder {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
+}
+/* Partial (some-but-not-all) select-all — accent fill with a dash. */
+.perm-checkbox input:indeterminate + .perm-checkbox-box {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.perm-checkbox input:indeterminate + .perm-checkbox-box svg {
+  display: none;
+}
+.perm-checkbox input:indeterminate + .perm-checkbox-box::after {
+  content: "";
+  width: 8px;
+  height: 2px;
+  border-radius: 1px;
+  background: #fff;
 }
 .perm-checkbox input:disabled + .perm-checkbox-box {
   opacity: 0.55;
@@ -6747,6 +6789,40 @@ textarea::placeholder {
 .dir-muted {
   color: var(--text-dim);
 }
+/* Role shown as plain one-line text (no pill) in the directory list. */
+.dir-role {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  color: var(--text);
+}
+/* Email as its own column. */
+.dir-email {
+  font-size: 12px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Pending-invite rows: not clickable, muted mail avatar, actions on the right. */
+.dir-invite-row {
+  cursor: default;
+}
+.dir-invite-row:hover {
+  background: transparent;
+}
+.dir-invite-avatar {
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.dir-invite-name {
+  color: var(--text-dim);
+}
+.dir-invite-role {
+  justify-content: space-between;
+}
 
 /* ---- Create Sprint modal (built on .task-modal so fields/spacing/height
    match the Create Task modal) ---- */
@@ -6885,27 +6961,29 @@ textarea::placeholder {
   border-radius: 8px;
   background: var(--surface);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-  scrollbar-width: auto;
-  scrollbar-color: var(--text-dim) var(--surface-2);
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--text-dim) 40%, transparent)
+    transparent;
 }
 .rpm-wrap::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+  width: 8px;
+  height: 8px;
 }
 .rpm-wrap::-webkit-scrollbar-track {
-  background: var(--surface-2);
-  border-radius: 999px;
+  background: transparent;
 }
 .rpm-wrap::-webkit-scrollbar-thumb {
-  background: var(--text-dim);
+  background: color-mix(in srgb, var(--text-dim) 35%, transparent);
   border-radius: 999px;
-  border: 2px solid var(--surface-2);
+  border: 2px solid transparent;
   background-clip: padding-box;
 }
 .rpm-wrap::-webkit-scrollbar-thumb:hover {
-  background: var(--text);
-  border: 2px solid var(--surface-2);
+  background: color-mix(in srgb, var(--text-dim) 60%, transparent);
   background-clip: padding-box;
+}
+.rpm-wrap::-webkit-scrollbar-corner {
+  background: transparent;
 }
 .rpm-table {
   width: 100%;
@@ -6937,24 +7015,167 @@ textarea::placeholder {
   padding: 8px 10px;
   min-width: 116px;
 }
+/* Toolbar: Save / Discard live alongside Create Role on the right. */
+.rpm-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
 .rpm-colhead {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
 }
-.rpm-rolename {
-  background: none;
+/* Controls sit on the right; an identical hidden copy on the left reserves equal
+   width so the role name stays centered in the column. */
+.rpm-colhead-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.rpm-colhead-mirror {
+  visibility: hidden;
+}
+/* Kebab (⋮) menu trigger beside a role name — matches the projects table's
+   .pv-kebab hover treatment. */
+.rpm-kebab {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   border: none;
-  padding: 0;
-  font-weight: 600;
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.rpm-kebab svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+.rpm-kebab:hover,
+.rpm-kebab.active {
+  background: var(--surface-2);
+  color: var(--text);
+}
+/* Dropdown menu (fixed-positioned in JS) — matches the projects table .pv-menu. */
+.rpm-menu {
+  z-index: 70;
+  min-width: 150px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--card-shadow);
+}
+.rpm-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 6px;
+  background: none;
   font-size: 11.375px;
   color: var(--text);
   cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
 }
-.rpm-rolename:hover {
+.rpm-menu-item svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--text-dim);
+}
+.rpm-menu-item:hover {
+  background: var(--surface-2);
+}
+.rpm-menu-danger {
+  color: var(--danger);
+}
+.rpm-menu-danger svg {
+  color: var(--danger);
+}
+/* Disabled menu item (Delete on built-in roles) — muted, no hover reaction. */
+.rpm-menu-disabled {
+  color: var(--text-dim);
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.rpm-menu-disabled svg {
+  color: var(--text-dim);
+}
+.rpm-menu-disabled:hover {
+  background: none;
+}
+/* Unsaved-change marker on an edited role column. */
+.rpm-dirty {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+/* Inline error inside the delete-role confirm modal (e.g. role still in use). */
+.rpm-del-err {
+  margin: 0 0 4px;
+  font-size: 11.375px;
+  line-height: 1.5;
+  color: var(--danger);
+}
+.rpm-rolename {
+  font-weight: 600;
+  font-size: 11.375px;
+  color: var(--text);
+  white-space: nowrap;
+}
+/* Clickable role name (rename on click). A muted pencil signals it's editable. */
+.rpm-rolename-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid transparent;
+  background: none;
+  padding: 3px 7px;
+  border-radius: 6px;
+  cursor: text;
+  transition: background 0.12s, border-color 0.12s;
+}
+.rpm-rolename-btn:hover {
+  background: var(--surface);
+  border-color: var(--border);
+}
+.rpm-rename-ic {
+  width: 11px;
+  height: 11px;
+  color: var(--text-dim);
+  opacity: 0.6;
+  transition: opacity 0.12s, color 0.12s;
+}
+.rpm-rolename-btn:hover .rpm-rename-ic {
+  opacity: 1;
   color: var(--accent);
-  text-decoration: underline;
+}
+/* Inline rename field. */
+.rpm-rename-input {
+  width: 130px;
+  max-width: 100%;
+  padding: 3px 7px;
+  font-size: 11.375px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  outline: none;
 }
 .rpm-editbtns {
   display: inline-flex;
@@ -6982,6 +7203,19 @@ textarea::placeholder {
 }
 .rpm-edit:hover {
   color: var(--accent);
+}
+/* Disabled pencil (Free plan) — muted, no hover reaction. */
+.rpm-edit-lock {
+  display: inline-flex;
+}
+.rpm-iconbtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transition: none;
+}
+.rpm-edit:disabled:hover {
+  color: var(--text-dim);
+  background: none;
 }
 .rpm-save {
   color: #fff;
@@ -7015,6 +7249,20 @@ textarea::placeholder {
   letter-spacing: 0.04em;
   color: var(--text-dim);
   padding: 7px 16px;
+}
+/* Module header: label cell (sticky left, like the action rows) + one
+   select-all checkbox cell per editable role column. */
+.rpm-group-fn {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+.rpm-group td.rpm-group-cell {
+  text-align: center;
+  padding: 3px 4px;
+}
+.rpm-group-cell .perm-checkbox {
+  height: 26px;
 }
 .rpm-group-label {
   display: inline-flex;
@@ -7376,9 +7624,6 @@ textarea::placeholder {
   font-weight: 600;
   cursor: pointer;
 }
-.bill-history-link:hover {
-  text-decoration: underline;
-}
 .bill-history-link svg {
   width: 14px;
   height: 14px;
@@ -7635,9 +7880,115 @@ textarea::placeholder {
   font-size: 11.375px;
 }
 
+/* Downgrade CTA on the Free card (shown while on Pro) */
+.bill-downgrade-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.bill-downgrade-btn:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+}
+
+/* Downgrade confirmation modal */
+.bill-downgrade-modal {
+  max-width: 440px;
+  padding: 26px 26px 22px;
+  text-align: center;
+}
+.bill-dg-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin: 0 auto 14px;
+  border-radius: 999px;
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 13%, transparent);
+}
+.bill-dg-icon svg {
+  width: 24px;
+  height: 24px;
+}
+.bill-dg-title {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+.bill-dg-lead {
+  margin: 0 0 18px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+.bill-dg-lead strong {
+  color: var(--text);
+}
+.bill-dg-list {
+  list-style: none;
+  margin: 0 0 22px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.bill-dg-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+.bill-dg-list li .bill-cross {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.bill-dg-list strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.bill-dg-actions {
+  display: flex;
+  gap: 10px;
+}
+.bill-dg-actions .btn {
+  flex: 1;
+  justify-content: center;
+}
+/* Keep Pro is the emphasized action (red, right side). */
+.bill-dg-keep {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+  font-weight: 600;
+}
+.bill-dg-keep:hover {
+  background: color-mix(in srgb, var(--danger) 88%, #000);
+  border-color: color-mix(in srgb, var(--danger) 88%, #000);
+}
+/* The downgrade action is de-emphasized. */
+.bill-dg-downgrade {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.bill-dg-downgrade:hover {
+  border-color: var(--text-dim);
+  color: var(--text);
+}
+
 /* Notes / pending */
 .bill-note {
-  margin-top: 20px;
+  margin-top: 12px;
+  margin-bottom: 14px;
   padding: 14px 16px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -7650,7 +8001,8 @@ textarea::placeholder {
   color: var(--text);
 }
 .bill-pending {
-  margin-top: 20px;
+  margin-top: 12px;
+  margin-bottom: 14px;
   display: flex;
   gap: 12px;
   padding: 16px;
@@ -7710,10 +8062,24 @@ textarea::placeholder {
 .bill-domain {
   padding: 1px 7px;
   border-radius: 5px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--border));
+  color: var(--accent);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11.5px;
+  font-weight: 600;
+}
+/* Click-to-copy inline values (domain / email) in the pending banner. */
+.bill-copy {
+  cursor: pointer;
+}
+.bill-copy.bill-domain:hover {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.bill-copy-email {
+  color: var(--accent);
+  font-weight: 500;
+  text-decoration: none;
 }
 .bill-bank {
   margin: 0 0 18px;

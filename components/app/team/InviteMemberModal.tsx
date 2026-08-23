@@ -2,13 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Spinner from "@/components/Spinner";
+import SelectField from "@/components/app/SelectField";
 
 type RoleOption = { key: string; name: string };
-type ProjectOption = { id: number; name: string };
 
-// Invite a new team member to the workspace, with role + initial project access
-// + an optional message. Project options are scoped by the API to what the
-// inviter may grant.
+// Invite a new team member to the workspace with a role.
 export default function InviteMemberModal({
   onClose,
   onInvited,
@@ -17,13 +15,10 @@ export default function InviteMemberModal({
   onInvited: () => void;
 }) {
   const [roles, setRoles] = useState<RoleOption[]>([]);
-  const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("assignee");
-  const [projectIds, setProjectIds] = useState<number[]>([]);
-  const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
 
@@ -38,17 +33,10 @@ export default function InviteMemberModal({
       .then((r) => r.json())
       .then((d) => {
         setRoles(d.roles ?? []);
-        setProjects(d.projects ?? []);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
-
-  function toggleProject(id: number) {
-    setProjectIds((cur) =>
-      cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]
-    );
-  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -61,8 +49,8 @@ export default function InviteMemberModal({
       body: JSON.stringify({
         email: email.trim(),
         role,
-        project_access: projectIds,
-        message: message.trim() || null,
+        project_access: [],
+        message: null,
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -102,49 +90,11 @@ export default function InviteMemberModal({
 
             <div className="field">
               <label>Role</label>
-              <select
-                className="cf-input"
+              <SelectField
                 value={role}
-                onChange={(e) => setRole(e.target.value)}
-              >
-                {roles.map((r) => (
-                  <option key={r.key} value={r.key}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="field">
-              <label>Project access</label>
-              {projects.length === 0 ? (
-                <p className="settings-card-sub">
-                  No projects available to grant.
-                </p>
-              ) : (
-                <div className="invite-project-list">
-                  {projects.map((p) => (
-                    <label key={p.id} className="invite-project-item">
-                      <input
-                        type="checkbox"
-                        checked={projectIds.includes(p.id)}
-                        onChange={() => toggleProject(p.id)}
-                      />
-                      <span>{p.name}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="field">
-              <label>Message (optional)</label>
-              <textarea
-                rows={3}
-                maxLength={1000}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Add a personal note to the invite email."
+                onChange={setRole}
+                options={roles.map((r) => ({ value: r.key, label: r.name }))}
+                placeholder="Select a role"
               />
             </div>
 

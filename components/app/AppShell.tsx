@@ -229,6 +229,7 @@ function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const pathname = usePathname();
   const [menu, setMenu] = useState<null | "notif" | "account">(null);
   const [boardProject, setBoardProject] = useState<string | null>(null);
+  const [projectAtLimit, setProjectAtLimit] = useState(false);
   const [taskCrumb, setTaskCrumb] = useState<{
     project: string;
     projectId: number;
@@ -261,11 +262,21 @@ function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
         ).detail ?? null
       );
     }
+    function onProjectLimit(e: Event) {
+      setProjectAtLimit(
+        !!(e as CustomEvent<{ atLimit: boolean } | null>).detail?.atLimit
+      );
+    }
     window.addEventListener("tb:active-project", onActive as EventListener);
     window.addEventListener("tb:task-crumb", onTaskCrumb as EventListener);
+    window.addEventListener("tb:project-limit", onProjectLimit as EventListener);
     return () => {
       window.removeEventListener("tb:active-project", onActive as EventListener);
       window.removeEventListener("tb:task-crumb", onTaskCrumb as EventListener);
+      window.removeEventListener(
+        "tb:project-limit",
+        onProjectLimit as EventListener
+      );
     };
   }, []);
 
@@ -354,17 +365,31 @@ function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
           <h1 className="topbar-title">{title}</h1>
         )}
         {showAdd && (
-          <button
-            type="button"
-            className="topbar-add"
-            aria-label="Create project"
-            onClick={() => window.dispatchEvent(new Event("tb:create-project"))}
+          <span
+            className="topbar-add-wrap"
+            data-tip={
+              projectAtLimit
+                ? "Upgrade to Pro to add more projects"
+                : undefined
+            }
+            data-tip-pos="right"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            <span className="topbar-add-label">Create Project</span>
-          </button>
+            <button
+              type="button"
+              className="topbar-add"
+              aria-label="Create project"
+              disabled={projectAtLimit}
+              aria-disabled={projectAtLimit}
+              onClick={() =>
+                window.dispatchEvent(new Event("tb:create-project"))
+              }
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              <span className="topbar-add-label">Create Project</span>
+            </button>
+          </span>
         )}
       </div>
 

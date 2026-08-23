@@ -3,6 +3,8 @@ import { dbAll, dbGet, dbRun, dbInsert, type Task } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 import { canAccessProjectScoped } from "@/lib/membership";
 import { requirePermission, ERR } from "@/lib/rbac";
+import { getEffectivePlan } from "@/lib/billing";
+import { planLimit } from "@/lib/plans";
 import { logActivity } from "@/lib/activity";
 import { STATUS_ORDER, PRIORITY_ORDER } from "@/lib/types";
 import {
@@ -77,6 +79,32 @@ export async function POST(request: Request) {
   if (createDenied) return createDenied;
   if (!(await canAccessProjectScoped(projectId, userId))) {
     return NextResponse.json({ error: ERR.NO_PROJECT_ACCESS }, { status: 403 });
+  }
+
+  // Enforce the plan's per-project task cap — top-level items only (subtasks
+  // don't count toward the limit).
+  if (!parentId) {
+    const proj = await dbGet<{ workspace_id: string }>(
+      "SELECT workspace_id FROM projects WHERE id = ?",
+      [projectId]
+    );
+    if (proj) {
+      const cap = planLimit(await getEffectivePlan(proj.workspace_id), "tasksPerProject");
+      if (Number.isFinite(cap)) {
+        const cnt = await dbGet<{ n: number }>(
+          "SELECT COUNT(*) AS n FROM tasks WHERE project_id = ? AND parent_id IS NULL",
+          [projectId]
+        );
+        if (Number(cnt?.n ?? 0) >= cap) {
+          return NextResponse.json(
+            {
+              error: `You've reached the ${cap}-task limit for this project. Upgrade to Pro for unlimited tasks.`,
+            },
+            { status: 403 }
+          );
+        }
+      }
+    }
   }
 
   // A subtask must hang off a top-level task in the same project (one level deep).

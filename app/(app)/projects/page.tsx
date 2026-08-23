@@ -75,6 +75,9 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const loading = projectsQuery.isLoading;
   const [modalOpen, setModalOpen] = useState(false);
+  // Plan project cap (null = unlimited). Free is capped, so the create button
+  // is disabled once the cap is reached.
+  const [projectLimit, setProjectLimit] = useState<number | null>(null);
   const [query, setQuery] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<Set<ProjectStatus>>(
@@ -183,13 +186,44 @@ export default function ProjectsPage() {
   const visibleCols = COLUMNS.filter((c) => visible[c.key]);
   const gridCols = `34px ${visibleCols.map((c) => c.width).join(" ")} 32px`;
 
-  const createProject = () => setModalOpen(true);
+  const atProjectLimit =
+    projectLimit != null && projects.length >= projectLimit;
+
+  const createProject = () => {
+    if (atProjectLimit) return;
+    setModalOpen(true);
+  };
+
+  // Fetch the plan's project cap once.
+  useEffect(() => {
+    fetch("/api/workspace/plan")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.limits) setProjectLimit(d.limits.projects ?? null);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Tell the topbar whether its "+" create button should be disabled.
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("tb:project-limit", { detail: { atLimit: atProjectLimit } })
+    );
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent("tb:project-limit", { detail: { atLimit: false } })
+      );
+    };
+  }, [atProjectLimit]);
 
   useEffect(() => {
-    const open = () => setModalOpen(true);
+    const open = () => {
+      if (atProjectLimit) return;
+      setModalOpen(true);
+    };
     window.addEventListener("tb:create-project", open);
     return () => window.removeEventListener("tb:create-project", open);
-  }, []);
+  }, [atProjectLimit]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

@@ -104,13 +104,12 @@ export async function DELETE(_request: Request, { params }: Ctx) {
     );
   }
 
-  const inUse = await dbGet<{ n: number }>(
-    "SELECT COUNT(*) AS n FROM workspace_members WHERE workspace_id = ? AND role = ?",
+  // Any member still holding this role falls back to the default Member role
+  // (the "assignee" system role) so nobody is left pointing at a deleted role.
+  await dbRun(
+    "UPDATE workspace_members SET role = 'assignee' WHERE workspace_id = ? AND role = ?",
     [m.workspace_id, role.key]
   );
-  if ((inUse?.n ?? 0) > 0) {
-    return NextResponse.json({ error: ERR.ROLE_IN_USE }, { status: 400 });
-  }
 
   // role_permissions rows cascade via the FK.
   await dbRun("DELETE FROM roles WHERE id = ?", [role.id]);

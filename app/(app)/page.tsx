@@ -153,6 +153,8 @@ function BoardPage() {
   const [deletingTasks, setDeletingTasks] = useState(false);
   const stickyRef = useRef<HTMLDivElement>(null);
 
+  // Per-project task cap for the current plan (Free: 200; Pro: null/unlimited).
+  const [taskLimit, setTaskLimit] = useState<number | null>(null);
   // Inline "add task" row at the bottom of the list table (editable defaults).
   const [addingTask, setAddingTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -160,6 +162,16 @@ function BoardPage() {
   const [savingTask, setSavingTask] = useState(false);
   const addInputRef = useRef<HTMLInputElement>(null);
   const addRowRef = useRef<HTMLDivElement>(null);
+
+  // The current plan's per-project task cap (Free = 200, Pro = unlimited).
+  useEffect(() => {
+    fetch("/api/workspace/plan")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.limits) setTaskLimit(d.limits.tasksPerProject ?? null);
+      })
+      .catch(() => {});
+  }, []);
 
   const activeProject = useMemo(
     () => projects.find((p) => p.id === activeId) ?? null,
@@ -501,6 +513,10 @@ function BoardPage() {
     [tasksByStatus]
   );
 
+  // Per-project task cap reached (Free plan) — blocks adding more items.
+  const atTaskLimit = taskLimit != null && tasks.length >= taskLimit;
+  const taskLimitTip = `Upgrade to Pro — ${taskLimit} tasks per project limit reached`;
+
   // Header select-all: toggles every visible list item.
   const allListSelected =
     listTasks.length > 0 && listTasks.every((t) => selectedTasks.has(t.id));
@@ -618,6 +634,10 @@ function BoardPage() {
               <h1>{activeProject.name}</h1>
             </div>
 
+            <span className="proj-task-count">
+              {tasks.length} {tasks.length === 1 ? "item" : "items"}
+            </span>
+
             <span className="proj-status-view">
               <StatusIcon status={activeProject.status} size={18} />
               {PROJECT_STATUS_LABELS[activeProject.status]}
@@ -659,16 +679,25 @@ function BoardPage() {
       {view !== "sprint" && (
       <div className="proj-toolbar">
         <div className="proj-toolbar-left">
-          <button
-            type="button"
-            className="pv-tool-btn"
-            onClick={() => setCreatingStatus("backlog")}
+          <span
+            className="tl-add-lock"
+            data-tip={atTaskLimit ? taskLimitTip : undefined}
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            Add Item
-          </button>
+            <button
+              type="button"
+              className="pv-tool-btn"
+              disabled={atTaskLimit}
+              onClick={() => {
+                if (atTaskLimit) return;
+                setCreatingStatus("backlog");
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              Add Item
+            </button>
+          </span>
           <div className="proj-search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <circle cx="11" cy="11" r="7" />
@@ -860,7 +889,6 @@ function BoardPage() {
                   }}
                   onChange={toggleSelectAll}
                   aria-label={allListSelected ? "Deselect all" : "Select all"}
-                  data-tip={allListSelected ? "Deselect all" : "Select all"}
                 />
               )}
             </span>
@@ -1159,20 +1187,28 @@ function BoardPage() {
               <span />
             </div>
           )}
-          <button
-            type="button"
-            className="pv-tool-btn tl-add"
-            onClick={() => {
-              setAddingTask(true);
-              setNewTaskTitle("");
-              requestAnimationFrame(() => addInputRef.current?.focus());
-            }}
+          <span
+            className="tl-add-lock"
+            data-tip={atTaskLimit ? taskLimitTip : undefined}
+            data-tip-pos="right"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            Add Item
-          </button>
+            <button
+              type="button"
+              className="pv-tool-btn tl-add"
+              disabled={atTaskLimit}
+              onClick={() => {
+                if (atTaskLimit) return;
+                setAddingTask(true);
+                setNewTaskTitle("");
+                requestAnimationFrame(() => addInputRef.current?.focus());
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              Add Item
+            </button>
+          </span>
         </div>
         </>
       )}

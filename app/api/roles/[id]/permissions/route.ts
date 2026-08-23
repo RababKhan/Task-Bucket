@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { dbAll, dbGet, dbRun, type RoleRow } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 import { getMembership } from "@/lib/membership";
+import { getEffectivePlan } from "@/lib/billing";
 import {
   requirePermission,
   assertAdminRoleProtected,
@@ -74,6 +75,13 @@ export async function PUT(request: Request, { params }: Ctx) {
 
   const m = await getMembership(userId);
   if (!m) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  // Editing role permissions is a Pro feature.
+  if ((await getEffectivePlan(m.workspace_id)) !== "pro") {
+    return NextResponse.json(
+      { error: "Upgrade to Pro to edit permissions." },
+      { status: 403 }
+    );
+  }
   const { id } = await params;
   const role = await roleInWorkspace(Number(id), m.workspace_id);
   if (!role) return NextResponse.json({ error: "Not found" }, { status: 404 });

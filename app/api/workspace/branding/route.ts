@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { dbGet, dbRun } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 import { getMembership } from "@/lib/membership";
-import { getEffectivePlan } from "@/lib/billing";
+import { getEffectivePlan, resetBrandingIfLapsed } from "@/lib/billing";
 
 type BrandRow = {
   id: string;
@@ -42,6 +42,10 @@ export async function GET() {
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Clear white-labeling if Pro lapsed past the 72h grace, then read the
+  // (possibly reset) branding.
+  const m0 = await getMembership(userId);
+  if (m0) await resetBrandingIfLapsed(m0.workspace_id);
   const cw = await currentWorkspace(userId);
   const plan = cw ? await getEffectivePlan(cw.m.workspace_id) : "free";
   return NextResponse.json({ ...payload(cw?.w), plan });

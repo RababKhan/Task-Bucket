@@ -9,30 +9,19 @@ import AccessDenied from "@/components/app/AccessDenied";
 import { usePerms } from "@/components/app/PermissionProvider";
 import InviteMemberModal from "@/components/app/team/InviteMemberModal";
 import PendingInvites from "@/components/app/team/PendingInvites";
-import { MEMBER_STATUS_LABELS, type TeamMember } from "@/lib/types";
+import { type TeamMember } from "@/lib/types";
 
 type RoleOption = { key: string; name: string };
 type ProjectOption = { id: number; name: string };
 
 // Column layout for the grid table (mirrors the Projects view's pv-table).
-const GRID = "1.6fr 150px 90px 120px 120px 130px";
+const GRID = "1.4fr 1.5fr 1fr";
 
 function initials(text: string) {
   const parts = text.trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "?";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
-function fmtDate(iso: string | null) {
-  if (!iso) return "—";
-  const d = new Date(iso.replace(" ", "T") + "Z");
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
 }
 
 const PAGE_SIZE = 20;
@@ -227,47 +216,36 @@ export default function DirectoryPage() {
         <div className="pv-table">
           <div className="pv-head" style={{ gridTemplateColumns: GRID }}>
             <span>Member</span>
+            <span>Email</span>
             <span>Role</span>
-            <span>Projects</span>
-            <span>Status</span>
-            <span>Joined</span>
-            <span>Last Active</span>
           </div>
 
-          {members.map((m) => {
-            const statusKey = m.active ? "active" : "inactive";
-            return (
-              <div
-                key={m.user_id}
-                className="pv-row"
-                style={{ gridTemplateColumns: GRID }}
-                onClick={() => router.push(`/directory/${m.user_id}`)}
-              >
-                <span className="pv-cell pv-title-cell">
-                  <span className="pv-avatar">
-                    {initials(m.name || m.email || "?")}
-                  </span>
-                  <span className="dir-name-wrap">
-                    <span className="pv-title">{m.name || m.email}</span>
-                    <span className="dir-sub">{m.email}</span>
-                  </span>
+          {members.map((m) => (
+            <div
+              key={m.user_id}
+              className="pv-row"
+              style={{ gridTemplateColumns: GRID }}
+              onClick={() => router.push(`/directory/${m.user_id}`)}
+            >
+              <span className="pv-cell pv-title-cell">
+                <span className="pv-avatar">
+                  {initials(m.name || m.email || "?")}
                 </span>
-                <span className="pv-cell">
-                  <span className={`role-pill role-${m.role}`}>{m.role_name}</span>
-                </span>
-                <span className="pv-cell pv-progress">{m.project_count}</span>
-                <span className="pv-cell">
-                  <span className={`status-badge status-${statusKey}`}>
-                    {MEMBER_STATUS_LABELS[statusKey]}
-                  </span>
-                </span>
-                <span className="pv-cell dir-muted">{fmtDate(m.joined_at)}</span>
-                <span className="pv-cell dir-muted">
-                  {fmtDate(m.last_active_at)}
-                </span>
-              </div>
-            );
-          })}
+                <span className="pv-title">{m.name || m.email}</span>
+              </span>
+              <span className="pv-cell dir-email">{m.email}</span>
+              <span className="pv-cell">
+                <span className="dir-role">{m.role_name}</span>
+              </span>
+            </div>
+          ))}
+
+          <PendingInvites
+            canResend={canResend}
+            canCancel={canCancel}
+            refreshKey={invitesKey}
+            grid={GRID}
+          />
         </div>
       )}
 
@@ -294,12 +272,6 @@ export default function DirectoryPage() {
           </button>
         </div>
       )}
-
-      <PendingInvites
-        canResend={canResend}
-        canCancel={canCancel}
-        refreshKey={invitesKey}
-      />
 
       {showInvite && (
         <InviteMemberModal
