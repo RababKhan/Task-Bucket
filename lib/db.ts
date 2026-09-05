@@ -4,11 +4,14 @@ import { Pool, types } from "pg";
 //   - Set DATABASE_URL, e.g. postgresql://postgres:postgres@localhost:5432/task_bucket
 // Schema is applied out-of-band via `npm run db:push` + `npm run db:setup`
 // (drizzle-kit + the compat shims), NOT on each request.
-const url = process.env.DATABASE_URL?.trim();
-if (!url) {
-  throw new Error(
-    "DATABASE_URL is not set — add your local Postgres connection string to .env.local"
-  );
+function connectionString(): string {
+  const url = process.env.DATABASE_URL?.trim();
+  if (!url) {
+    throw new Error(
+      "DATABASE_URL is not set — add your local Postgres connection string to .env.local"
+    );
+  }
+  return url;
 }
 
 // SQLite returned COUNT()/SUM() as JS numbers; node-postgres returns bigint(20)
@@ -23,8 +26,13 @@ declare global {
   // eslint-disable-next-line no-var
   var __pmPool: Pool | undefined;
 }
-const pool = globalThis.__pmPool ?? new Pool({ connectionString: url });
-if (process.env.NODE_ENV !== "production") globalThis.__pmPool = pool;
+// Created on first query, not at import time — see connectionString() above.
+function getPool(): Pool {
+  if (globalThis.__pmPool) return globalThis.__pmPool;
+  const p = new Pool({ connectionString: connectionString() });
+  globalThis.__pmPool = p;
+  return p;
+}
 
 // The whole app writes SQLite-style `?` placeholders; rewrite them to Postgres
 // `$1, $2, …` positionally. (No SQL string in this codebase contains a literal
@@ -40,7 +48,7 @@ export async function dbGet<T = Record<string, unknown>>(
   text: string,
   args: Args = []
 ): Promise<T | undefined> {
-  const res = await pool.query(toPg(text), args as unknown[]);
+  const res = await getPool().query(toPg(text), args as unknown[]);
   return res.rows[0] as T | undefined;
 }
 
@@ -48,7 +56,7 @@ export async function dbAll<T = Record<string, unknown>>(
   text: string,
   args: Args = []
 ): Promise<T[]> {
-  const res = await pool.query(toPg(text), args as unknown[]);
+  const res = await getPool().query(toPg(text), args as unknown[]);
   return res.rows as T[];
 }
 
@@ -56,7 +64,7 @@ export async function dbRun(
   text: string,
   args: Args = []
 ): Promise<{ rowsAffected: number }> {
-  const res = await pool.query(toPg(text), args as unknown[]);
+  const res = await getPool().query(toPg(text), args as unknown[]);
   return { rowsAffected: res.rowCount ?? 0 };
 }
 
@@ -67,7 +75,7 @@ export async function dbInsert(
   text: string,
   args: Args = []
 ): Promise<number> {
-  const res = await pool.query(`${toPg(text)} RETURNING id`, args as unknown[]);
+  const res = await getPool().query(`${toPg(text)} RETURNING id`, args as unknown[]);
   return Number((res.rows[0] as { id?: number } | undefined)?.id ?? 0);
 }
 

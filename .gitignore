@@ -33,3 +33,6 @@ dev.err.log
 /playwright-report/
 /playwright/.cache/
 tests/e2e/.auth/
+
+# Docker env (real secrets)
+.env.docker

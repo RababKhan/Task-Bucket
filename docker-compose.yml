@@ -1,0 +1,78 @@
+# Task Bucket — full local/production-ish stack.
+#
+#   cp .env.docker.example .env.docker            # then fill in the secrets
+#   docker compose --env-file .env.docker up --build
+#
+# The --env-file flag is required: `env_file:` below only populates each
+# container's environment, while the ${...} placeholders in this file are
+# interpolated from --env-file (or a default .env).
+#
+# Services: postgres -> migrate (one-shot) -> app, plus mailpit for email.
+
+services:
+  db:
+    # Debian-based (not alpine): db:setup creates an ICU collation, and this
+    # image ships full ICU support.
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.docker}
+      POSTGRES_DB: ${POSTGRES_DB:-task_bucket}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      # Exposed so you can inspect the DB from the host; drop this in production.
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-task_bucket}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  mailpit:
+    # Catches every outgoing email; inbox at http://localhost:8025
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    environment:
+      MP_MAX_MESSAGES: 500
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+  # Runs the schema push + compatibility shims, then exits. `app` waits for it.
+  migrate:
+    build:
+      context: .
+      target: migrator
+    env_file: .env.docker
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-task_bucket}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    env_file: .env.docker
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-task_bucket}
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_SECURE: "false"
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  db-data:

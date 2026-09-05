@@ -1,0 +1,37 @@
+# Build artefacts and local state — never copy these into the image.
+node_modules
+.next
+out
+build
+
+# Local env files carry real secrets; the image gets its config at runtime.
+.env
+.env.local
+.env*.local
+.env.docker
+
+# VCS / editor / OS noise
+.git
+.gitignore
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Tests, docs and local logs aren't needed to build or run the server.
+tests
+test-results
+playwright-report
+playwright.config.ts
+vitest.config.ts
+*.log
+dev.log
+dev.err.log
+README.md
+DEPLOY.md
+BILLING.md
+TEST-CASES.md
+
+# Claude/agent scratch
+.claude
+.agents
