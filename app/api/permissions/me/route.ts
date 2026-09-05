@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasFullAccess } from "@/lib/permissions";
 import { dbGet, dbRun } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 import { getUserRoleRow, getEffectivePermissions } from "@/lib/rbac";
@@ -41,7 +42,7 @@ export async function GET() {
     role: row.role,
     role_name: roleRow?.name ?? row.role,
     active: row.active === 1,
-    is_admin: row.role === "admin",
+    is_admin: hasFullAccess(row.role),
     permissions,
   });
 }

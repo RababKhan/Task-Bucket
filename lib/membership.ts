@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { hasFullAccess } from "@/lib/permissions";
 import { dbGet, dbAll } from "@/lib/db";
 import type { Role } from "@/lib/types";
 
@@ -77,7 +78,7 @@ export async function accessibleProjectIds(userId: string): Promise<number[]> {
   if (!m) return [];
   if (!(await isActiveMember(userId))) return [];
 
-  if (m.role === "admin") {
+  if (hasFullAccess(m.role)) {
     const rows = await dbAll<{ id: number }>(
       "SELECT id FROM projects WHERE workspace_id = ?",
       [m.workspace_id]
@@ -123,7 +124,7 @@ export async function canAccessProjectScoped(
   );
   if (!proj) return false;
 
-  if (m.role === "admin") return true;
+  if (hasFullAccess(m.role)) return true;
 
   if (m.role === "manager" && proj.manager_id === userId) return true;
 
@@ -152,7 +153,7 @@ export async function canAccessTask(
 
   const m = await getMembership(userId);
   if (!m) return false;
-  if (m.role === "admin" || m.role === "manager") return true;
+  if (hasFullAccess(m.role) || m.role === "manager") return true;
 
   // assignee: only their own tasks.
   if (task.created_by === userId) return true;

@@ -1,4 +1,5 @@
 import "server-only";
+import { hasFullAccess } from "@/lib/permissions";
 import { dbAll, dbGet, dbRun } from "@/lib/db";
 import { getMembership } from "@/lib/membership";
 import { isExpired } from "@/lib/invites";
@@ -96,7 +97,7 @@ export async function billingAdminWorkspace(
   userId: string
 ): Promise<string | null> {
   const m = await getMembership(userId);
-  return m && m.role === "admin" ? m.workspace_id : null;
+  return m && hasFullAccess(m.role) ? m.workspace_id : null;
 }
 
 // ---- Upgrade requests (customer signals "I've paid, please activate") ----
@@ -259,7 +260,7 @@ export async function workspaceAdminEmails(
   return dbAll<{ email: string; name: string | null }>(
     `SELECT u.email, u.name FROM workspace_members m
        JOIN users u ON u.id = m.user_id
-      WHERE m.workspace_id = ? AND m.active = 1 AND m.role = 'admin'`,
+      WHERE m.workspace_id = ? AND m.active = 1 AND m.role IN ('owner', 'admin')`,
     [workspaceId]
   );
 }

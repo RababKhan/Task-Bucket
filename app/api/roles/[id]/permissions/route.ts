@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasFullAccess } from "@/lib/permissions";
 import { dbAll, dbGet, dbRun, type RoleRow } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 import { getMembership } from "@/lib/membership";
@@ -44,7 +45,7 @@ export async function GET(_request: Request, { params }: Ctx) {
   if (!role) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   // The Admin role implicitly has every permission.
-  if (role.key === "admin" && role.is_system === 1) {
+  if (hasFullAccess(role.key) && role.is_system === 1) {
     return NextResponse.json({ permissions: ALL_PERM_KEYS, locked: true });
   }
 

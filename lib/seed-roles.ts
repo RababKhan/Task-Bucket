@@ -2,7 +2,7 @@ import "server-only";
 import { dbRun } from "@/lib/db";
 import { DEFAULT_PERMISSIONS } from "@/lib/permissions";
 
-// Seeds the three system roles (Admin / Project Manager / Member) and their
+// Seeds the four system roles (Owner / Admin / Project Manager / Member) and their
 // default permission grants for a single workspace. Idempotent: the role insert
 // relies on UNIQUE(workspace_id, key) and the permission insert on the
 // (role_id, module, action) primary key, so re-running never duplicates rows
@@ -14,10 +14,16 @@ import { DEFAULT_PERMISSIONS } from "@/lib/permissions";
 // workspaces using the raw client (to avoid a circular import).
 
 const SYSTEM_ROLES: {
-  key: "admin" | "manager" | "assignee";
+  key: "owner" | "admin" | "manager" | "assignee";
   name: string;
   description: string;
 }[] = [
+  {
+    key: "owner",
+    name: "Owner",
+    description:
+      "Full access to everything, plus deleting the workspace. Held by whoever created it.",
+  },
   { key: "admin", name: "Admin", description: "Full access to everything." },
   {
     key: "manager",

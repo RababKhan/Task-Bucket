@@ -117,9 +117,13 @@ export const ALL_PERM_KEYS: PermKey[] = allPermissionPairs().map(([m, a]) =>
 // only their own tasks/comments) is enforced at runtime via canAccessTask, not
 // expressed here — these are the coarse module/action grants.
 export const DEFAULT_PERMISSIONS: Record<
-  "admin" | "manager" | "assignee",
+  "owner" | "admin" | "manager" | "assignee",
   [Module, Action][]
 > = {
+  // Owner and Admin share an identical grant set. The only thing an Owner can
+  // do that an Admin cannot — delete the workspace — is not a role permission;
+  // it's gated on workspaces.owner_id (see app/api/workspace/route.ts).
+  owner: allPermissionPairs(),
   admin: allPermissionPairs(),
   manager: [
     ["dashboard", "view"],
@@ -155,11 +159,31 @@ export const DEFAULT_PERMISSIONS: Record<
 };
 
 // The reserved system role keys. Custom roles may not reuse these.
-export const SYSTEM_ROLE_KEYS = ["admin", "manager", "assignee"] as const;
+export const SYSTEM_ROLE_KEYS = [
+  "owner",
+  "admin",
+  "manager",
+  "assignee",
+] as const;
 export type SystemRoleKey = (typeof SYSTEM_ROLE_KEYS)[number];
 
 export function isSystemRoleKey(key: string): key is SystemRoleKey {
   return (SYSTEM_ROLE_KEYS as readonly string[]).includes(key);
+}
+
+// Roles that bypass the permission matrix entirely and hold every grant.
+// Use this instead of comparing a role to "admin" directly, so Owner is never
+// accidentally left out of an authorization check.
+export const FULL_ACCESS_ROLE_KEYS = ["owner", "admin"] as const;
+
+export function hasFullAccess(roleKey: string | null | undefined): boolean {
+  return (FULL_ACCESS_ROLE_KEYS as readonly string[]).includes(roleKey ?? "");
+}
+
+// Owner is bound to the workspace creator (workspaces.owner_id) and can't be
+// handed out, so it never appears in the invite/role pickers.
+export function isAssignableRoleKey(key: string): boolean {
+  return key !== "owner";
 }
 
 // Parse a "module:action" string back into a validated pair (or null).

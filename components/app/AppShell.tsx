@@ -115,9 +115,11 @@ function NavLink({
 function Sidebar({
   collapsed,
   onToggle,
+  initialSuperAdmin = false,
 }: {
   collapsed: boolean;
   onToggle: () => void;
+  initialSuperAdmin?: boolean;
 }) {
   const pathname = usePathname();
 
@@ -135,9 +137,12 @@ function Sidebar({
   // The Employee Directory requires team_member:view.
   const canViewDirectory = useCan("team_member", "view");
 
-  // Platform-owner console — only for super-admins (allowlisted email).
+  // Platform-owner console — only for super-admins (allowlisted email). Seeded
+  // from the server so it doesn't pop in once the session resolves.
   const { data: session } = useSession();
-  const isSuperAdmin = Boolean(session?.is_superadmin);
+  const isSuperAdmin = session
+    ? Boolean(session.is_superadmin)
+    : initialSuperAdmin;
 
   const prefetch = usePrefetch();
   const { branding } = useBranding();
@@ -236,6 +241,7 @@ function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
     task: string;
     ancestors?: { id: number; task: string }[];
   } | null>(null);
+  const [memberCrumb, setMemberCrumb] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
 
   function copyTaskLink() {
@@ -262,6 +268,11 @@ function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
         ).detail ?? null
       );
     }
+    function onMemberCrumb(e: Event) {
+      setMemberCrumb(
+        (e as CustomEvent<{ name: string } | null>).detail?.name ?? null
+      );
+    }
     function onProjectLimit(e: Event) {
       setProjectAtLimit(
         !!(e as CustomEvent<{ atLimit: boolean } | null>).detail?.atLimit
@@ -269,10 +280,15 @@ function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
     }
     window.addEventListener("tb:active-project", onActive as EventListener);
     window.addEventListener("tb:task-crumb", onTaskCrumb as EventListener);
+    window.addEventListener("tb:member-crumb", onMemberCrumb as EventListener);
     window.addEventListener("tb:project-limit", onProjectLimit as EventListener);
     return () => {
       window.removeEventListener("tb:active-project", onActive as EventListener);
       window.removeEventListener("tb:task-crumb", onTaskCrumb as EventListener);
+      window.removeEventListener(
+        "tb:member-crumb",
+        onMemberCrumb as EventListener
+      );
       window.removeEventListener(
         "tb:project-limit",
         onProjectLimit as EventListener
@@ -288,6 +304,8 @@ function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const showCrumb =
     (pathname === "/" || pathname.startsWith("/project/")) && !!boardProject;
   const showTaskCrumb = pathname.startsWith("/task/") && !!taskCrumb;
+  const showMemberCrumb =
+    pathname.startsWith("/directory/") && !!memberCrumb;
 
   return (
     <header className="app-topbar">
@@ -350,6 +368,16 @@ function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
                 </svg>
               )}
             </button>
+          </nav>
+        ) : showMemberCrumb ? (
+          <nav className="topbar-crumb" aria-label="Breadcrumb">
+            <Link href="/directory" className="topbar-crumb-link">
+              Employee Directory
+            </Link>
+            <svg className="topbar-crumb-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+            <span className="topbar-crumb-current">{memberCrumb}</span>
           </nav>
         ) : showCrumb ? (
           <nav className="topbar-crumb" aria-label="Breadcrumb">
@@ -473,7 +501,14 @@ function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
 
 /* ---------------- Shell ---------------- */
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+export default function AppShell({
+  children,
+  isSuperAdmin: initialSuperAdmin = false,
+}: {
+  children: React.ReactNode;
+  // Resolved server-side so the Platform link is in the first paint.
+  isSuperAdmin?: boolean;
+}) {
   const [collapsed, setCollapsed] = useState(false);
   // Mobile drawer: the sidebar slides in over the content on small screens.
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -502,7 +537,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         mobileOpen ? " mobile-open" : ""
       }`}
     >
-      <Sidebar collapsed={collapsed} onToggle={toggleSidebar} />
+      <Sidebar
+        collapsed={collapsed}
+        onToggle={toggleSidebar}
+        initialSuperAdmin={initialSuperAdmin}
+      />
       {mobileOpen && (
         <div
           className="app-sidebar-backdrop"

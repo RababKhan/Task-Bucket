@@ -56,6 +56,9 @@ export default function PendingInvites({
           className="pv-row dir-invite-row"
           style={{ gridTemplateColumns: grid }}
         >
+          {/* Spacer for the table's leading checkbox column — pending invites
+              aren't selectable (they're cancelled via the row menu). */}
+          <span className="pv-ctrl" aria-hidden />
           <span className="pv-cell pv-title-cell">
             <span className="pv-avatar dir-invite-avatar">✉</span>
             <span className="pv-title dir-invite-name">Pending invite</span>

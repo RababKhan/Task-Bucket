@@ -47,6 +47,13 @@ body {
   padding: 0;
   height: 100%;
 }
+html {
+  background: var(--bg);
+  color-scheme: dark;
+}
+html[data-theme="light"] {
+  color-scheme: light;
+}
 
 body {
   background: var(--bg);
@@ -2185,7 +2192,10 @@ select,
    matching the app's bespoke tooltips.
    The composer/editor/topbar tooltips have their own styling on the same
    `data-tip` attribute, so they're excluded here to avoid double-styling. */
-[data-tip]:not(.cm-action):not(.cm-tool):not(.cm-fbtn):not(.cm-box-send):not(.rte-tool):not(.topbar-crumb-copy) {
+/* .pw-toggle is excluded here only: it positions itself absolutely
+   inside .password-input, and an absolutely-positioned element is still a
+   containing block, so its tooltip stays anchored correctly. */
+[data-tip]:not(.cm-action):not(.cm-tool):not(.cm-fbtn):not(.cm-box-send):not(.rte-tool):not(.topbar-crumb-copy):not(.pw-toggle) {
   position: relative;
 }
 [data-tip]:not(.cm-action):not(.cm-tool):not(.cm-fbtn):not(.cm-box-send):not(.rte-tool):not(.topbar-crumb-copy)::after {

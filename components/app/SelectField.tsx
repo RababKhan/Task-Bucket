@@ -10,7 +10,7 @@ export type SelectOption = {
 };
 
 // A custom dropdown styled like StatusDropdown (field variant) — same look and
-// behaviour (button + popup menu, modal-aware sizing) but generic options.
+// behaviour (button + popup menu, viewport-aware sizing) but generic options.
 export default function SelectField({
   value,
   options,
@@ -19,6 +19,7 @@ export default function SelectField({
   placeholderIcon,
   inline = false,
   iconOnly = false,
+  chevron = false,
 }: {
   value: string;
   options: SelectOption[];
@@ -27,6 +28,7 @@ export default function SelectField({
   placeholderIcon?: ReactNode; // leading icon shown when nothing is selected
   inline?: boolean;
   iconOnly?: boolean; // trigger shows only the icon (no label)
+  chevron?: boolean; // force the chevron on an inline trigger (affordance)
 }) {
   const [open, setOpen] = useState(false);
   const [maxH, setMaxH] = useState(260);
@@ -37,14 +39,11 @@ export default function SelectField({
   function toggle() {
     if (!open && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
-      const box = triggerRef.current.closest(".modal");
-      const topBound = box ? box.getBoundingClientRect().top + 12 : 12;
-      const bottomBound =
-        (box ? box.getBoundingClientRect().bottom : window.innerHeight) - 12;
-      const spaceBelow = bottomBound - rect.bottom - 6;
-      const spaceAbove = rect.top - topBound - 6;
-      const openUp = spaceBelow < 160 && spaceAbove > spaceBelow;
-      setMaxH(Math.max(120, Math.min(280, openUp ? spaceAbove : spaceBelow)));
+      // The menu is position:fixed, so it escapes any modal/table clipping and
+      // is bounded only by the viewport. Always open downward — flipping up
+      // covered the fields sitting above the trigger in short modals.
+      const spaceBelow = window.innerHeight - rect.bottom - 12;
+      setMaxH(Math.max(120, Math.min(280, spaceBelow)));
       setMenuPos({
         position: "fixed",
         left: rect.left,
@@ -52,9 +51,8 @@ export default function SelectField({
         // Inline menus size to their content (so short options don't leave a
         // gap before the check).
         minWidth: inline ? rect.width : Math.max(rect.width, 160),
-        ...(openUp
-          ? { top: "auto", bottom: window.innerHeight - rect.top + 4 }
-          : { bottom: "auto", top: rect.bottom + 4 }),
+        bottom: "auto",
+        top: rect.bottom + 4,
       });
     }
     setOpen((o) => !o);
@@ -86,7 +84,7 @@ export default function SelectField({
             {current ? current.label : placeholder}
           </span>
         )}
-        {!inline && (
+        {(!inline || chevron) && (
           <svg
             className={`status-dd-chevron${open ? " open" : ""}`}
             viewBox="0 0 24 24"

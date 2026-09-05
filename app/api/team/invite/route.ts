@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasFullAccess } from "@/lib/permissions";
 import { randomBytes } from "node:crypto";
 import { dbAll, dbGet, dbRun } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
@@ -53,9 +54,15 @@ export async function POST(request: Request) {
     [wsId, roleKey]
   );
   const role = roleRow ? roleKey : "assignee";
-  if (role === "admin") {
+  if (role === "owner") {
+    return NextResponse.json(
+      { error: "The Owner role can't be assigned." },
+      { status: 400 }
+    );
+  }
+  if (hasFullAccess(role)) {
     const me = await getUserRoleRow(userId);
-    if (me?.role !== "admin") {
+    if (!hasFullAccess(me?.role)) {
       return NextResponse.json(
         { error: "Only an Admin can invite someone as an Admin." },
         { status: 403 }
@@ -171,7 +178,9 @@ export async function GET() {
 
   const [roles, allProjects, accessible] = await Promise.all([
     dbAll<{ key: string; name: string }>(
-      "SELECT key, name FROM roles WHERE workspace_id = ? AND active = 1 ORDER BY is_system DESC, created_at ASC",
+      `SELECT key, name FROM roles
+        WHERE workspace_id = ? AND active = 1 AND key <> 'owner'
+        ORDER BY is_system DESC, created_at ASC`,
       [m.workspace_id]
     ),
     dbAll<{ id: number; name: string }>(

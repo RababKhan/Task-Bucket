@@ -5,8 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { ROLE_LABELS, type Role } from "@/lib/types";
+import { passwordMeetsRules } from "@/lib/password";
 import Logo from "@/components/Logo";
 import Spinner from "@/components/Spinner";
+import { CheckIcon, CrossIcon } from "@/components/StatusIcon";
+import PasswordInput from "@/app/(auth)/PasswordInput";
+import PasswordStrength from "@/app/(auth)/PasswordStrength";
 
 type Info =
   | { error: string }
@@ -32,6 +36,7 @@ export default function InvitePage() {
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -47,8 +52,16 @@ export default function InvitePage() {
   async function acceptNew(e: React.FormEvent) {
     e.preventDefault();
     if (submitting) return;
-    setSubmitting(true);
     setError("");
+    if (!passwordMeetsRules(password)) {
+      setError("Please meet all the password requirements.");
+      return;
+    }
+    if (password !== confirm) {
+      setError("Passwords don't match.");
+      return;
+    }
+    setSubmitting(true);
     const res = await fetch(`/api/invite/${token}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -100,6 +113,8 @@ export default function InvitePage() {
     router.push("/dashboard");
     router.refresh();
   }
+
+  const passwordsMatch = confirm.length > 0 && password === confirm;
 
   return (
     <div className="auth-wrap">
@@ -177,14 +192,38 @@ export default function InvitePage() {
             </div>
             <div className="field">
               <label>Password</label>
-              <input
-                type="password"
+              <PasswordInput
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="8+ chars, upper, lower, number"
+                onChange={setPassword}
+                placeholder="Create a password"
                 autoComplete="new-password"
                 required
               />
+              <PasswordStrength password={password} />
+            </div>
+
+            <div className="field">
+              <label>Confirm Password</label>
+              <PasswordInput
+                value={confirm}
+                onChange={setConfirm}
+                placeholder="Re-enter your password"
+                autoComplete="new-password"
+                required
+              />
+              {confirm.length > 0 && (
+                <div className={`match-hint ${passwordsMatch ? "ok" : "bad"}`}>
+                  {passwordsMatch ? (
+                    <>
+                      <CheckIcon /> Passwords match
+                    </>
+                  ) : (
+                    <>
+                      <CrossIcon /> Passwords don&apos;t match
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             {error && <p className="invite-err">{error}</p>}

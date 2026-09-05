@@ -4280,6 +4280,14 @@ img.cm-tw-emoji {
   font-weight: 700;
   flex-shrink: 0;
 }
+/* Profile photo fills the avatar circle; initials remain the fallback. */
+.member-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
 .member-avatar.pending {
   background: var(--surface-2);
   color: var(--text-dim);
@@ -5410,6 +5418,12 @@ textarea::placeholder {
 .pv-menu-item:hover {
   background: var(--surface-2);
 }
+.pv-menu-item:disabled {
+  cursor: default;
+}
+.pv-menu-item:disabled:hover {
+  background: transparent;
+}
 .pv-menu-item svg {
   width: 14px;
   height: 14px;
@@ -5420,6 +5434,14 @@ textarea::placeholder {
 }
 .pv-menu-item.danger svg {
   color: var(--danger);
+}
+/* Disabled items are muted with colour rather than opacity: an opacity < 1
+   creates a stacking context, which dimmed the tooltip rendered inside it. */
+.pv-menu-item:disabled,
+.pv-menu-item.danger:disabled,
+.pv-menu-item:disabled svg,
+.pv-menu-item.danger:disabled svg {
+  color: var(--text-dim);
 }
 /* Inline (in-row) status trigger: plain icon + label, editable on click. */
 .pv-status .status-dd {
@@ -5438,6 +5460,23 @@ textarea::placeholder {
 }
 .status-dd-inline:hover {
   background: var(--surface-2);
+}
+/* Inline triggers that opt into a chevron (SelectField `chevron` prop) — sized
+   down to suit the smaller inline text. */
+.status-dd-inline .status-dd-chevron {
+  width: 14px;
+  height: 14px;
+  margin-left: -2px;
+  position: relative;
+  top: 2px;
+}
+/* The directory's role dropdown reads as plain table text — no hover pill or
+   fade. (The task list's inline selects keep theirs.) */
+.dir-role-cell .status-dd-inline {
+  transition: none;
+}
+.dir-role-cell .status-dd-inline:hover {
+  background: transparent;
 }
 .pv-status .status-dd-menu {
   right: auto;
@@ -5532,6 +5571,14 @@ textarea::placeholder {
   font-weight: 700;
   flex-shrink: 0;
   border: 1.5px solid var(--surface);
+}
+/* Profile photo fills the avatar circle; initials remain the fallback. */
+.pv-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
 }
 .pv-avatar.more {
   background: var(--surface-2);
@@ -6457,8 +6504,12 @@ textarea::placeholder {
 
 .dir-page {
   max-width: 1100px;
-  margin: 0 auto;
-  padding: 20px;
+  /* Left-aligned, not centred: `margin: 0 auto` left a growing gutter on wide
+     screens and pushed the card away from the directory list edge. */
+  margin: 0 0 0 -16px;
+  /* app-main pads 6px top and 32px left; the offsets above/here bring both
+     gaps to an even 16px. */
+  padding: 10px 0 20px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -6564,6 +6615,12 @@ textarea::placeholder {
   flex-direction: column;
   gap: 14px;
 }
+.cp-modal .page-loading {
+  min-height: 173px;
+}
+.invite-modal-form .field {
+  margin-bottom: 0;
+}
 .invite-project-list {
   display: flex;
   flex-direction: column;
@@ -6631,17 +6688,42 @@ textarea::placeholder {
   gap: 16px;
   flex-wrap: wrap;
 }
+.dir-page .settings-card {
+  margin-bottom: 0;
+}
+/* The member header shows the role as plain text — no fill, border or pill
+   padding, so it aligns with the name above. */
+.dir-page .role-pill {
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+}
+
+/* The header card is a compact identity strip — tighter than the default
+   .settings-card padding. */
+.dir-page .md-header {
+  padding: 14px 20px;
+}
+
+/* Anchor for the row-style kebab menu in the member header card. */
+.md-actions {
+  position: relative;
+  margin-left: auto;
+}
 .md-avatar {
-  width: 52px;
-  height: 52px;
-  font-size: 18px;
+  width: 40px;
+  height: 40px;
+  font-size: 14px;
 }
 .md-headinfo {
   flex: 1;
   min-width: 180px;
 }
 .md-name {
-  font-size: 19px;
+  margin: 0;
+  font-size: 15px;
   font-weight: 700;
   color: var(--text);
   display: flex;
@@ -6652,7 +6734,7 @@ textarea::placeholder {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 1px;
 }
 .md-actions {
   display: flex;
@@ -6661,13 +6743,8 @@ textarea::placeholder {
 }
 .md-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 16px;
-}
-@media (max-width: 720px) {
-  .md-grid {
-    grid-template-columns: 1fr;
-  }
 }
 .md-info {
   display: flex;
@@ -6771,7 +6848,13 @@ textarea::placeholder {
 /* Two-line member cell needs a touch more row height than the single-line
    Projects rows. */
 .dir-pv .pv-row {
-  height: 52px;
+  height: 38px;
+  /* The row itself isn't clickable — only the member name is (it opens the
+     member detail page). The rest of the row holds interactive controls. */
+  cursor: default;
+}
+.dir-pv .pv-title-cell {
+  cursor: pointer;
 }
 .dir-name-wrap {
   display: flex;
@@ -6794,12 +6877,12 @@ textarea::placeholder {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 12px;
+  font-size: 11.375px;
   color: var(--text);
 }
 /* Email as its own column. */
 .dir-email {
-  font-size: 12px;
+  font-size: 11.375px;
   color: var(--text-dim);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -6820,7 +6903,8 @@ textarea::placeholder {
 .dir-invite-name {
   color: var(--text-dim);
 }
-.dir-invite-role {
+.dir-invite-role,
+.dir-role-cell {
   justify-content: space-between;
 }
 
@@ -9504,4 +9588,81 @@ textarea::placeholder {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ---- Toast (bottom-right confirmations) ---- */
+/* Tinted status surface: color-mix keeps it theme-aware, since --done /
+   --danger / --surface all change between light and dark. */
+.toast {
+  position: fixed;
+  right: 40px;
+  bottom: 40px;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 260px;
+  max-width: 420px;
+  padding: 13px 16px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--done) 15%, var(--surface));
+  box-shadow: var(--card-shadow);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+  animation: toast-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.toast-error {
+  background: color-mix(in srgb, var(--danger) 15%, var(--surface));
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* Kept mounted by the component for the length of this animation. */
+.toast.leaving {
+  animation: toast-out 0.2s ease forwards;
+  pointer-events: none;
+}
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+}
+.toast .toast-ic {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--done);
+}
+.toast .toast-ic .toast-ic-tick {
+  stroke: var(--surface);
+}
+.toast-error .toast-ic {
+  color: var(--danger);
+}
+.toast-msg {
+  flex: 1;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--done) 70%, var(--text));
+}
+.toast-error .toast-msg {
+  color: color-mix(in srgb, var(--danger) 70%, var(--text));
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast,
+  .toast.leaving {
+    animation: none;
+  }
 }

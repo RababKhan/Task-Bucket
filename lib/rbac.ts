@@ -8,6 +8,7 @@ import {
   type Module,
   type Action,
   type PermKey,
+  hasFullAccess,
 } from "@/lib/permissions";
 
 // Server-side permission resolution and authorization guards.
@@ -81,7 +82,7 @@ export const getEffectivePermissions = cache(async function getEffectivePermissi
 ): Promise<Set<PermKey>> {
   const row = await getUserRoleRow(userId);
   if (!row || row.active !== 1) return new Set();
-  if (row.role === "admin") return new Set(ALL_PERM_KEYS);
+  if (hasFullAccess(row.role)) return new Set(ALL_PERM_KEYS);
   if (row.role_id == null) return new Set();
 
   const rows = await dbAll<{ module: string; action: string }>(
@@ -102,7 +103,7 @@ export async function can(
 ): Promise<boolean> {
   const row = await getUserRoleRow(userId);
   if (!row || row.active !== 1) return false;
-  if (row.role === "admin") return true;
+  if (hasFullAccess(row.role)) return true;
   if (row.role_id == null) return false;
   return (await getEffectivePermissions(userId)).has(permKey(module, action));
 }
@@ -133,13 +134,39 @@ export async function requirePermission(
   );
 }
 
-// Count the active admin USERS in a workspace.
+// Count the active USERS holding a full-access role (Owner or Admin).
 async function activeAdminCount(workspaceId: string): Promise<number> {
   const row = await dbGet<{ n: number }>(
-    "SELECT COUNT(*) AS n FROM workspace_members WHERE workspace_id = ? AND role = 'admin' AND active = 1",
+    `SELECT COUNT(*) AS n FROM workspace_members
+      WHERE workspace_id = ? AND role IN ('owner', 'admin') AND active = 1`,
     [workspaceId]
   );
   return row?.n ?? 0;
+}
+
+// The Owner is bound to workspaces.owner_id, so it can't be demoted, removed
+// or deactivated — there'd be no way to restore it. Returns a 403 or null.
+export async function assertNotOwner(
+  workspaceId: string,
+  targetUserId: string,
+  opts: { removing?: boolean; nextRole?: string; nextActive?: number }
+): Promise<NextResponse | null> {
+  const target = await dbGet<{ role: string }>(
+    "SELECT role FROM workspace_members WHERE workspace_id = ? AND user_id = ?",
+    [workspaceId, targetUserId]
+  );
+  if (!target || target.role !== "owner") return null;
+
+  const changes =
+    opts.removing === true ||
+    opts.nextActive === 0 ||
+    (opts.nextRole != null && opts.nextRole !== "owner");
+  if (!changes) return null;
+
+  return NextResponse.json(
+    { error: "The workspace Owner can't be changed or removed." },
+    { status: 400 }
+  );
 }
 
 // Block any change that would leave a workspace with zero active admins:
@@ -153,13 +180,13 @@ export async function assertNotLastAdmin(
     "SELECT role, active FROM workspace_members WHERE workspace_id = ? AND user_id = ?",
     [workspaceId, targetUserId]
   );
-  // Only relevant if the target is currently an active admin.
-  if (!target || target.role !== "admin" || target.active !== 1) return null;
+  // Only relevant if the target currently holds an active full-access role.
+  if (!target || !hasFullAccess(target.role) || target.active !== 1) return null;
 
   const wouldStopBeingAdmin =
     opts.removing === true ||
     opts.nextActive === 0 ||
-    (opts.nextRole != null && opts.nextRole !== "admin");
+    (opts.nextRole != null && !hasFullAccess(opts.nextRole));
   if (!wouldStopBeingAdmin) return null;
 
   if ((await activeAdminCount(workspaceId)) <= 1) {
@@ -179,7 +206,7 @@ export async function assertAdminRoleProtected(
     "SELECT key, is_system FROM roles WHERE id = ?",
     [roleId]
   );
-  if (!role || role.key !== "admin" || role.is_system !== 1) return null;
+  if (!role || !hasFullAccess(role.key) || role.is_system !== 1) return null;
 
   if (change.deleting || change.nextActive === 0) {
     return NextResponse.json(

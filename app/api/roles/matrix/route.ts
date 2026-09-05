@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasFullAccess } from "@/lib/permissions";
 import { dbAll } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 import { getMembership } from "@/lib/membership";
@@ -30,7 +31,7 @@ export async function GET() {
     `SELECT id, key, name, is_system, active FROM roles
      WHERE workspace_id = ?
      ORDER BY is_system DESC,
-              CASE key WHEN 'admin' THEN 0 WHEN 'manager' THEN 1 WHEN 'assignee' THEN 2 ELSE 3 END,
+              CASE key WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'manager' THEN 2 WHEN 'assignee' THEN 3 ELSE 4 END,
               created_at ASC`,
     [m.workspace_id]
   );
@@ -44,7 +45,7 @@ export async function GET() {
   for (const r of roles) {
     // Admin is implicit-full; everyone else from their stored grants.
     grants[r.id] =
-      r.key === "admin" && r.is_system === 1 ? [...ALL_PERM_KEYS] : [];
+      hasFullAccess(r.key) && r.is_system === 1 ? [...ALL_PERM_KEYS] : [];
   }
   for (const row of rows) {
     const key = permKey(row.module as Module, row.action as Action);

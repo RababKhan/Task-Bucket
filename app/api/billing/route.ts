@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasFullAccess } from "@/lib/permissions";
 import { dbGet } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 import { getMembership } from "@/lib/membership";
@@ -45,7 +46,7 @@ export async function GET() {
       storage_bytes: await storageBytesUsed(wsId),
     },
     limits: PLANS[plan].limits,
-    is_admin: m.role === "admin",
+    is_admin: hasFullAccess(m.role),
     workspace: { subdomain: ws?.subdomain ?? "", name: ws?.name ?? "" },
     contact: billingContact(),
     pending_request: pending

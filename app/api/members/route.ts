@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasFullAccess } from "@/lib/permissions";
 import { randomBytes, createHash } from "node:crypto";
 import { dbAll, dbGet, dbRun, type Member, type PendingInvite } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
@@ -79,7 +80,7 @@ export async function GET(request: Request) {
        FROM workspace_members m
        JOIN users u ON u.id = m.user_id
        WHERE m.workspace_id = ?
-       ORDER BY CASE m.role WHEN 'admin' THEN 0 WHEN 'manager' THEN 1 WHEN 'assignee' THEN 2 ELSE 3 END, m.created_at ASC`,
+       ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'manager' THEN 2 WHEN 'assignee' THEN 3 ELSE 4 END, m.created_at ASC`,
       [wsId]
     ),
     dbAll<PendingInvite>(
@@ -88,14 +89,16 @@ export async function GET(request: Request) {
     ),
     // The assignable roles for this workspace (so custom roles show in dropdowns).
     dbAll<{ key: string; name: string }>(
-      "SELECT key, name FROM roles WHERE workspace_id = ? AND active = 1 ORDER BY is_system DESC, created_at ASC",
+      `SELECT key, name FROM roles
+        WHERE workspace_id = ? AND active = 1 AND key <> 'owner'
+        ORDER BY is_system DESC, created_at ASC`,
       [wsId]
     ),
   ]);
 
   // Role assignment is an admin/role-management capability.
   const canAssignRoles =
-    myRole === "admin" || (await can(userId, "roles", "manage_roles"));
+    hasFullAccess(myRole) || (await can(userId, "roles", "manage_roles"));
 
   return NextResponse.json({
     members,

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Spinner from "@/components/Spinner";
 import SelectField from "@/components/app/SelectField";
+import FieldError from "@/components/FieldError";
 
 type RoleOption = { key: string; name: string };
 
@@ -82,10 +83,16 @@ export default function InviteMemberModal({
               <input
                 type="email"
                 autoFocus
+                className={error ? "invalid" : undefined}
+                aria-invalid={error ? true : undefined}
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (error) setError("");
+                }}
                 placeholder="name@example.com"
               />
+              <FieldError message={error} />
             </div>
 
             <div className="field">
@@ -97,8 +104,6 @@ export default function InviteMemberModal({
                 placeholder="Select a role"
               />
             </div>
-
-            {error && <p className="invite-err">{error}</p>}
 
             <div className="confirm-actions">
               <button type="button" className="btn btn-sm" onClick={onClose}>

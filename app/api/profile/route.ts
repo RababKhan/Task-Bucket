@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasFullAccess } from "@/lib/permissions";
 import { dbRun } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 import { getUserById } from "@/lib/auth-db";
@@ -81,7 +82,7 @@ export async function PATCH(request: Request) {
 
   // 2. Workspace name — admins only.
   if (typeof body.workspace_name === "string" && membership) {
-    if (membership.role !== "admin") {
+    if (!hasFullAccess(membership.role)) {
       return NextResponse.json(
         { error: "Only admins can rename the workspace.", field: "workspace_name" },
         { status: 403 }

@@ -50,9 +50,10 @@ export async function createWorkspace(
     "INSERT INTO workspaces (id, owner_id, name, subdomain) VALUES (?, ?, ?, ?)",
     [id, ownerId, name.trim(), subdomain.trim().toLowerCase()]
   );
-  // The creator is the workspace admin.
+  // The creator is the workspace owner — same access as an Admin, plus the
+  // ability to delete the workspace.
   await dbRun(
-    "INSERT INTO workspace_members (workspace_id, user_id, role) VALUES (?, ?, 'admin') ON CONFLICT DO NOTHING",
+    "INSERT INTO workspace_members (workspace_id, user_id, role) VALUES (?, ?, 'owner') ON CONFLICT DO NOTHING",
     [id, ownerId]
   );
   // Provision the three system roles (Admin / Project Manager / Member) and

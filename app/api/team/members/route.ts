@@ -45,8 +45,14 @@ export async function GET(request: Request) {
     args.push(`%${q}%`, `%${q}%`);
   }
   if (role) {
-    where.push("wm.role = ?");
-    args.push(role);
+    const roleKeys = role
+      .split(",")
+      .map((r) => r.trim())
+      .filter(Boolean);
+    if (roleKeys.length) {
+      where.push(`wm.role IN (${roleKeys.map(() => "?").join(", ")})`);
+      args.push(...roleKeys);
+    }
   }
   if (status === "active") where.push("wm.active = 1");
   if (status === "inactive") where.push("wm.active = 0");
@@ -76,13 +82,15 @@ export async function GET(request: Request) {
        JOIN users u ON u.id = wm.user_id
        LEFT JOIN roles r ON r.workspace_id = wm.workspace_id AND r.key = wm.role
        WHERE ${whereSql}
-       ORDER BY CASE wm.role WHEN 'admin' THEN 0 WHEN 'manager' THEN 1 WHEN 'assignee' THEN 2 ELSE 3 END,
+       ORDER BY CASE wm.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'manager' THEN 2 WHEN 'assignee' THEN 3 ELSE 4 END,
                 u.name COLLATE NOCASE ASC
        LIMIT ? OFFSET ?`,
       [...args, pageSize, (page - 1) * pageSize]
     ),
     dbAll<{ key: string; name: string }>(
-      "SELECT key, name FROM roles WHERE workspace_id = ? AND active = 1 ORDER BY is_system DESC, created_at ASC",
+      `SELECT key, name FROM roles
+        WHERE workspace_id = ? AND active = 1 AND key <> 'owner'
+        ORDER BY is_system DESC, created_at ASC`,
       [wsId]
     ),
     dbAll<{ id: number; name: string }>(

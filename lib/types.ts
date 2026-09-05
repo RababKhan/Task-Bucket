@@ -53,12 +53,13 @@ export type Project = {
 
 // System role keys. Custom roles use arbitrary string keys, so anywhere a role
 // value can be a custom role it is typed as `string` (see RoleRow / Member).
-export type Role = "admin" | "manager" | "assignee";
+export type Role = "owner" | "admin" | "manager" | "assignee";
 
 // Fallback display labels for the system keys. The authoritative, per-workspace
 // display name lives in the `roles` table (RoleRow.name); these are used where a
 // roles-table lookup isn't available (e.g. the cached session role).
 export const ROLE_LABELS: Record<Role, string> = {
+  owner: "Owner",
   admin: "Admin",
   manager: "Project Manager",
   assignee: "Member",
@@ -128,6 +129,9 @@ export type MemberDetail = {
   name: string | null;
   email: string | null;
   image: string | null;
+  // Self-service profile fields — null until the member fills them in.
+  designation: string | null;
+  phone: string | null;
   role: string;
   role_name: string;
   is_custom_role: boolean;

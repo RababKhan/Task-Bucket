@@ -34,6 +34,8 @@ export async function GET(_request: Request, { params }: Ctx) {
       name: string | null;
       email: string | null;
       image: string | null;
+      designation: string | null;
+      phone: string | null;
       role: string;
       role_name: string | null;
       is_system: number | null;
@@ -41,7 +43,7 @@ export async function GET(_request: Request, { params }: Ctx) {
       joined_at: string;
       last_active_at: string | null;
     }>(
-      `SELECT wm.user_id, u.name, u.email, u.image, wm.role,
+      `SELECT wm.user_id, u.name, u.email, u.image, u.designation, u.phone, wm.role,
               r.name AS role_name, r.is_system, wm.active,
               wm.created_at AS joined_at, wm.last_active_at
        FROM workspace_members wm
@@ -92,6 +94,8 @@ export async function GET(_request: Request, { params }: Ctx) {
     name: member.name,
     email: member.email,
     image: member.image,
+    designation: member.designation,
+    phone: member.phone,
     role: member.role,
     role_name: member.role_name ?? member.role,
     is_custom_role: member.is_system === 0,

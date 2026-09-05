@@ -37,7 +37,7 @@ export async function GET() {
      FROM roles r
      WHERE r.workspace_id = ?
      ORDER BY r.is_system DESC,
-              CASE r.key WHEN 'admin' THEN 0 WHEN 'manager' THEN 1 WHEN 'assignee' THEN 2 ELSE 3 END,
+              CASE r.key WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'manager' THEN 2 WHEN 'assignee' THEN 3 ELSE 4 END,
               r.created_at ASC`,
     [m.workspace_id]
   );

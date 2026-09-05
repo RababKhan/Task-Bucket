@@ -2,20 +2,23 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
 import Spinner from "@/components/Spinner";
 import AccessDenied from "@/components/app/AccessDenied";
 import { usePerms } from "@/components/app/PermissionProvider";
 import InviteMemberModal from "@/components/app/team/InviteMemberModal";
+import SelectField from "@/components/app/SelectField";
+import ConfirmModal from "@/components/app/team/ConfirmModal";
+import Toast, { type ToastState } from "@/components/app/Toast";
 import PendingInvites from "@/components/app/team/PendingInvites";
 import { type TeamMember } from "@/lib/types";
 
 type RoleOption = { key: string; name: string };
-type ProjectOption = { id: number; name: string };
 
 // Column layout for the grid table (mirrors the Projects view's pv-table).
-const GRID = "1.4fr 1.5fr 1fr";
+const GRID = "20px 1.4fr 1.5fr 1fr";
 
 function initials(text: string) {
   const parts = text.trim().split(/\s+/).filter(Boolean);
@@ -29,16 +32,25 @@ const PAGE_SIZE = 20;
 export default function DirectoryPage() {
   const perms = usePerms();
   const router = useRouter();
+  const { data: session } = useSession();
+  const myId = session?.user?.id;
 
   const [page, setPage] = useState(1);
 
   // Filters
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
-  const [roleFilter, setRoleFilter] = useState("");
-  const [projectFilter, setProjectFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [roleFilter, setRoleFilter] = useState<Set<string>>(new Set());
+  const [pendingRoles, setPendingRoles] = useState<Set<string>>(new Set());
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterApplying, setFilterApplying] = useState(false);
 
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkDelete, setBulkDelete] = useState(false);
+  const [menuUid, setMenuUid] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<TeamMember | null>(null);
+  const [savingUid, setSavingUid] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastState>(null);
   const [showInvite, setShowInvite] = useState(false);
   const [invitesKey, setInvitesKey] = useState(0);
 
@@ -51,18 +63,16 @@ export default function DirectoryPage() {
   // Reset to page 1 whenever a filter changes.
   useEffect(() => {
     setPage(1);
-  }, [debouncedQ, roleFilter, projectFilter, statusFilter]);
+  }, [debouncedQ, roleFilter]);
 
   const qs = useMemo(() => {
     const params = new URLSearchParams();
     if (debouncedQ) params.set("q", debouncedQ);
-    if (roleFilter) params.set("role", roleFilter);
-    if (projectFilter) params.set("project", projectFilter);
-    if (statusFilter) params.set("status", statusFilter);
+    if (roleFilter.size) params.set("role", [...roleFilter].join(","));
     params.set("page", String(page));
     params.set("pageSize", String(PAGE_SIZE));
     return params.toString();
-  }, [debouncedQ, roleFilter, projectFilter, statusFilter, page]);
+  }, [debouncedQ, roleFilter, page]);
 
   // One cache entry per filter/page combination; keepPreviousData holds the old
   // rows visible while the next page/filter loads (no spinner flash).
@@ -72,9 +82,10 @@ export default function DirectoryPage() {
       apiGet<{
         members?: TeamMember[];
         roles?: RoleOption[];
-        projects?: ProjectOption[];
         total?: number;
         can_invite?: boolean;
+        can_update_role?: boolean;
+        can_remove?: boolean;
         can_resend?: boolean;
         can_cancel?: boolean;
       }>(`/api/team/members?${qs}`),
@@ -83,12 +94,125 @@ export default function DirectoryPage() {
   const load = refetch;
   const members = data?.members ?? [];
   const roles = data?.roles ?? [];
-  const projects = data?.projects ?? [];
   const total = data?.total ?? 0;
   const canInvite = !!data?.can_invite;
+  const canUpdateRole = !!data?.can_update_role;
+  const canRemove = !!data?.can_remove;
   const canResend = !!data?.can_resend;
   const canCancel = !!data?.can_cancel;
   const loading = isLoading;
+
+  async function updateRole(m: TeamMember, role: string) {
+    if (role === m.role || savingUid) return;
+    setSavingUid(m.user_id);
+    setToast(null);
+    const res = await fetch(`/api/members/${m.user_id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setSavingUid(null);
+    if (!res.ok) {
+      setToast({ message: data.error || "Could not update the role.", variant: "error" });
+      return;
+    }
+    const label = roles.find((r) => r.key === role)?.name ?? role;
+    setToast({
+      message: `${m.name || m.email} is now ${label}.`,
+      variant: "success",
+    });
+    load();
+  }
+
+  // Empty string = removable. Mirrors the guards in /api/members/[uid].
+  function removeBlockReason(m: TeamMember) {
+    if (m.role === "owner") return "The workspace Owner can't be removed.";
+    if (m.user_id === myId) return "You can't remove yourself.";
+    return "";
+  }
+
+  // The Owner is bound to the workspace creator, so their role is fixed.
+  const roleLocked = (m: TeamMember) => m.role === "owner";
+
+  function openFilter() {
+    setPendingRoles(new Set(roleFilter));
+    setFilterOpen(true);
+  }
+
+  function togglePendingRole(key: string) {
+    setPendingRoles((cur) => {
+      const next = new Set(cur);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function clearFilter() {
+    setRoleFilter(new Set());
+    setPendingRoles(new Set());
+    setFilterOpen(false);
+  }
+
+  function applyFilter() {
+    if (filterApplying) return;
+    setFilterApplying(true);
+    window.setTimeout(() => {
+      setRoleFilter(new Set(pendingRoles));
+      setFilterApplying(false);
+      setFilterOpen(false);
+    }, 150);
+  }
+
+  function toggleSelect(uid: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(uid)) next.delete(uid);
+      else next.add(uid);
+      return next;
+    });
+  }
+
+  async function bulkRemove() {
+    setToast(null);
+    const count = selected.size;
+    const failures: string[] = [];
+    for (const uid of selected) {
+      const res = await fetch(`/api/members/${uid}`, { method: "DELETE" });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        failures.push(d.error || "Could not remove a member.");
+      }
+    }
+    setBulkDelete(false);
+    setSelected(new Set());
+    setToast(
+      failures.length
+        ? { message: failures[0], variant: "error" }
+        : {
+            message: `${count} member${count === 1 ? "" : "s"} removed from the workspace.`,
+            variant: "success",
+          }
+    );
+    load();
+  }
+
+  async function removeMember(m: TeamMember) {
+    setToast(null);
+    const res = await fetch(`/api/members/${m.user_id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
+    setRemoving(null);
+    if (!res.ok) {
+      setToast({ message: data.error || "Could not remove the member.", variant: "error" });
+      return;
+    }
+    setToast({
+      message: `${m.name || m.email} was removed from the workspace.`,
+      variant: "success",
+    });
+    load();
+  }
 
   if (perms.loaded && !perms.can("team_member", "view")) {
     return (
@@ -97,7 +221,7 @@ export default function DirectoryPage() {
   }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const hasFilters = !!(q || roleFilter || projectFilter || statusFilter);
+  const hasFilters = !!q || roleFilter.size > 0;
 
   return (
     <div className="pv dir-pv">
@@ -127,39 +251,69 @@ export default function DirectoryPage() {
           )}
         </div>
 
-        <select
-          className="pv-tool-select"
-          value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value)}
-        >
-          <option value="">All roles</option>
-          {roles.map((r) => (
-            <option key={r.key} value={r.key}>
-              {r.name}
-            </option>
-          ))}
-        </select>
-        <select
-          className="pv-tool-select"
-          value={projectFilter}
-          onChange={(e) => setProjectFilter(e.target.value)}
-        >
-          <option value="">All projects</option>
-          {projects.map((p) => (
-            <option key={p.id} value={String(p.id)}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-        <select
-          className="pv-tool-select"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          <option value="">All statuses</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-        </select>
+        <div className="pv-sort">
+          <button
+            className={`pv-tool-btn${roleFilter.size ? " active" : ""}`}
+            type="button"
+            onClick={() => (filterOpen ? setFilterOpen(false) : openFilter())}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M3 6h18M7 12h10M11 18h2" />
+            </svg>
+            Filter
+            {roleFilter.size > 0 && (
+              <span className="pv-sort-tag">{roleFilter.size}</span>
+            )}
+          </button>
+          {filterOpen && (
+            <>
+              <div className="pv-menu-backdrop" onClick={() => setFilterOpen(false)} />
+              <div className="pv-filter-pop">
+                <div className="pv-filter-list">
+                  {roles.map((r) => (
+                    <button
+                      key={r.key}
+                      type="button"
+                      className={`pv-filter-opt${pendingRoles.has(r.key) ? " sel" : ""}`}
+                      onClick={() => togglePendingRole(r.key)}
+                    >
+                      <span>{r.name}</span>
+                      {pendingRoles.has(r.key) && (
+                        <svg className="pv-filter-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <path d="M5 12l4 4 10-10" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  className="pv-filter-apply"
+                  onClick={applyFilter}
+                  disabled={filterApplying}
+                >
+                  {filterApplying ? (
+                    <>
+                      Applying
+                      <Spinner />
+                    </>
+                  ) : (
+                    "Apply Filter"
+                  )}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
+        {roleFilter.size > 0 && (
+          <button className="pv-tool-btn pv-clear-all" type="button" onClick={clearFilter}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <circle cx="12" cy="12" r="9" />
+              <path d="M15 9l-6 6M9 9l6 6" />
+            </svg>
+            Clear all
+          </button>
+        )}
 
         <div className="pv-toolbar-right">
           {perms.can("roles", "view") && (
@@ -214,8 +368,25 @@ export default function DirectoryPage() {
         </div>
       ) : (
         <div className="pv-table">
+          {selected.size > 0 && (
+            <div className="pv-selbar">
+              <span className="pv-selcount">{selected.size}</span>
+              <button
+                className="pv-selact danger"
+                onClick={() => setBulkDelete(true)}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                  <path d="M10 11v6M14 11v6" />
+                </svg>
+                Delete
+              </button>
+            </div>
+          )}
+
           <div className="pv-head" style={{ gridTemplateColumns: GRID }}>
-            <span>Member</span>
+            <span className="pv-ctrl" aria-hidden />
+            <span>Member Name</span>
             <span>Email</span>
             <span>Role</span>
           </div>
@@ -223,19 +394,99 @@ export default function DirectoryPage() {
           {members.map((m) => (
             <div
               key={m.user_id}
-              className="pv-row"
+              className={`pv-row${selected.has(m.user_id) ? " selected" : ""}`}
               style={{ gridTemplateColumns: GRID }}
-              onClick={() => router.push(`/directory/${m.user_id}`)}
             >
-              <span className="pv-cell pv-title-cell">
+              <span
+                className="pv-ctrl"
+                data-tip={removeBlockReason(m) || undefined}
+                data-tip-pos="right"
+              >
+                {canRemove && (
+                  <input
+                    type="checkbox"
+                    className="pv-check"
+                    checked={selected.has(m.user_id)}
+                    disabled={!!removeBlockReason(m)}
+                    onChange={() => toggleSelect(m.user_id)}
+                    aria-label={`Select ${m.name || m.email}`}
+                  />
+                )}
+              </span>
+              <span
+                className="pv-cell pv-title-cell"
+                onClick={() => router.push(`/directory/${m.user_id}`)}
+              >
                 <span className="pv-avatar">
-                  {initials(m.name || m.email || "?")}
+                  {m.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={m.image} alt="" />
+                  ) : (
+                    initials(m.name || m.email || "?")
+                  )}
                 </span>
                 <span className="pv-title">{m.name || m.email}</span>
               </span>
               <span className="pv-cell dir-email">{m.email}</span>
-              <span className="pv-cell">
-                <span className="dir-role">{m.role_name}</span>
+              <span className="pv-cell dir-role-cell">
+                {canUpdateRole && m.user_id !== myId && !roleLocked(m) ? (
+                  <SelectField
+                    inline
+                    chevron
+                    value={m.role}
+                    options={roles.map((r) => ({ value: r.key, label: r.name }))}
+                    onChange={(v) => updateRole(m, v)}
+                  />
+                ) : (
+                  <span className="dir-role">{m.role_name}</span>
+                )}
+                {canRemove && (
+                  <button
+                    type="button"
+                    className={`pv-kebab${menuUid === m.user_id ? " open" : ""}`}
+                    aria-label="Member actions"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuUid(menuUid === m.user_id ? null : m.user_id);
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                      <circle cx="12" cy="5" r="1.8" />
+                      <circle cx="12" cy="12" r="1.8" />
+                      <circle cx="12" cy="19" r="1.8" />
+                    </svg>
+                  </button>
+                )}
+                {menuUid === m.user_id && (
+                  <>
+                    <div
+                      className="pv-menu-backdrop"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuUid(null);
+                      }}
+                    />
+                    <div className="pv-menu" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        className="pv-menu-item danger"
+                        disabled={!!removeBlockReason(m)}
+                        data-tip={removeBlockReason(m) || undefined}
+                        data-tip-pos="left"
+                        onClick={() => {
+                          if (removeBlockReason(m)) return;
+                          setMenuUid(null);
+                          setRemoving(m);
+                        }}
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6" />
+                          <path d="M10 11v6M14 11v6" />
+                        </svg>
+                        Delete
+                      </button>
+                    </div>
+                  </>
+                )}
               </span>
             </div>
           ))}
@@ -272,6 +523,44 @@ export default function DirectoryPage() {
           </button>
         </div>
       )}
+
+      {removing && (
+        <ConfirmModal
+          title="Remove Member"
+          body={
+            <>
+              Are you sure you want to remove{" "}
+              <strong>{removing.name || removing.email}</strong> from this
+              workspace? This action cannot be undone. They&apos;ll lose access
+              immediately.
+            </>
+          }
+          confirmLabel="Yes, Remove it"
+          onClose={() => setRemoving(null)}
+          onConfirm={() => removeMember(removing)}
+        />
+      )}
+
+      {bulkDelete && (
+        <ConfirmModal
+          title={selected.size > 1 ? "Remove Members" : "Remove Member"}
+          body={
+            <>
+              Are you sure you want to remove{" "}
+              <strong>
+                {selected.size} member{selected.size === 1 ? "" : "s"}
+              </strong>{" "}
+              from this workspace? This action cannot be undone. They&apos;ll
+              lose access immediately.
+            </>
+          }
+          confirmLabel="Yes, Remove them"
+          onClose={() => setBulkDelete(false)}
+          onConfirm={bulkRemove}
+        />
+      )}
+
+      <Toast toast={toast} onClose={() => setToast(null)} />
 
       {showInvite && (
         <InviteMemberModal

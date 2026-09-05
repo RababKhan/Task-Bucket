@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasFullAccess } from "@/lib/permissions";
 import { dbGet, dbRun } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 import { getMembership } from "@/lib/membership";
@@ -6,6 +7,7 @@ import {
   getUserRoleRow,
   requirePermission,
   assertNotLastAdmin,
+  assertNotOwner,
 } from "@/lib/rbac";
 
 type Ctx = { params: Promise<{ uid: string }> };
@@ -71,9 +73,15 @@ export async function PATCH(request: Request, { params }: Ctx) {
     }
     // Only an admin may grant the admin role (prevents privilege escalation by
     // a custom role that happens to hold manage_roles).
-    if (roleKey === "admin") {
+    if (roleKey === "owner") {
+      return NextResponse.json(
+        { error: "The Owner role can't be assigned." },
+        { status: 400 }
+      );
+    }
+    if (hasFullAccess(roleKey)) {
       const me = await getUserRoleRow(userId);
-      if (me?.role !== "admin") {
+      if (!hasFullAccess(me?.role)) {
         return NextResponse.json(
           { error: "Only an Admin can grant the Admin role." },
           { status: 403 }
@@ -91,7 +99,11 @@ export async function PATCH(request: Request, { params }: Ctx) {
     return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
   }
 
-  // Don't let the last admin be demoted or deactivated.
+  // The Owner is bound to workspaces.owner_id and can't be changed at all.
+  const ownerGuard = await assertNotOwner(wsId, uid, { nextRole, nextActive });
+  if (ownerGuard) return ownerGuard;
+
+  // Don't let the last full-access member be demoted or deactivated.
   const guard = await assertNotLastAdmin(wsId, uid, { nextRole, nextActive });
   if (guard) return guard;
 
@@ -134,7 +146,10 @@ export async function DELETE(_request: Request, { params }: Ctx) {
     );
   }
 
-  // Don't let the last admin be removed.
+  const ownerGuard = await assertNotOwner(wsId, uid, { removing: true });
+  if (ownerGuard) return ownerGuard;
+
+  // Don't let the last full-access member be removed.
   const guard = await assertNotLastAdmin(wsId, uid, { removing: true });
   if (guard) return guard;
 

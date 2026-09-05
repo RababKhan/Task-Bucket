@@ -121,12 +121,16 @@ function applyFavicon(favicon: string) {
 
 export default function BrandingProvider({
   children,
+  initial,
 }: {
   children: React.ReactNode;
+  // Resolved on the server (app/layout.tsx) so the first paint already has the
+  // workspace's name, logo and accent colours.
+  initial?: Branding | null;
 }) {
   // `base` is the saved branding; `preview` is a live (unsaved) overlay the
   // settings form pushes while editing. The effective branding is preview ?? base.
-  const [base, setBase] = useState<Branding>(EMPTY);
+  const [base, setBase] = useState<Branding>(initial ?? EMPTY);
   const [preview, setPreview] = useState<Branding | null>(null);
   const branding = preview ?? base;
 
@@ -136,13 +140,14 @@ export default function BrandingProvider({
     applyFavicon(branding.favicon);
   }, [branding]);
 
-  // Instant hydrate from cache (avoids a flash of default branding).
+  // Cache fallback for when the server didn't resolve branding.
   useEffect(() => {
+    if (initial) return;
     try {
       const cached = localStorage.getItem(CACHE_KEY);
       if (cached) setBase({ ...EMPTY, ...JSON.parse(cached) } as Branding);
     } catch {}
-  }, []);
+  }, [initial]);
 
   const refresh = useCallback(() => {
     fetch("/api/workspace/branding")

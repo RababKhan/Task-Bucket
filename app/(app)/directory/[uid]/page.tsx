@@ -2,14 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import Spinner from "@/components/Spinner";
 import AccessDenied from "@/components/app/AccessDenied";
 import { usePerms } from "@/components/app/PermissionProvider";
-import EditRoleModal from "@/components/app/team/EditRoleModal";
-import ProjectAccessModal from "@/components/app/team/ProjectAccessModal";
 import ConfirmModal from "@/components/app/team/ConfirmModal";
-import { STATUS_LABELS, type TaskStatus, type MemberDetail } from "@/lib/types";
+import { type MemberDetail } from "@/lib/types";
 
 function initials(text: string) {
   const parts = text.trim().split(/\s+/).filter(Boolean);
@@ -41,10 +38,8 @@ export default function MemberDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-
-  const [modal, setModal] = useState<null | "role" | "access" | "deactivate" | "remove">(
-    null
-  );
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/team/members/${uid}`);
@@ -65,20 +60,18 @@ export default function MemberDetailPage() {
     load();
   }, [load]);
 
-  async function setActive(active: boolean) {
-    setErr(null);
-    const res = await fetch(`/api/members/${uid}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ active }),
-    });
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      setErr(d.error || "Could not update the member.");
-    }
-    setModal(null);
-    await load();
-  }
+  // Publish the breadcrumb for the topbar; clear it on unmount so other pages
+  // fall back to their plain title.
+  const crumbName = data?.name || data?.email || null;
+  useEffect(() => {
+    if (!crumbName) return;
+    window.dispatchEvent(
+      new CustomEvent("tb:member-crumb", { detail: { name: crumbName } })
+    );
+    return () => {
+      window.dispatchEvent(new CustomEvent("tb:member-crumb", { detail: null }));
+    };
+  }, [crumbName]);
 
   async function remove() {
     setErr(null);
@@ -86,7 +79,7 @@ export default function MemberDetailPage() {
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
       setErr(d.error || "Could not remove the member.");
-      setModal(null);
+      setConfirmRemove(false);
       return;
     }
     router.push("/directory");
@@ -109,59 +102,87 @@ export default function MemberDetailPage() {
   }
 
   const isSelf = data.user_id === data.my_id;
+  // The Owner is bound to workspaces.owner_id — the server rejects removal.
+  const isOwner = data.role === "owner";
   const name = data.name || data.email || "Member";
-  const canRole = perms.can("team_member", "update_role") && !isSelf;
-  const canAccess = perms.can("team_member", "invite");
-  const canDeactivate = perms.can("team_member", "deactivate") && !isSelf;
-  const canRemove = perms.can("team_member", "remove") && !isSelf;
+  const canRemove = perms.can("team_member", "remove");
+  const removeBlockReason = isOwner
+    ? "The workspace Owner can't be removed."
+    : isSelf
+    ? "You can't remove yourself."
+    : "";
 
   return (
     <div className="dir-page">
-      <div className="roles-head">
-        <Link href="/directory" className="cfg-back">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="m15 18-6-6 6-6" />
-          </svg>
-          Back to directory
-        </Link>
-      </div>
-
       {err && <p className="invite-err">{err}</p>}
 
       <div className="settings-card md-header">
-        <span className="member-avatar md-avatar">{initials(name)}</span>
+        <span className="member-avatar md-avatar">
+          {data.image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={data.image} alt="" />
+          ) : (
+            initials(name)
+          )}
+        </span>
         <div className="md-headinfo">
           <h1 className="md-name">
             {name}
             {isSelf && <span className="you-tag">You</span>}
             {!data.active && <span className="inactive-tag">Inactive</span>}
           </h1>
-          <div className="member-email">{data.email}</div>
           <div className="md-role">
             <span className={`role-pill role-${data.role}`}>{data.role_name}</span>
             {data.is_custom_role && <span className="role-badge role-badge-custom">Custom</span>}
           </div>
         </div>
         <div className="md-actions">
-          {canRole && (
-            <button type="button" className="btn btn-sm" onClick={() => setModal("role")}>
-              Edit role
-            </button>
-          )}
-          {canAccess && (
-            <button type="button" className="btn btn-sm" onClick={() => setModal("access")}>
-              Project access
-            </button>
-          )}
-          {canDeactivate && (
-            <button type="button" className="btn btn-sm" onClick={() => setModal("deactivate")}>
-              {data.active ? "Deactivate" : "Activate"}
-            </button>
-          )}
           {canRemove && (
-            <button type="button" className="btn btn-sm btn-danger" onClick={() => setModal("remove")}>
-              Remove
+            <button
+              type="button"
+              className={`pv-kebab${menuOpen ? " open" : ""}`}
+              aria-label="Member actions"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen((o) => !o);
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                <circle cx="12" cy="5" r="1.8" />
+                <circle cx="12" cy="12" r="1.8" />
+                <circle cx="12" cy="19" r="1.8" />
+              </svg>
             </button>
+          )}
+          {menuOpen && (
+            <>
+              <div
+                className="pv-menu-backdrop"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpen(false);
+                }}
+              />
+              <div className="pv-menu" onClick={(e) => e.stopPropagation()}>
+                <button
+                  className="pv-menu-item danger"
+                  disabled={!!removeBlockReason}
+                  data-tip={removeBlockReason || undefined}
+                  data-tip-pos="left"
+                  onClick={() => {
+                    if (removeBlockReason) return;
+                    setMenuOpen(false);
+                    setConfirmRemove(true);
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6" />
+                    <path d="M10 11v6M14 11v6" />
+                  </svg>
+                  Delete
+                </button>
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -170,111 +191,29 @@ export default function MemberDetailPage() {
         <div className="settings-card">
           <div className="settings-card-title">Information</div>
           <dl className="md-info">
+            <div><dt>Designation</dt><dd>{data.designation || "—"}</dd></div>
             <div><dt>Email</dt><dd>{data.email}</dd></div>
+            <div><dt>Phone</dt><dd>{data.phone || "—"}</dd></div>
             <div><dt>Role</dt><dd>{data.role_name}</dd></div>
-            <div><dt>Status</dt><dd>{data.active ? "Active" : "Inactive"}</dd></div>
             <div><dt>Joined</dt><dd>{fmtDate(data.joined_at)}</dd></div>
             <div><dt>Last active</dt><dd>{fmtDate(data.last_active_at)}</dd></div>
           </dl>
         </div>
-
-        <div className="settings-card">
-          <div className="settings-card-title">
-            Projects <span className="member-count">{data.projects.length}</span>
-          </div>
-          {data.projects.length === 0 ? (
-            <p className="settings-card-sub">No project access.</p>
-          ) : (
-            <ul className="md-list">
-              {data.projects.map((p) => (
-                <li key={p.id}>
-                  <Link href={`/?project=${p.id}&view=list`}>{p.name}</Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="settings-card">
-          <div className="settings-card-title">
-            Assigned tasks <span className="member-count">{data.tasks.length}</span>
-          </div>
-          {data.tasks.length === 0 ? (
-            <p className="settings-card-sub">No assigned tasks.</p>
-          ) : (
-            <ul className="md-list">
-              {data.tasks.map((t) => (
-                <li key={t.id}>
-                  <Link href={`/task/${t.id}`}>{t.title}</Link>
-                  <span className="md-task-status">
-                    {STATUS_LABELS[t.status as TaskStatus] ?? t.status}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="settings-card">
-          <div className="settings-card-title">Recent activity</div>
-          {data.activity.length === 0 ? (
-            <p className="settings-card-sub">No recent activity.</p>
-          ) : (
-            <ul className="md-activity">
-              {data.activity.map((a) => (
-                <li key={a.id}>
-                  <span className="md-act-text">{a.text}</span>
-                  <span className="md-act-date">{fmtDate(a.created_at)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
       </div>
 
-      {modal === "role" && (
-        <EditRoleModal
-          uid={uid}
-          currentRole={data.role}
-          onClose={() => setModal(null)}
-          onSaved={() => {
-            setModal(null);
-            load();
-          }}
-        />
-      )}
-      {modal === "access" && (
-        <ProjectAccessModal
-          uid={uid}
-          onClose={() => setModal(null)}
-          onSaved={() => {
-            setModal(null);
-            load();
-          }}
-        />
-      )}
-      {modal === "deactivate" && (
+      {confirmRemove && (
         <ConfirmModal
-          title={data.active ? "Deactivate member" : "Activate member"}
+          title="Remove Member"
           body={
-            data.active
-              ? `${name} will lose access to the workspace immediately, but stays on the member list.`
-              : `${name} will regain access to the workspace.`
+            <>
+              Are you sure you want to remove <strong>{name}</strong> from this
+              workspace? This action cannot be undone. They&apos;ll lose all
+              access immediately.
+            </>
           }
-          confirmLabel={data.active ? "Deactivate" : "Activate"}
-          danger={!!data.active}
-          onConfirm={() => setActive(!data.active)}
-          onClose={() => setModal(null)}
-        />
-      )}
-      {modal === "remove" && (
-        <ConfirmModal
-          title="Remove member"
-          body={`${name} will be removed from the workspace and lose all access. This can't be undone.`}
-          confirmLabel="Remove"
-          danger
+          confirmLabel="Yes, Remove it"
           onConfirm={remove}
-          onClose={() => setModal(null)}
+          onClose={() => setConfirmRemove(false)}
         />
       )}
     </div>
