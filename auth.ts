@@ -12,6 +12,7 @@ import { getMembership } from "@/lib/membership";
 import { verifyTotp } from "@/lib/totp";
 import { consumeBackupCode } from "@/lib/security-db";
 import { isSuperAdminEmail } from "@/lib/owner";
+import { isRateLimited, recordFailure, clientIp } from "@/lib/rate-limit";
 
 // Keep the session cookie small: uploaded avatars are stored as data URLs in
 // the DB, so reference them by endpoint (versioned by length to bust the cache
@@ -21,6 +22,13 @@ function avatarRef(uid: string, image: string | null | undefined): string | null
   if (image.startsWith("data:")) return `/api/avatar/${uid}?v=${image.length}`;
   return image;
 }
+
+// Sign-in throttling. Generous enough that a person fumbling their password
+// never notices, tight enough that guessing is pointless: scrypt already makes
+// each attempt expensive.
+const SIGNIN_WINDOW_SECONDS = 900; // 15 minutes
+const SIGNIN_MAX_PER_EMAIL = 10;
+const SIGNIN_MAX_PER_IP = 50;
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -32,15 +40,34 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
         code: { label: "Code", type: "text" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const email = String(credentials?.email ?? "").trim();
         const password = String(credentials?.password ?? "");
         const code = String(credentials?.code ?? "").trim();
         if (!email || !password) return null;
 
+        // Throttle password guessing. Only failures count, so signing in often
+        // costs nothing; the address and the source IP are limited separately
+        // so one attacker cannot lock out an arbitrary account by guessing at
+        // it (the IP limit is hit first).
+        const ip = clientIp(request as Request);
+        const [emailBlocked, ipBlocked] = await Promise.all([
+          isRateLimited("signin:email", email, SIGNIN_MAX_PER_EMAIL, SIGNIN_WINDOW_SECONDS),
+          isRateLimited("signin:ip", ip, SIGNIN_MAX_PER_IP, SIGNIN_WINDOW_SECONDS),
+        ]);
+        if (emailBlocked || ipBlocked) return null;
+
+        const fail = async () => {
+          await Promise.all([
+            recordFailure("signin:email", email, SIGNIN_WINDOW_SECONDS),
+            recordFailure("signin:ip", ip, SIGNIN_WINDOW_SECONDS),
+          ]);
+          return null;
+        };
+
         const user = await getUserByEmail(email);
-        if (!user || !user.password_hash) return null;
-        if (!verifyPassword(password, user.password_hash)) return null;
+        if (!user || !user.password_hash) return fail();
+        if (!verifyPassword(password, user.password_hash)) return fail();
 
         // Enforce two-factor: a valid authenticator code or a backup code.
         if (user.mfa_enabled && user.mfa_secret) {
@@ -48,7 +75,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const ok =
             verifyTotp(user.mfa_secret, code) ||
             (await consumeBackupCode(user.id, code));
-          if (!ok) return null;
+          if (!ok) return fail();
         }
 
         return {

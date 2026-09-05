@@ -199,7 +199,9 @@ postman/                     # Importable API collection
   after an hour, and only their hash is stored.
 - **Rate limiting** lives in Postgres (`lib/rate-limit.ts`) rather than Redis —
   one fewer service to operate at this size. The email-sending endpoints allow
-  5 requests per address and 20 per IP per hour.
+  5 requests per address and 20 per IP per hour. Sign-in allows 10 *failed*
+  attempts per address and 50 per IP per 15 minutes; successful sign-ins are
+  not counted, so signing in often costs nothing.
 - **The `nocase` collation and the `datetime()` / `group_concat()` functions**
   installed by `db:setup` exist so SQL written against the app's original
   SQLite backend keeps working on Postgres. Run it after migrating a fresh

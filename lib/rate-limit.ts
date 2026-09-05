@@ -66,6 +66,44 @@ export async function checkRateLimit(
 }
 
 /**
+ * Read the current count without recording a hit.
+ *
+ * Sign-in uses this so that only *failed* attempts count against the limit —
+ * incrementing on every call would lock out someone who simply signs in a lot.
+ */
+export async function isRateLimited(
+  bucket: string,
+  subject: string,
+  limit: number,
+  windowSeconds: number
+): Promise<boolean> {
+  const key = subject.trim().toLowerCase().slice(0, 200);
+  if (!key) return false;
+
+  const row = await dbGet<{ hits: number }>(
+    `SELECT hits FROM rate_limits
+      WHERE bucket = ? AND subject = ?
+        AND to_timestamp(window_start, 'YYYY-MM-DD HH24:MI:SS')
+            >= (now() AT TIME ZONE 'UTC') - make_interval(secs => ?)`,
+    [bucket, key, windowSeconds]
+  );
+  return (row?.hits ?? 0) >= limit;
+}
+
+/** Record one failed attempt. Errors are swallowed: a limiter that is down
+ *  must not take authentication down with it. */
+export async function recordFailure(
+  bucket: string,
+  subject: string,
+  windowSeconds: number
+): Promise<void> {
+  try {
+    await checkRateLimit(bucket, subject, Number.MAX_SAFE_INTEGER, windowSeconds);
+  } catch {
+    // Ignore.
+  }
+}
+/**
  * Best-effort client IP. Trusts the proxy headers a load balancer sets — behind
  * one, `x-forwarded-for`'s first entry is the caller.
  */
