@@ -28,6 +28,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # placeholder never lands in an image layer; the real secret is injected at
 # runtime. No DATABASE_URL is needed — lib/db.ts connects lazily on first query.
 ARG AUTH_SECRET=build-time-placeholder-not-used-at-runtime
+# The workspace-subdomain suffix shown on the signup form. NEXT_PUBLIC_* values
+# are inlined into the client bundle at build time, so this must be a build arg
+# rather than a runtime env var — set it when you build the production image.
+ARG NEXT_PUBLIC_WORKSPACE_DOMAIN=taskbucket.local
+ENV NEXT_PUBLIC_WORKSPACE_DOMAIN=${NEXT_PUBLIC_WORKSPACE_DOMAIN}
 RUN npm run build
 
 # ---- 3. Runtime -------------------------------------------------------------
@@ -55,7 +60,11 @@ CMD ["node", "server.js"]
 # ---- 4. Migrator (one-shot) --------------------------------------------------
 # The runtime image is a standalone bundle with no drizzle-kit or scripts/, so
 # schema push + the Postgres compatibility shims run from this stage instead.
-# Used by the `migrate` service in docker-compose.yml.
+# Used by the `migrate` service in the compose files.
+#
+# Default is the versioned path (drizzle/*.sql, tracked in the migrations
+# journal) because that is what production needs. The local compose file
+# overrides the command with db:push, which suits a throwaway dev volume.
 FROM builder AS migrator
 ENV NODE_ENV=production
-CMD ["sh", "-c", "npm run db:push && npm run db:setup"]
+CMD ["sh", "-c", "npm run db:migrate && npm run db:setup"]

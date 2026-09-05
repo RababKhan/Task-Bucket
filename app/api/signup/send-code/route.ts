@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getUserByEmail } from "@/lib/auth-db";
 import { createSignupOtp } from "@/lib/signup-otp";
 import { sendEmail, signupCodeEmail } from "@/lib/email";
+import { limitEmailEndpoint } from "@/lib/rate-limit";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -26,6 +27,10 @@ export async function POST(request: Request) {
       { status: 409 }
     );
   }
+
+  // Unauthenticated and sends email: cap per address and per client.
+  const limited = await limitEmailEndpoint("signup_code", email, request);
+  if (limited) return limited;
 
   const code = await createSignupOtp(email);
   try {

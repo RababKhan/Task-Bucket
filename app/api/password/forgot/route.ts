@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getUserByEmail } from "@/lib/auth-db";
 import { createOtp } from "@/lib/otp";
 import { sendEmail, otpEmail } from "@/lib/email";
+import { limitEmailEndpoint } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
@@ -10,6 +11,10 @@ export async function POST(request: Request) {
   // Always respond the same way so we don't leak which emails are registered.
   const generic = NextResponse.json({ ok: true });
   if (!email) return generic;
+
+  // Unauthenticated and sends email: cap per address and per client.
+  const limited = await limitEmailEndpoint("password_reset", email, request);
+  if (limited) return limited;
 
   const user = await getUserByEmail(email);
   if (!user || !user.email) return generic;

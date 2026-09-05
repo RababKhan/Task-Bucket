@@ -1,7 +1,11 @@
 // Pure, client-safe subdomain helpers (no DB / node imports). Shared between
 // the signup form (instant feedback) and the server (authoritative checks).
 
-export const WORKSPACE_DOMAIN = "taskbucket.local";
+// The suffix shown after a workspace subdomain on the signup form. Purely
+// cosmetic today — nothing routes by hostname — so changing it needs no DNS.
+// NEXT_PUBLIC_* is inlined at build time, so in Docker it is a build arg.
+export const WORKSPACE_DOMAIN =
+  process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN?.trim() || "taskbucket.local";
 export const SUBDOMAIN_MIN = 3;
 export const SUBDOMAIN_MAX = 30;
 

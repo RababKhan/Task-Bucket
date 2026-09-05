@@ -1,0 +1,39 @@
+# Caddy fronts the app: TLS termination + reverse proxy.
+# Certificates are obtained from Let's Encrypt on first start and renewed
+# automatically. Requires ports 80 and 443 reachable from the internet and
+# APP_DOMAIN's DNS A record pointing at this host.
+
+{
+	email {$LETSENCRYPT_EMAIL}
+	# Trim the default access log to errors; the app logs its own requests.
+	log {
+		level ERROR
+	}
+}
+
+{$APP_DOMAIN} {
+	encode zstd gzip
+
+	# The health endpoint, unauthenticated, for uptime checks.
+	handle /api/health {
+		reverse_proxy app:3000
+	}
+
+	handle {
+		reverse_proxy app:3000 {
+			# Next/Auth.js build absolute URLs from these.
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Forwarded-Host {host}
+		}
+	}
+
+	header {
+		# HSTS: only safe once HTTPS works; Caddy redirects http->https anyway.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Don't advertise the server.
+		-Server
+	}
+}

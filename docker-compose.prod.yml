@@ -1,0 +1,98 @@
+# Task Bucket — production stack for a single Linux host (e.g. one EC2 box).
+#
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+#
+# Differences from docker-compose.yml (the local stack):
+#   * The app image is PULLED from the registry, not built here. Building Next
+#     needs more RAM than a t3.micro has; CI builds it instead.
+#   * Caddy terminates TLS and proxies to the app. It gets and renews a
+#     Let's Encrypt certificate on its own — nothing to schedule.
+#   * Postgres publishes no host port. Reach it with `docker compose exec db psql`.
+#   * No Mailpit. Real mail goes out through Resend (RESEND_API_KEY).
+#   * The migrator runs versioned migrations (db:migrate), never db:push.
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # Used by the Caddyfile. TLS is issued for this exact hostname.
+      APP_DOMAIN: ${APP_DOMAIN:?set APP_DOMAIN in .env.prod}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:?set LETSENCRYPT_EMAIL in .env.prod}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates and ACME account keys. Losing this volume means re-issuing
+      # certs, which Let's Encrypt rate-limits — keep it.
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.prod}
+      POSTGRES_DB: ${POSTGRES_DB:-task_bucket}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      # Written by deploy/backup.sh; kept on the host so a nightly copy can be
+      # shipped off the box.
+      - ./backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-task_bucket}"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+
+  # One-shot: applies drizzle/*.sql, then the Postgres compatibility shims.
+  # Safe to re-run — already-applied migrations are skipped.
+  migrate:
+    image: ${MIGRATOR_IMAGE:?set MIGRATOR_IMAGE in .env.prod}
+    pull_policy: always
+    env_file: .env.prod
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-task_bucket}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    image: ${APP_IMAGE:?set APP_IMAGE in .env.prod}
+    pull_policy: always
+    restart: unless-stopped
+    env_file: .env.prod
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-task_bucket}
+    # No `ports:` — only Caddy talks to it, over the compose network.
+    expose:
+      - "3000"
+    healthcheck:
+      # /api/health is exempted from auth middleware and checks the DB.
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    logging:
+      # Cap disk use — an 8 GB root volume fills fast otherwise.
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:

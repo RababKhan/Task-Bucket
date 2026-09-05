@@ -1,0 +1,23 @@
+# Normalise line endings in the repository. Without this, a checkout on Windows
+# can give shell scripts CRLF endings, and Linux then fails to run them with
+# "bad interpreter: /bin/bash^M".
+
+* text=auto eol=lf
+
+# Files that MUST keep LF endings wherever they are checked out — they are read
+# by Linux shells and containers.
+*.sh            text eol=lf
+Dockerfile      text eol=lf
+deploy/Caddyfile text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+
+# Binary: never touch.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.pem binary

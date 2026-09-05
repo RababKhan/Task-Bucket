@@ -5,9 +5,9 @@ import authConfig from "@/auth.config";
 export const { auth: middleware } = NextAuth(authConfig);
 
 export const config = {
-  // Run on everything except NextAuth's own routes, the public auth APIs,
-  // Next internals, and static assets.
+  // Run on everything except NextAuth's own routes, the public auth APIs, the
+  // health probe, Next internals, and static assets.
   matcher: [
-    "/((?!api/auth|api/register|api/password|api/signup|api/invite|api/workspace/check|_next/static|_next/image|favicon.ico|icon.svg).*)",
+    "/((?!api/auth|api/register|api/password|api/signup|api/invite|api/health|api/workspace/check|_next/static|_next/image|favicon.ico|icon.svg).*)",
   ],
 };

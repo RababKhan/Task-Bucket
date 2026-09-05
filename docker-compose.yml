@@ -47,6 +47,9 @@ services:
     build:
       context: .
       target: migrator
+    # db:push suits a local volume you can throw away. Production uses the
+    # image default (db:migrate) — see docker-compose.prod.yml.
+    command: sh -c "npm run db:push && npm run db:setup"
     env_file: .env.docker
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-task_bucket}

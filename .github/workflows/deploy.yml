@@ -1,0 +1,194 @@
+name: Deploy
+
+# Builds the production images, pushes them to GitHub Container Registry, then
+# tells the server to pull and restart. Runs on every push to main, and on
+# demand from the Actions tab.
+#
+# Required repository secrets (Settings > Secrets and variables > Actions):
+#   SSH_HOST  - the server's public IP or hostname
+#   SSH_USER  - the login user (ubuntu on a stock Ubuntu AMI)
+#   SSH_KEY   - the PRIVATE half of the key pair, whole file including
+#               the BEGIN/END lines
+#   SSH_PORT  - optional, defaults to 22
+# Optional repository variable:
+#   WORKSPACE_DOMAIN - the suffix shown after a workspace subdomain on the
+#                      signup form. Baked into the client bundle at build time.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  # Never let two deploys race for the same server.
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  # The CI workflow runs on the same push, but in parallel — it cannot block
+  # this one. Re-run the fast checks here so a red commit never reaches the
+  # server. (The image build would catch compile errors anyway; these catch
+  # type and behaviour regressions before spending build minutes.)
+  verify:
+    name: Typecheck and unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx tsc --noEmit
+      - run: npm test
+
+  build:
+    name: Build and push images
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      app_image: ${{ steps.meta.outputs.app_image }}
+      migrator_image: ${{ steps.meta.outputs.migrator_image }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute image names
+        id: meta
+        run: |
+          # GHCR requires a lowercase path; repo names may be mixed-case.
+          REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          BASE="${REGISTRY}/${REPO}"
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          echo "app_image=${BASE}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          echo "migrator_image=${BASE}-migrator:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Tagged with both the commit SHA (what the deploy pins to) and `latest`
+      # (so a manual `docker compose pull` on the box does something sensible).
+      - name: Build and push app image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: runner
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.app_image }}
+            ${{ steps.meta.outputs.base }}:latest
+          build-args: |
+            NEXT_PUBLIC_WORKSPACE_DOMAIN=${{ vars.WORKSPACE_DOMAIN }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push migrator image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: migrator
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.migrator_image }}
+            ${{ steps.meta.outputs.base }}-migrator:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to server
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Add a required reviewer to this environment in repo settings if you want
+    # deploys to pause for approval.
+    environment: production
+
+    steps:
+      - name: Deploy over SSH
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+          APP_IMAGE: ${{ needs.build.outputs.app_image }}
+          MIGRATOR_IMAGE: ${{ needs.build.outputs.migrator_image }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "${SSH_USER}@${SSH_HOST}" \
+            APP_IMAGE="$APP_IMAGE" \
+            MIGRATOR_IMAGE="$MIGRATOR_IMAGE" \
+            GHCR_USER="$GHCR_USER" \
+            GHCR_TOKEN="$GHCR_TOKEN" \
+            'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd /opt/task-bucket
+
+          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+
+          # Pin .env.prod to the exact images this run built, so a restart of
+          # the box comes back on the same version rather than a drifting tag.
+          # A dated copy is kept so the previous line is recoverable.
+          cp .env.prod ".env.prod.bak.$(date -u +%Y%m%d-%H%M%S)"
+          sed -i "s|^APP_IMAGE=.*|APP_IMAGE=${APP_IMAGE}|"           .env.prod
+          sed -i "s|^MIGRATOR_IMAGE=.*|MIGRATOR_IMAGE=${MIGRATOR_IMAGE}|" .env.prod
+          ls -1t .env.prod.bak.* 2>/dev/null | tail -n +6 | xargs -r rm --
+
+          COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env.prod"
+
+          echo "--- Pulling images ---"
+          $COMPOSE pull app migrate
+
+          echo "--- Applying migrations ---"
+          # `run --rm` returns the migrator exit code without stopping the
+          # other services the way `up --exit-code-from` would.
+          $COMPOSE run --rm migrate
+
+          echo "--- Restarting the app ---"
+          $COMPOSE up -d app caddy
+
+          echo "--- Waiting for health ---"
+          # The app publishes no host port, so probe it from inside.
+          PROBE="fetch('http://127.0.0.1:3000/api/health').then(r=>r.json()).then(j=>{console.log(JSON.stringify(j));process.exit(j.status==='ok'?0:1)}).catch(e=>{console.error(String(e));process.exit(1)})"
+          for i in $(seq 1 30); do
+            if $COMPOSE exec -T app node -e "$PROBE"; then
+              echo "healthy after ${i} attempt(s)"
+              break
+            fi
+            if [ "$i" -eq 30 ]; then
+              echo "App did not become healthy. Recent logs:" >&2
+              $COMPOSE logs --tail 80 app >&2
+              exit 1
+            fi
+            sleep 5
+          done
+
+          # Reclaim disk from superseded images; an 8 GB root volume fills fast.
+          docker image prune -af --filter "until=168h" >/dev/null || true
+          docker logout ghcr.io >/dev/null 2>&1 || true
+          echo "--- Deployed ${APP_IMAGE} ---"
+          REMOTE
+
+      - name: Remove the key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

@@ -36,3 +36,6 @@ tests/e2e/.auth/
 
 # Docker env (real secrets)
 .env.docker
+
+# Production env (real secrets; lives on the server, never in git)
+.env.prod

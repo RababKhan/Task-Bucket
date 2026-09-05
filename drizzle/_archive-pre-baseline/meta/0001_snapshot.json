@@ -1,75 +1,9 @@
 {
-  "id": "301f38b7-ec74-460d-b693-17a6481f03f1",
-  "prevId": "e28e3c89-94ce-40cc-9ef1-81728e1003af",
+  "id": "341dfe48-a5b1-4789-8f88-da74e3cd7c4f",
+  "prevId": "6694bf13-d047-468c-b118-37e2464f3cf1",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.billing_requests": {
-      "name": "billing_requests",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "workspace_id": {
-          "name": "workspace_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "interval": {
-          "name": "interval",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'month'"
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'pending'"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "to_char((now() AT TIME ZONE 'UTC'), 'YYYY-MM-DD HH24:MI:SS')"
-        },
-        "resolved_at": {
-          "name": "resolved_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "billing_requests_workspace_id_workspaces_id_fk": {
-          "name": "billing_requests_workspace_id_workspaces_id_fk",
-          "tableFrom": "billing_requests",
-          "tableTo": "workspaces",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.comment_attachments": {
       "name": "comment_attachments",
       "schema": "",
@@ -805,53 +739,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.rate_limits": {
-      "name": "rate_limits",
-      "schema": "",
-      "columns": {
-        "bucket": {
-          "name": "bucket",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "subject": {
-          "name": "subject",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "hits": {
-          "name": "hits",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "window_start": {
-          "name": "window_start",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "to_char((now() AT TIME ZONE 'UTC'), 'YYYY-MM-DD HH24:MI:SS')"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "rate_limits_bucket_subject_pk": {
-          "name": "rate_limits_bucket_subject_pk",
-          "columns": [
-            "bucket",
-            "subject"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.role_permissions": {
       "name": "role_permissions",
       "schema": "",
@@ -1209,6 +1096,24 @@
           "notNull": true,
           "default": "'active'"
         },
+        "stripe_customer_id": {
+          "name": "stripe_customer_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stripe_subscription_id": {
+          "name": "stripe_subscription_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "price_id": {
+          "name": "price_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "interval": {
           "name": "interval",
           "type": "text",
@@ -1221,17 +1126,12 @@
           "primaryKey": false,
           "notNull": false
         },
-        "note": {
-          "name": "note",
-          "type": "text",
+        "cancel_at_period_end": {
+          "name": "cancel_at_period_end",
+          "type": "integer",
           "primaryKey": false,
-          "notNull": false
-        },
-        "activated_by": {
-          "name": "activated_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": 0
         },
         "created_at": {
           "name": "created_at",
@@ -1877,18 +1777,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "designation": {
-          "name": "designation",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "phone": {
-          "name": "phone",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "password_hash": {
           "name": "password_hash",
           "type": "text",
@@ -1897,25 +1785,6 @@
         },
         "email_verified": {
           "name": "email_verified",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "mfa_enabled": {
-          "name": "mfa_enabled",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "mfa_secret": {
-          "name": "mfa_secret",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "mfa_backup_codes": {
-          "name": "mfa_backup_codes",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -2216,36 +2085,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
-        },
-        "brand_name": {
-          "name": "brand_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "brand_logo": {
-          "name": "brand_logo",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "brand_favicon": {
-          "name": "brand_favicon",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "brand_color_dark": {
-          "name": "brand_color_dark",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "brand_color_light": {
-          "name": "brand_color_light",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         },
         "created_at": {
           "name": "created_at",

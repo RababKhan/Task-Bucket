@@ -14,6 +14,7 @@
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
+    "db:migrate": "drizzle-kit migrate",
     "db:setup": "node scripts/db-setup.mjs",
     "db:studio": "drizzle-kit studio",
     "billing": "node scripts/billing.mjs",

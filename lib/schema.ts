@@ -454,3 +454,13 @@ export const rolePermissions = pgTable(
     index("idx_role_permissions_ws").on(t.workspaceId),
   ]
 );
+
+// Fixed-window rate limiting for unauthenticated endpoints that send email
+// (signup codes, password resets). Keyed by bucket + subject, where the subject
+// is an email address or a client IP.
+export const rateLimits = pgTable("rate_limits", {
+  bucket: text("bucket").notNull(),
+  subject: text("subject").notNull(),
+  hits: integer("hits").notNull().default(0),
+  windowStart: text("window_start").notNull().default(nowText),
+}, (t) => [primaryKey({ columns: [t.bucket, t.subject] })]);

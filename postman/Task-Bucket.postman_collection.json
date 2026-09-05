@@ -1,0 +1,2372 @@
+{
+  "info": {
+    "_postman_id": "a7f1c2d0-5b3e-4c8a-9e21-taskbucketapi",
+    "name": "Task Bucket API",
+    "description": "Every HTTP endpoint exposed by the Task Bucket app (Next.js App Router, app/api/**/route.ts).\n\n## Authentication\nMost endpoints need a signed-in NextAuth session cookie.\n\n1. Sign in through the browser at {{baseUrl}}/login\n2. DevTools > Application > Cookies > copy the value of `authjs.session-token`\n3. Paste it into the `sessionToken` collection variable\n\nA collection-level pre-request script attaches it as a Cookie header on every request.\n\n## Variables\n- `baseUrl` - http://localhost:3000 (npm run dev) or http://localhost:3200 (docker compose)\n- `sessionToken` - the authjs.session-token cookie value\n\nPath variables default to REPLACE_ID - set them per request.\nRequest bodies list the fields each route actually reads, with placeholder values.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Attach the NextAuth session cookie when the variable is set.",
+          "const t = pm.collectionVariables.get('sessionToken');",
+          "if (t) {",
+          "  pm.request.headers.upsert({ key: 'Cookie', value: 'authjs.session-token=' + t });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "sessionToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Account Security",
+      "item": [
+        {
+          "name": "GET /api/profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "profile"
+              ]
+            },
+            "description": "Source: app/api/profile/route.ts"
+          }
+        },
+        {
+          "name": "GET /api/security",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/security",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "security"
+              ]
+            },
+            "description": "Source: app/api/security/route.ts"
+          }
+        },
+        {
+          "name": "PATCH /api/profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "profile"
+              ]
+            },
+            "description": "Source: app/api/profile/route.ts\n\nBody fields: name, designation, phone, image, workspace_name, subdomain",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample name\",\n  \"designation\": \"\",\n  \"phone\": \"\",\n  \"image\": \"\",\n  \"workspace_name\": \"\",\n  \"subdomain\": \"my-workspace\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/password/forgot",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/password/forgot",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "password",
+                "forgot"
+              ]
+            },
+            "description": "Source: app/api/password/forgot/route.ts\n\nBody fields: email",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/password/reset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/password/reset",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "password",
+                "reset"
+              ]
+            },
+            "description": "Source: app/api/password/reset/route.ts\n\nBody fields: token, password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"REPLACE_ID\",\n  \"password\": \"Admin@1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/password/verify-otp",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/password/verify-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "password",
+                "verify-otp"
+              ]
+            },
+            "description": "Source: app/api/password/verify-otp/route.ts\n\nBody fields: email, otp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"otp\": \"123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/security/mfa/disable",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/security/mfa/disable",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "security",
+                "mfa",
+                "disable"
+              ]
+            },
+            "description": "Source: app/api/security/mfa/disable/route.ts\n\nBody fields: code",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/security/mfa/enable",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/security/mfa/enable",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "security",
+                "mfa",
+                "enable"
+              ]
+            },
+            "description": "Source: app/api/security/mfa/enable/route.ts\n\nBody fields: code",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/security/mfa/setup",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/security/mfa/setup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "security",
+                "mfa",
+                "setup"
+              ]
+            },
+            "description": "Source: app/api/security/mfa/setup/route.ts"
+          }
+        },
+        {
+          "name": "POST /api/security/password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/security/password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "security",
+                "password"
+              ]
+            },
+            "description": "Source: app/api/security/password/route.ts\n\nBody fields: current, next",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current\": \"\",\n  \"next\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/security/password/verify",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/security/password/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "security",
+                "password",
+                "verify"
+              ]
+            },
+            "description": "Source: app/api/security/password/verify/route.ts\n\nBody fields: current",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth & Signup",
+      "item": [
+        {
+          "name": "GET /api/auth/[...nextauth]",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/:nextauth",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                ":nextauth"
+              ],
+              "variable": [
+                {
+                  "key": "nextauth",
+                  "value": "session"
+                }
+              ]
+            },
+            "description": "Source: app/api/auth/[...nextauth]/route.ts"
+          }
+        },
+        {
+          "name": "POST /api/auth/[...nextauth]",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/:nextauth",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                ":nextauth"
+              ],
+              "variable": [
+                {
+                  "key": "nextauth",
+                  "value": "session"
+                }
+              ]
+            },
+            "description": "Source: app/api/auth/[...nextauth]/route.ts"
+          }
+        },
+        {
+          "name": "POST /api/auth/mfa-required",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/mfa-required",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "mfa-required"
+              ]
+            },
+            "description": "Source: app/api/auth/mfa-required/route.ts\n\nBody fields: email, password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Admin@1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "register"
+              ]
+            },
+            "description": "Source: app/api/register/route.ts\n\nBody fields: name, email, password, workspaceName, subdomain, verifyToken",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample name\",\n  \"email\": \"user@example.com\",\n  \"password\": \"Admin@1234\",\n  \"workspaceName\": \"My Workspace\",\n  \"subdomain\": \"my-workspace\",\n  \"verifyToken\": \"REPLACE_ID\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/signup/send-code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/signup/send-code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "signup",
+                "send-code"
+              ]
+            },
+            "description": "Source: app/api/signup/send-code/route.ts\n\nBody fields: email",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/signup/verify-code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/signup/verify-code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "signup",
+                "verify-code"
+              ]
+            },
+            "description": "Source: app/api/signup/verify-code/route.ts\n\nBody fields: email, otp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"otp\": \"123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Billing & Platform",
+      "item": [
+        {
+          "name": "GET /api/billing",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/billing",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "billing"
+              ]
+            },
+            "description": "Source: app/api/billing/route.ts"
+          }
+        },
+        {
+          "name": "GET /api/billing/history",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/billing/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "billing",
+                "history"
+              ]
+            },
+            "description": "Source: app/api/billing/history/route.ts"
+          }
+        },
+        {
+          "name": "GET /api/owner/billing",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/owner/billing",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "owner",
+                "billing"
+              ]
+            },
+            "description": "Source: app/api/owner/billing/route.ts"
+          }
+        },
+        {
+          "name": "POST /api/billing/downgrade",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/billing/downgrade",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "billing",
+                "downgrade"
+              ]
+            },
+            "description": "Source: app/api/billing/downgrade/route.ts"
+          }
+        },
+        {
+          "name": "POST /api/billing/request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/billing/request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "billing",
+                "request"
+              ]
+            },
+            "description": "Source: app/api/billing/request/route.ts\n\nBody fields: interval",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interval\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/owner/billing/activate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/owner/billing/activate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "owner",
+                "billing",
+                "activate"
+              ]
+            },
+            "description": "Source: app/api/owner/billing/activate/route.ts\n\nBody fields: workspace_id, interval, months, note",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"workspace_id\": \"REPLACE_ID\",\n  \"interval\": \"\",\n  \"months\": \"\",\n  \"note\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/owner/billing/deactivate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/owner/billing/deactivate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "owner",
+                "billing",
+                "deactivate"
+              ]
+            },
+            "description": "Source: app/api/owner/billing/deactivate/route.ts\n\nBody fields: workspace_id",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"workspace_id\": \"REPLACE_ID\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "GET /api/dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Source: app/api/dashboard/route.ts\n\nQuery params: range"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Projects",
+      "item": [
+        {
+          "name": "DELETE /api/projects/[id]",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/projects/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "projects",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/projects/[id]/route.ts"
+          }
+        },
+        {
+          "name": "GET /api/projects",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/projects",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "projects"
+              ]
+            },
+            "description": "Source: app/api/projects/route.ts"
+          }
+        },
+        {
+          "name": "PATCH /api/projects/[id]",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/projects/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "projects",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/projects/[id]/route.ts\n\nBody fields: name, description, status, start_date, due_date, manager_id, member_ids",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample name\",\n  \"description\": \"Sample description\",\n  \"status\": \"draft\",\n  \"start_date\": \"2026-01-31\",\n  \"due_date\": \"2026-01-31\",\n  \"manager_id\": \"REPLACE_ID\",\n  \"member_ids\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/projects",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/projects",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "projects"
+              ]
+            },
+            "description": "Source: app/api/projects/route.ts\n\nBody fields: name, description, status, start_date, due_date, owner_id, manager_id, member_ids",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample name\",\n  \"description\": \"Sample description\",\n  \"status\": \"draft\",\n  \"start_date\": \"2026-01-31\",\n  \"due_date\": \"2026-01-31\",\n  \"owner_id\": \"REPLACE_ID\",\n  \"manager_id\": \"REPLACE_ID\",\n  \"member_ids\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Roles & Permissions",
+      "item": [
+        {
+          "name": "DELETE /api/roles/[id]",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/roles/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "roles",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/roles/[id]/route.ts"
+          }
+        },
+        {
+          "name": "GET /api/permissions/me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/permissions/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "permissions",
+                "me"
+              ]
+            },
+            "description": "Source: app/api/permissions/me/route.ts"
+          }
+        },
+        {
+          "name": "GET /api/roles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "roles"
+              ]
+            },
+            "description": "Source: app/api/roles/route.ts"
+          }
+        },
+        {
+          "name": "GET /api/roles/[id]/permissions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/roles/:id/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "roles",
+                ":id",
+                "permissions"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/roles/[id]/permissions/route.ts"
+          }
+        },
+        {
+          "name": "GET /api/roles/matrix",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/roles/matrix",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "roles",
+                "matrix"
+              ]
+            },
+            "description": "Source: app/api/roles/matrix/route.ts"
+          }
+        },
+        {
+          "name": "PATCH /api/roles/[id]",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/roles/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "roles",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/roles/[id]/route.ts\n\nBody fields: active, name, description",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"active\": true,\n  \"name\": \"Sample name\",\n  \"description\": \"Sample description\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/roles",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "roles"
+              ]
+            },
+            "description": "Source: app/api/roles/route.ts\n\nBody fields: name, description, permissions",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample name\",\n  \"description\": \"Sample description\",\n  \"permissions\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "PUT /api/roles/[id]/permissions",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/roles/:id/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "roles",
+                ":id",
+                "permissions"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/roles/[id]/permissions/route.ts\n\nBody fields: permissions",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permissions\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sprints",
+      "item": [
+        {
+          "name": "DELETE /api/sprints/[id]",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/sprints/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sprints",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/sprints/[id]/route.ts"
+          }
+        },
+        {
+          "name": "GET /api/sprints",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/sprints",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sprints"
+              ],
+              "query": [
+                {
+                  "key": "project_id",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Source: app/api/sprints/route.ts\n\nQuery params: project_id"
+          }
+        },
+        {
+          "name": "PATCH /api/sprints/[id]",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/sprints/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sprints",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/sprints/[id]/route.ts\n\nBody fields: name, goal, status, start_date, end_date",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample name\",\n  \"goal\": \"\",\n  \"status\": \"draft\",\n  \"start_date\": \"2026-01-31\",\n  \"end_date\": \"2026-01-31\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/sprints",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/sprints",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sprints"
+              ]
+            },
+            "description": "Source: app/api/sprints/route.ts\n\nBody fields: project_id, name, goal, start_date, end_date, auto_start",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"project_id\": \"REPLACE_ID\",\n  \"name\": \"Sample name\",\n  \"goal\": \"\",\n  \"start_date\": \"2026-01-31\",\n  \"end_date\": \"2026-01-31\",\n  \"auto_start\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks & Comments",
+      "item": [
+        {
+          "name": "DELETE /api/comments/[id]",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "comments",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/comments/[id]/route.ts"
+          }
+        },
+        {
+          "name": "DELETE /api/custom-fields/[id]",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/custom-fields/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "custom-fields",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/custom-fields/[id]/route.ts"
+          }
+        },
+        {
+          "name": "DELETE /api/tasks/[id]",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/tasks/[id]/route.ts"
+          }
+        },
+        {
+          "name": "GET /api/custom-fields",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/custom-fields",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "custom-fields"
+              ],
+              "query": [
+                {
+                  "key": "project_id",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Source: app/api/custom-fields/route.ts\n\nQuery params: project_id"
+          }
+        },
+        {
+          "name": "GET /api/tasks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks"
+              ],
+              "query": [
+                {
+                  "key": "project_id",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Source: app/api/tasks/route.ts\n\nQuery params: project_id"
+          }
+        },
+        {
+          "name": "GET /api/tasks/[id]",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/tasks/[id]/route.ts"
+          }
+        },
+        {
+          "name": "GET /api/tasks/[id]/comments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/:id/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                ":id",
+                "comments"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/tasks/[id]/comments/route.ts"
+          }
+        },
+        {
+          "name": "GET /api/tasks/all",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                "all"
+              ]
+            },
+            "description": "Source: app/api/tasks/all/route.ts"
+          }
+        },
+        {
+          "name": "PATCH /api/comments/[id]",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "comments",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/comments/[id]/route.ts\n\nBody fields: body",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/custom-fields/[id]",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/custom-fields/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "custom-fields",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/custom-fields/[id]/route.ts\n\nBody fields: name, options",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample name\",\n  \"options\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/tasks/[id]",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/tasks/[id]/route.ts\n\nBody fields: title, description, status, priority, due_date, sprint_id, type, severity, start_date, story_points, labels, progress, story_id, linked_to, assignees",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Sample task\",\n  \"description\": \"Sample description\",\n  \"status\": \"draft\",\n  \"priority\": \"\",\n  \"due_date\": \"2026-01-31\",\n  \"sprint_id\": \"REPLACE_ID\",\n  \"type\": \"\",\n  \"severity\": \"\",\n  \"start_date\": \"2026-01-31\",\n  \"story_points\": \"\",\n  \"labels\": \"\",\n  \"progress\": \"\",\n  \"story_id\": \"REPLACE_ID\",\n  \"linked_to\": \"\",\n  \"assignees\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/comments/[id]/react",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/:id/react",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "comments",
+                ":id",
+                "react"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/comments/[id]/react/route.ts\n\nBody fields: emoji",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emoji\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/custom-fields",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/custom-fields",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "custom-fields"
+              ]
+            },
+            "description": "Source: app/api/custom-fields/route.ts\n\nBody fields: project_id, name, type, options",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"project_id\": \"REPLACE_ID\",\n  \"name\": \"Sample name\",\n  \"type\": \"\",\n  \"options\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/custom-fields/value",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/custom-fields/value",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "custom-fields",
+                "value"
+              ]
+            },
+            "description": "Source: app/api/custom-fields/value/route.ts\n\nBody fields: task_id, field_id, value",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task_id\": \"REPLACE_ID\",\n  \"field_id\": \"REPLACE_ID\",\n  \"value\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/tasks",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks"
+              ]
+            },
+            "description": "Source: app/api/tasks/route.ts\n\nBody fields: project_id, title, parent_id, type, status, priority, severity, description, start_date, due_date, story_points, labels, assignees",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"project_id\": \"REPLACE_ID\",\n  \"title\": \"Sample task\",\n  \"parent_id\": \"REPLACE_ID\",\n  \"type\": \"\",\n  \"status\": \"draft\",\n  \"priority\": \"\",\n  \"severity\": \"\",\n  \"description\": \"Sample description\",\n  \"start_date\": \"2026-01-31\",\n  \"due_date\": \"2026-01-31\",\n  \"story_points\": \"\",\n  \"labels\": \"\",\n  \"assignees\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/tasks/[id]/comments",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/:id/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                ":id",
+                "comments"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/tasks/[id]/comments/route.ts\n\nBody fields: body, attachments, parent_id",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"\",\n  \"attachments\": \"\",\n  \"parent_id\": \"REPLACE_ID\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/tasks/reorder",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/reorder",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                "reorder"
+              ]
+            },
+            "description": "Source: app/api/tasks/reorder/route.ts"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Team & Invites",
+      "item": [
+        {
+          "name": "DELETE /api/invites/[id]",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/invites/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "invites",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/invites/[id]/route.ts"
+          }
+        },
+        {
+          "name": "DELETE /api/members/[uid]",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/members/:uid",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "members",
+                ":uid"
+              ],
+              "variable": [
+                {
+                  "key": "uid",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/members/[uid]/route.ts"
+          }
+        },
+        {
+          "name": "GET /api/avatar/[uid]",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/avatar/:uid",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "avatar",
+                ":uid"
+              ],
+              "variable": [
+                {
+                  "key": "uid",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/avatar/[uid]/route.ts"
+          }
+        },
+        {
+          "name": "GET /api/invite/[token]",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/invite/:token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "invite",
+                ":token"
+              ],
+              "variable": [
+                {
+                  "key": "token",
+                  "value": "INVITE_TOKEN"
+                }
+              ]
+            },
+            "description": "Source: app/api/invite/[token]/route.ts"
+          }
+        },
+        {
+          "name": "GET /api/members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "members"
+              ],
+              "query": [
+                {
+                  "key": "project_id",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Source: app/api/members/route.ts\n\nQuery params: project_id"
+          }
+        },
+        {
+          "name": "GET /api/team/invite",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/team/invite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "team",
+                "invite"
+              ]
+            },
+            "description": "Source: app/api/team/invite/route.ts"
+          }
+        },
+        {
+          "name": "GET /api/team/invites",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/team/invites",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "team",
+                "invites"
+              ]
+            },
+            "description": "Source: app/api/team/invites/route.ts"
+          }
+        },
+        {
+          "name": "GET /api/team/members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/team/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "team",
+                "members"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "role",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "project",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "pageSize",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Source: app/api/team/members/route.ts\n\nQuery params: q, role, project, status, page, pageSize"
+          }
+        },
+        {
+          "name": "GET /api/team/members/[uid]",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/team/members/:uid",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "team",
+                "members",
+                ":uid"
+              ],
+              "variable": [
+                {
+                  "key": "uid",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/team/members/[uid]/route.ts"
+          }
+        },
+        {
+          "name": "GET /api/team/members/[uid]/project-access",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/team/members/:uid/project-access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "team",
+                "members",
+                ":uid",
+                "project-access"
+              ],
+              "variable": [
+                {
+                  "key": "uid",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/team/members/[uid]/project-access/route.ts"
+          }
+        },
+        {
+          "name": "PATCH /api/members/[uid]",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/members/:uid",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "members",
+                ":uid"
+              ],
+              "variable": [
+                {
+                  "key": "uid",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/members/[uid]/route.ts\n\nBody fields: role, active",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"assignee\",\n  \"active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/team/members/[uid]/project-access",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/team/members/:uid/project-access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "team",
+                "members",
+                ":uid",
+                "project-access"
+              ],
+              "variable": [
+                {
+                  "key": "uid",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/team/members/[uid]/project-access/route.ts\n\nBody fields: project_ids",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"project_ids\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/invite/[token]",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/invite/:token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "invite",
+                ":token"
+              ],
+              "variable": [
+                {
+                  "key": "token",
+                  "value": "INVITE_TOKEN"
+                }
+              ]
+            },
+            "description": "Source: app/api/invite/[token]/route.ts\n\nBody fields: name, password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample name\",\n  \"password\": \"Admin@1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/members",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "members"
+              ]
+            },
+            "description": "Source: app/api/members/route.ts\n\nBody fields: project_id, email, role",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"project_id\": \"REPLACE_ID\",\n  \"email\": \"user@example.com\",\n  \"role\": \"assignee\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/team/invite",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/team/invite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "team",
+                "invite"
+              ]
+            },
+            "description": "Source: app/api/team/invite/route.ts\n\nBody fields: email, message, role, project_access",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"message\": null,\n  \"role\": \"assignee\",\n  \"project_access\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/team/invites/[id]/cancel",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/team/invites/:id/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "team",
+                "invites",
+                ":id",
+                "cancel"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/team/invites/[id]/cancel/route.ts"
+          }
+        },
+        {
+          "name": "POST /api/team/invites/[id]/resend",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/team/invites/:id/resend",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "team",
+                "invites",
+                ":id",
+                "resend"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_ID"
+                }
+              ]
+            },
+            "description": "Source: app/api/team/invites/[id]/resend/route.ts"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Workspace",
+      "item": [
+        {
+          "name": "DELETE /api/workspace",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspace",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspace"
+              ]
+            },
+            "description": "Source: app/api/workspace/route.ts"
+          }
+        },
+        {
+          "name": "GET /api/workspace/branding",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspace/branding",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspace",
+                "branding"
+              ]
+            },
+            "description": "Source: app/api/workspace/branding/route.ts"
+          }
+        },
+        {
+          "name": "GET /api/workspace/check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspace/check",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspace",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "subdomain",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Source: app/api/workspace/check/route.ts\n\nQuery params: subdomain"
+          }
+        },
+        {
+          "name": "GET /api/workspace/plan",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspace/plan",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspace",
+                "plan"
+              ]
+            },
+            "description": "Source: app/api/workspace/plan/route.ts"
+          }
+        },
+        {
+          "name": "PATCH /api/workspace/branding",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspace/branding",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspace",
+                "branding"
+              ]
+            },
+            "description": "Source: app/api/workspace/branding/route.ts\n\nBody fields: name, logo, favicon, colorDark, colorLight",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample name\",\n  \"logo\": \"\",\n  \"favicon\": \"\",\n  \"colorDark\": \"\",\n  \"colorLight\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
