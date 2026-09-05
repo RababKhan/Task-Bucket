@@ -118,7 +118,22 @@ jobs:
     environment: production
 
     steps:
+      # Until the SSH secrets exist there is nowhere to deploy to. Skip rather
+      # than fail, so the build half of this workflow still reports green.
+      - name: Is a server configured?
+        id: cfg
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          if [ -n "$SSH_HOST" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No SSH_HOST secret set — images were built and pushed, but nothing was deployed. See DEPLOY.md step 5."
+          fi
+
       - name: Deploy over SSH
+        if: steps.cfg.outputs.ready == 'true'
         env:
           SSH_KEY: ${{ secrets.SSH_KEY }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
