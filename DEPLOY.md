@@ -77,6 +77,17 @@ through it. Step 2 covers the choice, and it matters more than it looks.
 4. Keep this string somewhere safe for the next two steps. It contains your
    database password.
 
+> **Ignore Neon's CLI onboarding.** After creating a project, Neon offers a
+> setup flow — `neon skills`, `neon mcp`, `neon config init`, `neon deploy`.
+> That is infrastructure-as-code for Neon Functions, AI Gateway and object
+> storage, none of which this app uses, and you do not need any of it.
+>
+> In particular **do not run `neon deploy`**: it writes credentials into
+> `.env.local`, which here points at your *local* Postgres. Overwriting it
+> would silently aim your development server at the production database.
+>
+> The connection string above is the only thing you need from Neon.
+
 > **Free tier:** 0.5 GB of storage and 100 compute-hours a month. The database
 > sleeps after 5 minutes of inactivity and wakes on the next query, so an idle
 > app costs nothing — the first request after a quiet spell just takes a second
