@@ -1,0 +1,76 @@
+name: Migrate database
+
+# Applies drizzle/*.sql to the production database, then installs the Postgres
+# compatibility functions. Vercel builds and deploys the app on its own when you
+# push; this handles the schema half.
+#
+# Why not run migrations in Vercel's build command? Vercel also builds a preview
+# deployment for every branch and pull request, and each of those would migrate
+# whatever database DATABASE_URL points at. Keeping it here means migrations run
+# once, from one place, only for main.
+#
+# Required repository secret (Settings > Secrets and variables > Actions):
+#   DATABASE_URL - your Neon connection string, the POOLED one, ending in
+#                  ?sslmode=require
+#
+# Migrations run in parallel with Vercel's build rather than strictly before it.
+# They finish in seconds and a build takes minutes, so in practice the schema is
+# ready first. For a migration that would break the running version (dropping or
+# renaming a column the live code still reads), deploy it in two steps: ship the
+# code that tolerates both shapes, then the migration.
+
+on:
+  push:
+    branches: [main]
+    # Only when the schema actually changed — no point running on a CSS tweak.
+    paths:
+      - "drizzle/**"
+      - "lib/schema.ts"
+      - "scripts/db-setup.mjs"
+      - ".github/workflows/migrate.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: migrate-production
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Apply migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Check the secret is set
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::No DATABASE_URL secret. Add your Neon connection string under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          # Print only the host, never the credentials.
+          echo "Target host: $(echo "$DATABASE_URL" | sed -E 's#.*@([^/?]+).*#\1#')"
+
+      - name: Apply migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx drizzle-kit migrate
+
+      # Idempotent: creates the nocase collation and the datetime() /
+      # group_concat() functions the app's SQL relies on, and seeds the sample
+      # project only when the database has no projects yet.
+      - name: Install compatibility functions
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run db:setup

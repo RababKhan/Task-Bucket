@@ -1,8 +1,7 @@
 name: Deploy
 
 # Builds the production images, pushes them to GitHub Container Registry, then
-# tells the server to pull and restart. Runs on every push to main, and on
-# demand from the Actions tab.
+# tells the server to pull and restart.
 #
 # Required repository secrets (Settings > Secrets and variables > Actions):
 #   SSH_HOST  - the server's public IP or hostname
@@ -14,9 +13,14 @@ name: Deploy
 #   WORKSPACE_DOMAIN - the suffix shown after a workspace subdomain on the
 #                      signup form. Baked into the client bundle at build time.
 
+# Currently MANUAL ONLY. The app is deployed by Vercel, which builds from the
+# repository itself, so building and pushing Docker images on every commit would
+# just burn CI minutes. This workflow stays here as the self-hosting path: if you
+# move to your own server later, uncomment the push trigger below and follow
+# "Path B" in DEPLOY.md.
 on:
-  push:
-    branches: [main]
+  # push:
+  #   branches: [main]
   workflow_dispatch:
 
 concurrency:

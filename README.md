@@ -3,7 +3,9 @@
 A multi-workspace project and task manager built with **Next.js 15 (App
 Router)**, **React 19** and **PostgreSQL**.
 
-- **Deploying it?** See [DEPLOY.md](DEPLOY.md).
+- **Deploying it?** [DEPLOY.md](DEPLOY.md) puts it on Vercel and Neon free, with no
+  payment method needed. [DEPLOY-SELFHOST.md](DEPLOY-SELFHOST.md) runs it on your
+  own server with Docker and Caddy.
 - **API reference?** Import [`postman/Task-Bucket.postman_collection.json`](postman/)
   into Postman — every endpoint, grouped, with sample bodies.
 
@@ -49,7 +51,7 @@ Router)**, **React 19** and **PostgreSQL**.
 | Auth | Auth.js (NextAuth v5), JWT sessions |
 | Email | Resend, or any SMTP server |
 | Tests | Vitest (unit) + Playwright (end-to-end) |
-| Deployment | Docker images, Caddy for TLS, GitHub Actions |
+| Deployment | Vercel + Neon, or self-hosted Docker behind Caddy |
 
 ---
 
