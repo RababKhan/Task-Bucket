@@ -300,8 +300,14 @@
   line-height: 1.35;
   color: var(--text-dim);
 }
+/* Same red-plus-icon treatment as "Clear sort" and "Clear all". */
 .tf-cal-clear {
   flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  /* Zeroed: the browser's default button padding would knock it off the
+     footer's baseline. */
   padding: 0;
   font-size: 10.5px;
   font-weight: 600;
@@ -310,8 +316,13 @@
   border: 0;
   cursor: pointer;
 }
+.tf-cal-clear svg {
+  width: 12px;
+  height: 12px;
+  flex: none;
+}
 .tf-cal-clear:hover {
-  text-decoration: underline;
+  opacity: 0.82;
 }
 .tf-ava {
   display: inline-grid;
