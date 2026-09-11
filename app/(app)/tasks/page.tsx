@@ -114,6 +114,17 @@ export default function TasksPage() {
     setSortOpen(false);
   }
 
+  // Resets the dropdown filters and the sort, the same as in the Directory and
+  // Projects modules. The search box keeps its own inline ✕ and is left alone.
+  const hasFilters = !!proj || !!status || !!sortBy;
+
+  function clearAll() {
+    setProj("");
+    setStatus("");
+    setSortBy(null);
+    setSortOpen(false);
+  }
+
   const projects = useMemo(() => {
     const seen = new Map<number, string>();
     tasks.forEach((t) => seen.set(t.project_id, t.project_name));
@@ -339,6 +350,20 @@ export default function TasksPage() {
             </>
           )}
         </div>
+
+        {hasFilters && (
+          <button
+            className="pv-tool-btn pv-clear-all"
+            type="button"
+            onClick={clearAll}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <circle cx="12" cy="12" r="9" />
+              <path d="M15 9l-6 6M9 9l6 6" />
+            </svg>
+            Clear all
+          </button>
+        )}
       </div>
 
       <TaskListTable
