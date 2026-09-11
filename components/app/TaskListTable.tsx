@@ -14,6 +14,7 @@ import {
 import TaskStatusIcon from "@/components/app/TaskStatusIcon";
 import TaskTypeIcon from "@/components/app/TaskTypeIcon";
 import PriorityIcon from "@/components/app/PriorityIcon";
+import ProjectIcon from "@/components/app/ProjectIcon";
 import SelectField, { type SelectOption } from "@/components/app/SelectField";
 import MemberPicker from "@/components/app/MemberPicker";
 import DatePicker from "@/components/app/DatePicker";
@@ -286,7 +287,14 @@ export default function TaskListTable({
                 className="tl-cell tl-project"
                 title={task.project_name ?? ""}
               >
-                {task.project_name ?? "—"}
+                {task.project_name ? (
+                  <>
+                    <ProjectIcon size={14} />
+                    <span className="tl-project-name">{task.project_name}</span>
+                  </>
+                ) : (
+                  "—"
+                )}
               </span>
             )}
             <span className="tl-cell">

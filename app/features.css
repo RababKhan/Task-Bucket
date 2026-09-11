@@ -428,8 +428,18 @@
   grid-template-columns: 34px minmax(160px, 1fr) 120px 70px repeat(5, 105px) 32px;
 }
 .tl-project {
+  gap: 7px;
   color: var(--muted);
   white-space: nowrap;
+  overflow: hidden;
+}
+.tl-project svg {
+  flex: 0 0 14px;
+}
+/* The name, not the cell, carries the ellipsis — so a long name truncates
+   while the icon stays whole. */
+.tl-project-name {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
