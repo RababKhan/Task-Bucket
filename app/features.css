@@ -5976,6 +5976,11 @@ textarea::placeholder {
 .pv-date.overdue .dp-inline-date {
   color: var(--danger);
 }
+/* In the task table a set date reads like the row's other values (the project
+   name, the status) rather than dimmed. Its icon keeps the grey. */
+.tl-cell .dp-inline-date {
+  color: var(--text);
+}
 .dp-inline .dp-cal {
   left: auto;
   right: 0;
