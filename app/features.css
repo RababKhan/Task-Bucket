@@ -142,7 +142,8 @@
 .tf-chip-val {
   color: var(--accent);
   font-weight: 500;
-  max-width: 16ch;
+  /* Wide enough for a full date range: "1 Sep 2026 – 30 Sep 2026". */
+  max-width: 26ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -259,6 +260,48 @@
 .tf-menu-empty {
   padding: 8px 10px;
   font-size: 11.375px;
+  color: var(--text-dim);
+}
+
+/* ---- Date range picker inside the filter menu ---- */
+.tf-date {
+  display: grid;
+  gap: 6px;
+  padding: 4px 6px 2px;
+}
+.tf-date-row {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.375px;
+  color: var(--text-dim);
+}
+.tf-date-row input {
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 11.375px;
+}
+.tf-date-row input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+}
+/* The native picker button is nearly invisible on a dark ground. */
+:root[data-theme="dark"] .tf-date-row input::-webkit-calendar-picker-indicator,
+:root:not([data-theme="light"]) .tf-date-row input::-webkit-calendar-picker-indicator {
+  filter: invert(1) opacity(0.6);
+}
+.tf-date-hint {
+  margin: 0;
+  padding: 0 1px;
+  font-size: 10.5px;
+  line-height: 1.4;
   color: var(--text-dim);
 }
 .tf-ava {

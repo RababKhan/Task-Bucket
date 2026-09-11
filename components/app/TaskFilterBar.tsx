@@ -34,54 +34,42 @@ const FIELDS: { key: FilterField; label: string }[] = [
   { key: "due", label: "End Date" },
 ];
 
-// Dates filter by range rather than by value — nobody wants to pick from a
-// list of every date in use. The keys are shared between the two date fields;
-// only the wording differs, because a start date in the past means "already
-// started" while an end date in the past means "overdue".
-type DatePreset = "past" | "today" | "next7" | "month" | "none";
-const DATE_PRESETS: {
-  key: DatePreset;
-  start: string;
-  due: string;
-}[] = [
-  { key: "past", start: "Already started", due: "Overdue" },
-  { key: "today", start: "Starts today", due: "Due today" },
-  { key: "next7", start: "Starts in 7 days", due: "Due in 7 days" },
-  { key: "month", start: "Starts this month", due: "Due this month" },
-  { key: "none", start: "No start date", due: "No end date" },
-];
+// Date fields hold [from, to]. Either end may be empty:
+//   ["2026-09-12"]           a single day
+//   ["2026-09-01", "09-30"]  an inclusive range
+//   ["", "2026-09-30"]       on or before
+const DATE_FIELDS: FilterField[] = ["start", "due"];
+const isDateField = (f: FilterField) => DATE_FIELDS.includes(f);
 
-function isoDay(d: Date): string {
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+function matchesDateRange(
+  date: string | null | undefined,
+  range: string[]
+): boolean {
+  const [from = "", to = ""] = range;
+  if (!from && !to) return true;
+  // A task with no date cannot fall inside a range.
+  const d = (date ?? "").slice(0, 10);
+  if (!d) return false;
+  if (from && to) return d >= from && d <= to;
+  if (from) return d === from;
+  return d <= to;
 }
 
-/** Does a stored YYYY-MM-DD (or empty) date satisfy one preset? */
-function matchesDatePreset(date: string | null | undefined, preset: string) {
-  const d = (date ?? "").slice(0, 10);
-  if (preset === "none") return !d;
-  if (!d) return false;
+/** "12 Sep 2026" — short, unambiguous, and locale-independent. */
+function prettyDate(iso: string): string {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return iso;
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return `${d} ${MONTHS[m - 1]} ${y}`;
+}
 
-  const now = new Date();
-  const today = isoDay(now);
-  switch (preset) {
-    case "past":
-      return d < today;
-    case "today":
-      return d === today;
-    case "next7": {
-      const week = new Date(now);
-      week.setDate(week.getDate() + 7);
-      return d >= today && d <= isoDay(week);
-    }
-    case "month": {
-      const first = isoDay(new Date(now.getFullYear(), now.getMonth(), 1));
-      const last = isoDay(new Date(now.getFullYear(), now.getMonth() + 1, 0));
-      return d >= first && d <= last;
-    }
-    default:
-      return false;
-  }
+function describeRange(range: string[]): string {
+  const [from = "", to = ""] = range;
+  if (from && to) return from === to ? prettyDate(from) : `${prettyDate(from)} – ${prettyDate(to)}`;
+  if (from) return prettyDate(from);
+  if (to) return `on or before ${prettyDate(to)}`;
+  return "";
 }
 
 function initials(text: string) {
@@ -153,10 +141,63 @@ function optionsFor(field: FilterField, members: Member[], labels: string[]): Op
       });
     case "label":
       return labels.map((l) => ({ value: l, label: l, chip: true }));
+    // Date fields are picked, not listed.
     case "start":
     case "due":
-      return DATE_PRESETS.map((p) => ({ value: p.key, label: p[field] }));
+      return [];
   }
+}
+
+/** From/To pickers for a date field. Native date inputs rather than the app's
+ *  DatePicker: that opens its own popup at the same stacking level as this
+ *  menu, and a popup inside a popup is a fight not worth having here. */
+function DateRange({ field, shared }: { field: FilterField; shared: Shared }) {
+  const [from = "", to = ""] = shared.value[field] ?? [];
+
+  function set(nextFrom: string, nextTo: string) {
+    const out = { ...shared.value };
+    if (!nextFrom && !nextTo) delete out[field];
+    else out[field] = [nextFrom, nextTo];
+    shared.onChange(out);
+  }
+
+  return (
+    <div className="tf-date">
+      <label className="tf-date-row">
+        <span>From</span>
+        <input
+          type="date"
+          value={from}
+          // Keeping the ends consistent beats validating them afterwards.
+          max={to || undefined}
+          onChange={(e) => set(e.target.value, to)}
+        />
+      </label>
+      <label className="tf-date-row">
+        <span>To</span>
+        <input
+          type="date"
+          value={to}
+          min={from || undefined}
+          onChange={(e) => set(from, e.target.value)}
+        />
+      </label>
+      <p className="tf-date-hint">
+        {from && !to
+          ? "Matching that exact day. Set “To” for a range."
+          : "Leave “To” empty to match a single day."}
+      </p>
+      {(from || to) && (
+        <button type="button" className="pv-sort-clear" onClick={() => set("", "")}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M15 9l-6 6M9 9l6 6" />
+          </svg>
+          Clear dates
+        </button>
+      )}
+    </div>
+  );
 }
 
 function toggleValue(
@@ -203,7 +244,9 @@ function ValueList({
         {FIELDS.find((f) => f.key === field)?.label}
       </div>
       <div className="tf-values-list">
-        {opts.length === 0 ? (
+        {isDateField(field) ? (
+          <DateRange field={field} shared={shared} />
+        ) : opts.length === 0 ? (
           <div className="tf-menu-empty">
             {field === "label" ? "No labels used yet." : "Nobody to show."}
           </div>
@@ -331,9 +374,11 @@ export function TaskFilterChips(shared: Shared) {
               <span className="tf-chip-field">{f.label}</span>
               <span className="tf-chip-sep">is</span>
               <span className="tf-chip-val">
-                {vals.length === 1
-                  ? labelFor(f.key, vals[0])
-                  : `${vals.length} selected`}
+                {isDateField(f.key)
+                  ? describeRange(vals)
+                  : vals.length === 1
+                    ? labelFor(f.key, vals[0])
+                    : `${vals.length} selected`}
               </span>
               <svg className="tf-chip-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="m6 9 6 6 6-6" />
@@ -389,12 +434,8 @@ export function matchesTaskFilters(
     const ls = task.labels ?? [];
     if (!label.some((l) => ls.includes(l))) return false;
   }
-  if (start?.length && !start.some((p) => matchesDatePreset(task.start_date, p))) {
-    return false;
-  }
-  if (due?.length && !due.some((p) => matchesDatePreset(task.due_date, p))) {
-    return false;
-  }
+  if (start?.length && !matchesDateRange(task.start_date, start)) return false;
+  if (due?.length && !matchesDateRange(task.due_date, due)) return false;
   return true;
 }
 
