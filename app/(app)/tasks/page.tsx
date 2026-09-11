@@ -9,6 +9,21 @@ import { STATUS_LABELS, STATUS_ORDER } from "@/lib/types";
 import Spinner from "@/components/Spinner";
 import TaskListTable, { type ListTask } from "@/components/app/TaskListTable";
 import ConfirmModal from "@/components/app/team/ConfirmModal";
+import TaskModal, { type TaskDraft } from "@/app/TaskModal";
+
+const EDIT_ICON = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M12 20h9" />
+    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+  </svg>
+);
+
+const DELETE_ICON = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+    <path d="M10 11v6M14 11v6" />
+  </svg>
+);
 
 // /api/tasks/all returns the full task row plus its project name, so the same
 // list table the project view uses can render it unchanged.
@@ -85,6 +100,22 @@ export default function TasksPage() {
   // Deleting is confirmed first, matching the project List view rather than
   // removing rows on a single click.
   const [pendingDelete, setPendingDelete] = useState<number[] | null>(null);
+  const [editing, setEditing] = useState<AllTask | null>(null);
+
+  async function saveTask(draft: TaskDraft) {
+    if (!editing) return;
+    const id = editing.id;
+    setEditing(null);
+    setTasks((cur) =>
+      cur.map((t) => (t.id === id ? ({ ...t, ...draft } as AllTask) : t))
+    );
+    await fetch(`/api/tasks/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(draft),
+    });
+    qc.invalidateQueries({ queryKey: TASKS_KEY });
+  }
 
   async function confirmDelete() {
     const ids = pendingDelete ?? [];
@@ -166,10 +197,17 @@ export default function TasksPage() {
         onUpdate={updateTask}
         onDelete={(ids) => setPendingDelete(ids)}
         onOpen={(id) => router.push(`/task/${id}`)}
+        showOpenItem={false}
         menuItems={(t) => [
+          {
+            label: "Edit",
+            icon: EDIT_ICON,
+            onClick: () => setEditing(t as AllTask),
+          },
           {
             label: "Delete",
             danger: true,
+            icon: DELETE_ICON,
             onClick: () => setPendingDelete([t.id]),
           },
         ]}
@@ -179,6 +217,22 @@ export default function TasksPage() {
             : "No tasks match your filters."
         }
       />
+
+      {editing && (
+        <TaskModal
+          task={editing}
+          defaultStatus={editing.status}
+          members={members ?? []}
+          labelSuggestions={labelSuggestions}
+          onSave={saveTask}
+          onDelete={async () => {
+            const id = editing.id;
+            setEditing(null);
+            setPendingDelete([id]);
+          }}
+          onClose={() => setEditing(null)}
+        />
+      )}
 
       {pendingDelete && (
         <ConfirmModal

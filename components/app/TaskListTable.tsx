@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { Member, Task, TaskStatus, TaskPriority } from "@/lib/types";
 import { prefetchTaskDetail } from "@/lib/task-cache";
@@ -26,6 +26,7 @@ export type ListTask = Task & { assignees?: string[]; project_name?: string };
 export type RowMenuItem = {
   label: string;
   danger?: boolean;
+  icon?: ReactNode;
   onClick: () => void;
 };
 
@@ -58,6 +59,7 @@ export default function TaskListTable({
   emptyText = "No tasks.",
   showHeader = true,
   showProject = false,
+  showOpenItem = true,
 }: {
   tasks: ListTask[];
   members: Member[];
@@ -76,6 +78,9 @@ export default function TaskListTable({
   // Adds a Project column. For cross-project lists, where the row alone does
   // not say which project a task belongs to.
   showProject?: boolean;
+  // The kebab opens with a built-in "Open" entry. Turn it off where the caller
+  // supplies its own full set of actions.
+  showOpenItem?: boolean;
 }) {
   const router = useRouter();
   const [menuId, setMenuId] = useState<number | null>(null);
@@ -341,18 +346,20 @@ export default function TaskListTable({
                       onClick={() => setMenuId(null)}
                     />
                     <div className="pv-menu">
-                      <button
-                        className="pv-menu-item"
-                        onClick={() => {
-                          setMenuId(null);
-                          onOpen(task.id);
-                        }}
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                          <path d="M15 3h6v6M10 14 21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" />
-                        </svg>
-                        Open
-                      </button>
+                      {showOpenItem && (
+                        <button
+                          className="pv-menu-item"
+                          onClick={() => {
+                            setMenuId(null);
+                            onOpen(task.id);
+                          }}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                            <path d="M15 3h6v6M10 14 21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" />
+                          </svg>
+                          Open
+                        </button>
+                      )}
                       {items.map((it, i) => (
                         <button
                           key={i}
@@ -362,6 +369,7 @@ export default function TaskListTable({
                             it.onClick();
                           }}
                         >
+                          {it.icon}
                           {it.label}
                         </button>
                       ))}
