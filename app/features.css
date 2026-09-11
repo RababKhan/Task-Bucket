@@ -166,6 +166,7 @@
   place-items: center;
   width: 20px;
   height: 20px;
+  padding: 0;
   border-radius: 4px;
   color: var(--text-dim);
   background: transparent;
@@ -217,6 +218,10 @@
   place-items: center;
   width: 18px;
   height: 18px;
+  /* The global button reset covers font, border and background but not
+     padding, so the browser default (1px 6px) would shove the glyph right and
+     past the edge of an 18px box. */
+  padding: 0;
   border: 0;
   border-radius: 4px;
   background: transparent;
