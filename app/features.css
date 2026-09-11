@@ -166,6 +166,17 @@
   width: 12px;
   height: 12px;
   color: var(--text-dim);
+  transition: transform 0.15s ease;
+}
+/* Points up while the chip's value list is open, like the app's other
+   dropdown chevrons. */
+.tf-chip.open .tf-chip-caret {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tf-chip-caret {
+    transition: none;
+  }
 }
 /* A hairline between the chip and its ✕ keeps the two targets readable as
    separate actions inside the one container. */
