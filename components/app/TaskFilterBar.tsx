@@ -148,11 +148,36 @@ function optionsFor(field: FilterField, members: Member[], labels: string[]): Op
   }
 }
 
-/** From/To pickers for a date field. Native date inputs rather than the app's
- *  DatePicker: that opens its own popup at the same stacking level as this
- *  menu, and a popup inside a popup is a fight not worth having here. */
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const toISO = (y: number, m: number, d: number) => `${y}-${pad2(m + 1)}-${pad2(d)}`;
+
+/**
+ * An inline range calendar, drawn with the app's own `dp-*` calendar classes so
+ * it reads as the same control the date fields use. Inline rather than the
+ * DatePicker component itself: that opens its own popup at the same stacking
+ * level as this menu (both backdrop 60 / panel 70), and a popup inside a popup
+ * at matching z-indexes is a fight not worth picking.
+ *
+ * First click sets the start and clears any end; the next click closes the
+ * range, or restarts it if it lands before the start. Clicking the start again
+ * keeps it as a single day.
+ */
 function DateRange({ field, shared }: { field: FilterField; shared: Shared }) {
   const [from = "", to = ""] = shared.value[field] ?? [];
+
+  // Open on the month already selected, else today.
+  const anchor = from || to || toISO(
+    new Date().getFullYear(),
+    new Date().getMonth(),
+    new Date().getDate()
+  );
+  const [ay, am] = anchor.split("-").map(Number);
+  const [view, setView] = useState({ y: ay, m: am - 1 });
 
   function set(nextFrom: string, nextTo: string) {
     const out = { ...shared.value };
@@ -161,41 +186,94 @@ function DateRange({ field, shared }: { field: FilterField; shared: Shared }) {
     shared.onChange(out);
   }
 
+  function pick(iso: string) {
+    // A completed range (or nothing yet) starts a new one.
+    if (!from || (from && to)) return set(iso, "");
+    if (iso < from) return set(iso, "");
+    set(from, iso === from ? "" : iso);
+  }
+
+  const first = new Date(view.y, view.m, 1);
+  const offset = (first.getDay() + 6) % 7; // weeks start Monday
+  const cells = Array.from(
+    { length: 42 },
+    (_, i) => new Date(view.y, view.m, 1 - offset + i)
+  );
+  const shift = (delta: number) =>
+    setView((v) => {
+      const d = new Date(v.y, v.m + delta, 1);
+      return { y: d.getFullYear(), m: d.getMonth() };
+    });
+
+  const todayISO = toISO(
+    new Date().getFullYear(),
+    new Date().getMonth(),
+    new Date().getDate()
+  );
+
   return (
-    <div className="tf-date">
-      <label className="tf-date-row">
-        <span>From</span>
-        <input
-          type="date"
-          value={from}
-          // Keeping the ends consistent beats validating them afterwards.
-          max={to || undefined}
-          onChange={(e) => set(e.target.value, to)}
-        />
-      </label>
-      <label className="tf-date-row">
-        <span>To</span>
-        <input
-          type="date"
-          value={to}
-          min={from || undefined}
-          onChange={(e) => set(from, e.target.value)}
-        />
-      </label>
-      <p className="tf-date-hint">
-        {from && !to
-          ? "Matching that exact day. Set “To” for a range."
-          : "Leave “To” empty to match a single day."}
-      </p>
-      {(from || to) && (
-        <button type="button" className="pv-sort-clear" onClick={() => set("", "")}>
+    <div className="tf-cal">
+      <div className="dp-head">
+        <button type="button" className="dp-nav" onClick={() => shift(-1)} aria-label="Previous month">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <circle cx="12" cy="12" r="9" />
-            <path d="M15 9l-6 6M9 9l6 6" />
+            <path d="m15 18-6-6 6-6" />
           </svg>
-          Clear dates
         </button>
-      )}
+        <span className="dp-title">
+          {MONTHS[view.m]} {view.y}
+        </span>
+        <button type="button" className="dp-nav" onClick={() => shift(1)} aria-label="Next month">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="m9 18 6-6-6-6" />
+          </svg>
+        </button>
+      </div>
+
+      <div className="dp-grid dp-weekdays">
+        {WEEKDAYS.map((w) => (
+          <span key={w} className="dp-wd">{w}</span>
+        ))}
+      </div>
+      <div className="dp-grid">
+        {cells.map((d, i) => {
+          const iso = toISO(d.getFullYear(), d.getMonth(), d.getDate());
+          const out = d.getMonth() !== view.m;
+          const isFrom = !!from && iso === from;
+          const isTo = !!to && iso === to;
+          const inside = !!from && !!to && iso > from && iso < to;
+          return (
+            <button
+              key={i}
+              type="button"
+              className={
+                "dp-day" +
+                (out ? " out" : "") +
+                (isFrom || isTo ? " sel" : "") +
+                (inside ? " tf-in-range" : "") +
+                (isFrom && to ? " tf-range-start" : "") +
+                (isTo ? " tf-range-end" : "") +
+                (iso === todayISO ? " today" : "")
+              }
+              onClick={() => pick(iso)}
+            >
+              {d.getDate()}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="tf-cal-foot">
+        <span className="tf-cal-read">
+          {from || to
+            ? describeRange([from, to])
+            : "Pick a day, or a second to make a range"}
+        </span>
+        {(from || to) && (
+          <button type="button" className="tf-cal-clear" onClick={() => set("", "")}>
+            Clear
+          </button>
+        )}
+      </div>
     </div>
   );
 }

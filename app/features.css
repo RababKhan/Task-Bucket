@@ -263,46 +263,55 @@
   color: var(--text-dim);
 }
 
-/* ---- Date range picker inside the filter menu ---- */
-.tf-date {
-  display: grid;
-  gap: 6px;
-  padding: 4px 6px 2px;
+/* ---- Range calendar inside the filter menu ----
+   Borrows the .dp-* calendar parts so it reads as the same control the date
+   fields use; only the range highlight is new. */
+.tf-cal {
+  width: 232px;
+  padding: 2px 4px 0;
 }
-.tf-date-row {
-  display: grid;
-  grid-template-columns: 34px 1fr;
+/* The day either side of a range keeps its own round end; the days between are
+   a continuous band, so a range reads as one shape rather than seven chips. */
+.dp-day.tf-in-range {
+  background: var(--accent-soft, var(--surface-2));
+  color: var(--accent);
+  border-radius: 0;
+}
+.dp-day.tf-range-start {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.dp-day.tf-range-end {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.tf-cal-foot {
+  display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11.375px;
-  color: var(--text-dim);
+  margin-top: 8px;
+  padding: 7px 2px 2px;
+  border-top: 1px solid var(--border);
 }
-.tf-date-row input {
-  width: 100%;
-  height: 28px;
-  padding: 0 8px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--text);
-  font-family: inherit;
-  font-size: 11.375px;
-}
-.tf-date-row input:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-}
-/* The native picker button is nearly invisible on a dark ground. */
-:root[data-theme="dark"] .tf-date-row input::-webkit-calendar-picker-indicator,
-:root:not([data-theme="light"]) .tf-date-row input::-webkit-calendar-picker-indicator {
-  filter: invert(1) opacity(0.6);
-}
-.tf-date-hint {
-  margin: 0;
-  padding: 0 1px;
+.tf-cal-read {
+  flex: 1;
+  min-width: 0;
   font-size: 10.5px;
-  line-height: 1.4;
+  line-height: 1.35;
   color: var(--text-dim);
+}
+.tf-cal-clear {
+  flex: none;
+  padding: 0;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--danger);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.tf-cal-clear:hover {
+  text-decoration: underline;
 }
 .tf-ava {
   display: inline-grid;
@@ -344,6 +353,15 @@
 .tf-values {
   min-width: 215px;
   max-width: 280px;
+}
+/* The calendar sets its own 232px width; the surrounding cap would squeeze it
+   and the list's scroll container would clip the month. */
+.tf-values:has(.tf-cal) {
+  max-width: none;
+}
+.tf-values:has(.tf-cal) .tf-values-list {
+  max-height: none;
+  overflow: visible;
 }
 
 /* Group By header row. Sits between rows rather than inside the grid, so it
