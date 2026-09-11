@@ -201,21 +201,6 @@
 .pv-sort-item.tf-field.active {
   color: var(--accent);
 }
-.tf-field-icon {
-  display: inline-grid;
-  place-items: center;
-  width: 15px;
-  height: 15px;
-  color: var(--text-dim);
-}
-.tf-field-icon svg {
-  width: 15px;
-  height: 15px;
-}
-.pv-sort-item.tf-field {
-  gap: 9px;
-  justify-content: flex-start;
-}
 .tf-menu-head {
   display: flex;
   align-items: center;

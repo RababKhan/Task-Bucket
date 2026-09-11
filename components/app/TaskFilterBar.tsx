@@ -18,46 +18,11 @@ import PriorityIcon from "@/components/app/PriorityIcon";
 export type FilterField = "status" | "priority" | "assignee" | "label";
 export type TaskFilters = Partial<Record<FilterField, string[]>>;
 
-const FIELDS: { key: FilterField; label: string; icon: React.ReactNode }[] = [
-  {
-    key: "status",
-    label: "Status",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 7v5l3 2" />
-      </svg>
-    ),
-  },
-  {
-    key: "priority",
-    label: "Priority",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <path d="M5 21V4M5 4h11l-2 4 2 4H5" />
-      </svg>
-    ),
-  },
-  {
-    key: "assignee",
-    label: "Assignee",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-        <circle cx="12" cy="7" r="4" />
-      </svg>
-    ),
-  },
-  {
-    key: "label",
-    label: "Label",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <path d="M20.6 13.4 12 22l-9-9V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z" />
-        <circle cx="7.5" cy="7.5" r="1.3" fill="currentColor" />
-      </svg>
-    ),
-  },
+const FIELDS: { key: FilterField; label: string }[] = [
+  { key: "status", label: "Status" },
+  { key: "priority", label: "Priority" },
+  { key: "assignee", label: "Assignee" },
+  { key: "label", label: "Label" },
 ];
 
 function initials(text: string) {
@@ -215,7 +180,6 @@ export function TaskFilterButton(shared: Shared) {
                     className={`pv-sort-item tf-field${n ? " active" : ""}`}
                     onClick={() => setMenu(f.key)}
                   >
-                    <span className="tf-field-icon">{f.icon}</span>
                     {f.label}
                     {n > 0 && <span className="tf-field-count">{n}</span>}
                   </button>
