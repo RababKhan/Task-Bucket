@@ -32,7 +32,9 @@ import {
 import Spinner from "@/components/Spinner";
 import TaskModal, { type TaskDraft } from "@/app/TaskModal";
 import ProjectTabs from "@/components/app/ProjectTabs";
-import TaskFilterBar, {
+import {
+  TaskFilterButton,
+  TaskFilterChips,
   matchesTaskFilters,
   countActiveFilters,
   type TaskFilters,
@@ -158,9 +160,8 @@ function BoardPage() {
 
   // List toolbar: filter by status, sort, and group — same controls as the
   // Projects table.
-  // The Filter button reveals a filter bar; filters are then built there one
-  // field at a time.
-  const [filterOpen, setFilterOpen] = useState(false);
+  // The Filter button opens the field list directly; active fields then show as
+  // chips under the toolbar.
   const [taskFilters, setTaskFilters] = useState<TaskFilters>({});
   const [sortOpen, setSortOpen] = useState(false);
   const [sortBy, setSortBy] = useState<TaskSortKey | null>(null);
@@ -183,7 +184,6 @@ function BoardPage() {
     setTaskFilters({});
     setSortBy(null);
     setGroupBy("none");
-    setFilterOpen(false);
     setSortOpen(false);
     setGroupOpen(false);
   }
@@ -883,21 +883,12 @@ function BoardPage() {
             </div>
           )}
 
-          <button
-            className={`pv-tool-btn${
-              filterOpen || activeFilterCount ? " active" : ""
-            }`}
-            type="button"
-            onClick={() => setFilterOpen((o) => !o)}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M3 6h18M7 12h10M11 18h2" />
-            </svg>
-            Filter
-            {activeFilterCount > 0 && (
-              <span className="pv-sort-tag">{activeFilterCount}</span>
-            )}
-          </button>
+          <TaskFilterButton
+            value={taskFilters}
+            onChange={setTaskFilters}
+            members={members}
+            labels={labelSuggestions}
+          />
 
           <div className="pv-sort">
             <button
@@ -982,8 +973,8 @@ function BoardPage() {
       </div>
       )}
 
-      {view !== "sprint" && (filterOpen || activeFilterCount > 0) && (
-        <TaskFilterBar
+      {view !== "sprint" && (
+        <TaskFilterChips
           value={taskFilters}
           onChange={setTaskFilters}
           members={members}

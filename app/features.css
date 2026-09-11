@@ -184,6 +184,23 @@
 .tf-menu {
   min-width: 190px;
 }
+/* A chip menu hangs from the chip itself rather than the toolbar button. */
+.tf-chip-menu {
+  top: calc(100% + 4px);
+}
+.tf-field-count {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft, var(--surface-2));
+  border-radius: 99px;
+  padding: 1px 6px;
+  font-variant-numeric: tabular-nums;
+}
+.pv-sort-item.tf-field.active {
+  color: var(--accent);
+}
 .tf-field-icon {
   display: inline-grid;
   place-items: center;
