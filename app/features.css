@@ -93,6 +93,165 @@
   border-radius: 8px;
 }
 
+/* ---- Task filter bar ----------------------------------------------------
+   Revealed by the Filter button. Filters are built a field at a time, and each
+   active field shows as a chip that reopens its value list. */
+.tf-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 12px;
+}
+.tf-add,
+.tf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 11.375px;
+  cursor: pointer;
+}
+.tf-add {
+  border-style: dashed;
+  color: var(--text-dim);
+}
+.tf-add svg {
+  width: 13px;
+  height: 13px;
+}
+.tf-add:hover,
+.tf-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.tf-chip.open {
+  border-color: var(--accent);
+}
+.tf-chip-field {
+  font-weight: 600;
+}
+.tf-chip-sep {
+  color: var(--text-dim);
+}
+.tf-chip-val {
+  color: var(--accent);
+  font-weight: 500;
+  max-width: 16ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tf-chip-caret {
+  width: 12px;
+  height: 12px;
+  color: var(--text-dim);
+}
+.tf-chip-wrap,
+.tf-add-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.tf-chip-wrap {
+  gap: 2px;
+}
+.tf-chip-x {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: var(--text-dim);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.tf-chip-x svg {
+  width: 12px;
+  height: 12px;
+}
+.tf-chip-x:hover {
+  color: var(--danger);
+  background: var(--surface-2);
+}
+
+.tf-menu {
+  min-width: 190px;
+}
+.tf-field-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  color: var(--text-dim);
+}
+.tf-field-icon svg {
+  width: 15px;
+  height: 15px;
+}
+.pv-sort-item.tf-field {
+  gap: 9px;
+  justify-content: flex-start;
+}
+.tf-menu-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+}
+.tf-back {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.tf-back svg {
+  width: 13px;
+  height: 13px;
+}
+.tf-back:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+.tf-values-list {
+  max-height: 260px;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+.tf-menu-empty {
+  padding: 8px 10px;
+  font-size: 11.375px;
+  color: var(--text-dim);
+}
+.tf-ava {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 8.5px;
+  font-weight: 600;
+  flex: none;
+}
+
 /* Group By header row. Sits between rows rather than inside the grid, so it
    spans the full width regardless of how many columns the table has. */
 .tl-group {

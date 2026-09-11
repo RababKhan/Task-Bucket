@@ -32,6 +32,11 @@ import {
 import Spinner from "@/components/Spinner";
 import TaskModal, { type TaskDraft } from "@/app/TaskModal";
 import ProjectTabs from "@/components/app/ProjectTabs";
+import TaskFilterBar, {
+  matchesTaskFilters,
+  countActiveFilters,
+  type TaskFilters,
+} from "@/components/app/TaskFilterBar";
 import SprintView from "@/components/app/SprintView";
 import { prefetchTaskDetail } from "@/lib/task-cache";
 import { useQueryClient } from "@tanstack/react-query";
@@ -153,37 +158,16 @@ function BoardPage() {
 
   // List toolbar: filter by status, sort, and group — same controls as the
   // Projects table.
+  // The Filter button reveals a filter bar; filters are then built there one
+  // field at a time.
   const [filterOpen, setFilterOpen] = useState(false);
-  const [filterApplying, setFilterApplying] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<Set<TaskStatus>>(new Set());
-  const [pendingStatus, setPendingStatus] = useState<Set<TaskStatus>>(new Set());
+  const [taskFilters, setTaskFilters] = useState<TaskFilters>({});
   const [sortOpen, setSortOpen] = useState(false);
   const [sortBy, setSortBy] = useState<TaskSortKey | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [groupOpen, setGroupOpen] = useState(false);
   const [groupBy, setGroupBy] = useState<GroupKey>("none");
 
-  function openFilter() {
-    setPendingStatus(new Set(statusFilter));
-    setFilterOpen(true);
-  }
-  function togglePendingStatus(s: TaskStatus) {
-    setPendingStatus((cur) => {
-      const next = new Set(cur);
-      if (next.has(s)) next.delete(s);
-      else next.add(s);
-      return next;
-    });
-  }
-  function applyFilter() {
-    if (filterApplying) return;
-    setFilterApplying(true);
-    window.setTimeout(() => {
-      setStatusFilter(new Set(pendingStatus));
-      setFilterApplying(false);
-      setFilterOpen(false);
-    }, 250);
-  }
   function applySort(key: TaskSortKey) {
     if (sortBy === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else {
@@ -196,16 +180,16 @@ function BoardPage() {
     setSortOpen(false);
   }
   function clearAllTools() {
-    setStatusFilter(new Set());
-    setPendingStatus(new Set());
+    setTaskFilters({});
     setSortBy(null);
     setGroupBy("none");
     setFilterOpen(false);
     setSortOpen(false);
     setGroupOpen(false);
   }
+  const activeFilterCount = countActiveFilters(taskFilters);
   const toolsActive =
-    statusFilter.size > 0 || sortBy !== null || groupBy !== "none";
+    activeFilterCount > 0 || sortBy !== null || groupBy !== "none";
 
   const [editing, setEditing] = useState<BoardTask | null>(null);
   const [creatingStatus, setCreatingStatus] = useState<TaskStatus | null>(null);
@@ -578,9 +562,9 @@ function BoardPage() {
     return tasks.filter(
       (t) =>
         (!q || t.title.toLowerCase().includes(q)) &&
-        (statusFilter.size === 0 || statusFilter.has(t.status))
+        matchesTaskFilters(t, taskFilters)
     );
-  }, [tasks, query, statusFilter]);
+  }, [tasks, query, taskFilters]);
 
   const sortedTasks = useMemo(() => {
     if (!sortBy) return visibleTasks;
@@ -899,60 +883,21 @@ function BoardPage() {
             </div>
           )}
 
-          <div className="pv-sort">
-            <button
-              className={`pv-tool-btn${statusFilter.size ? " active" : ""}`}
-              type="button"
-              onClick={() => (filterOpen ? setFilterOpen(false) : openFilter())}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M3 6h18M7 12h10M11 18h2" />
-              </svg>
-              Filter
-              {statusFilter.size > 0 && (
-                <span className="pv-sort-tag">{statusFilter.size}</span>
-              )}
-            </button>
-            {filterOpen && (
-              <>
-                <div className="pv-menu-backdrop" onClick={() => setFilterOpen(false)} />
-                <div className="pv-filter-pop">
-                  <div className="pv-filter-list">
-                    {STATUS_ORDER.map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        className={`pv-filter-opt${pendingStatus.has(s) ? " sel" : ""}`}
-                        onClick={() => togglePendingStatus(s)}
-                      >
-                        <TaskStatusIcon status={s} size={15} />
-                        <span>{STATUS_LABELS[s]}</span>
-                        {pendingStatus.has(s) && (
-                          <svg className="pv-filter-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                            <path d="M5 12l4 4 10-10" />
-                          </svg>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    className="pv-filter-apply"
-                    onClick={applyFilter}
-                    disabled={filterApplying}
-                  >
-                    {filterApplying ? (
-                      <>
-                        Applying
-                        <Spinner />
-                      </>
-                    ) : (
-                      "Apply Filter"
-                    )}
-                  </button>
-                </div>
-              </>
+          <button
+            className={`pv-tool-btn${
+              filterOpen || activeFilterCount ? " active" : ""
+            }`}
+            type="button"
+            onClick={() => setFilterOpen((o) => !o)}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M3 6h18M7 12h10M11 18h2" />
+            </svg>
+            Filter
+            {activeFilterCount > 0 && (
+              <span className="pv-sort-tag">{activeFilterCount}</span>
             )}
-          </div>
+          </button>
 
           <div className="pv-sort">
             <button
@@ -1035,6 +980,15 @@ function BoardPage() {
           View
         </button>
       </div>
+      )}
+
+      {view !== "sprint" && (filterOpen || activeFilterCount > 0) && (
+        <TaskFilterBar
+          value={taskFilters}
+          onChange={setTaskFilters}
+          members={members}
+          labels={labelSuggestions}
+        />
       )}
       </div>
 
