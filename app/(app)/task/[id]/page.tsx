@@ -736,6 +736,14 @@ export default function TaskDetailPage() {
   const childCrumb = encodeURIComponent(
     incomingCrumb ? `${incomingCrumb},${currentCrumbEntry}` : currentCrumbEntry
   );
+  // Carry ?from=tasks down into child items, so drilling into a sub-task from
+  // a task opened via the Tasks module keeps Tasks selected in the sidebar
+  // instead of flipping back to Project partway through.
+  const childFrom =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("from") === "tasks"
+      ? "&from=tasks"
+      : "";
 
   const subDone = detail.subtasks.filter((s) => s.status === "done").length;
   // Derived progress = completed subtasks; a Done task counts as 100%.
@@ -1115,7 +1123,7 @@ export default function TaskDetailPage() {
                         {taskCode(t.seq) && (
                           <span className="sub-id">{taskCode(t.seq)}</span>
                         )}
-                        <Link href={`/task/${t.id}?crumb=${childCrumb}`} className="sub-title">
+                        <Link href={`/task/${t.id}?crumb=${childCrumb}${childFrom}`} className="sub-title">
                           {t.title}
                         </Link>
                         <span className="sub-meta">
@@ -1397,7 +1405,7 @@ export default function TaskDetailPage() {
                         {taskCode(b.seq) && (
                           <span className="sub-id">{taskCode(b.seq)}</span>
                         )}
-                        <Link href={`/task/${b.id}?crumb=${childCrumb}`} className="sub-title">
+                        <Link href={`/task/${b.id}?crumb=${childCrumb}${childFrom}`} className="sub-title">
                           {b.title}
                         </Link>
                         <span className="sub-meta">
@@ -1617,7 +1625,7 @@ export default function TaskDetailPage() {
                     {taskCode(s.seq) && (
                       <span className="sub-id">{taskCode(s.seq)}</span>
                     )}
-                    <Link href={`/task/${s.id}?crumb=${childCrumb}`} className="sub-title">
+                    <Link href={`/task/${s.id}?crumb=${childCrumb}${childFrom}`} className="sub-title">
                       {s.title}
                     </Link>
                     <span className="sub-meta">

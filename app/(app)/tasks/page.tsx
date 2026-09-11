@@ -196,7 +196,9 @@ export default function TasksPage() {
         projectPrefix={prefixFor}
         onUpdate={updateTask}
         onDelete={(ids) => setPendingDelete(ids)}
-        onOpen={(id) => router.push(`/task/${id}`)}
+        // ?from=tasks tells the shell to keep Tasks selected in the sidebar and
+        // to start the breadcrumb at Tasks rather than at the task's project.
+        onOpen={(id) => router.push(`/task/${id}?from=tasks`)}
         showOpenItem={false}
         menuItems={(t) => [
           {

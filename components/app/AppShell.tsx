@@ -116,23 +116,32 @@ function Sidebar({
   collapsed,
   onToggle,
   initialSuperAdmin = false,
+  fromTasks = false,
 }: {
   collapsed: boolean;
   onToggle: () => void;
   initialSuperAdmin?: boolean;
+  // True on a task opened from the Tasks module, which keeps Tasks selected
+  // instead of Project.
+  fromTasks?: boolean;
 }) {
   const pathname = usePathname();
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
+  const onTaskDetail = pathname.startsWith("/task/");
+
   // "Projects" stays active whenever the user is inside a project: the board
-  // (root), the projects list, a project sub-page, or a task detail page.
+  // (root), the projects list, a project sub-page, or a task detail page —
+  // unless that task was opened from the Tasks module.
   const projectsActive =
     pathname === "/" ||
     pathname.startsWith("/projects") ||
     pathname.startsWith("/project/") ||
-    pathname.startsWith("/task/");
+    (onTaskDetail && !fromTasks);
+
+  const tasksActive = isActive("/tasks") || (onTaskDetail && fromTasks);
 
   // The Employee Directory requires team_member:view.
   const canViewDirectory = useCan("team_member", "view");
@@ -180,7 +189,7 @@ function Sidebar({
       <nav className="app-nav">
         <NavLink href="/dashboard" label="Dashboard" icon={DashboardIcon} active={isActive("/dashboard")} />
         <NavLink href="/projects" label="Project" icon={ProjectsIcon} active={projectsActive} onHover={prefetch.projects} />
-        <NavLink href="/tasks" label="Tasks" icon={TasksIcon} active={isActive("/tasks")} />
+        <NavLink href="/tasks" label="Tasks" icon={TasksIcon} active={tasksActive} />
         {canViewDirectory && (
           <NavLink href="/directory" label="Employee Directory" icon={DirectoryIcon} active={isActive("/directory")} onHover={prefetch.directory} />
         )}
@@ -229,7 +238,13 @@ function sectionTitle(pathname: string) {
   return "Task Bucket";
 }
 
-function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
+function Topbar({
+  onMenuClick,
+  fromTasks = false,
+}: {
+  onMenuClick?: () => void;
+  fromTasks?: boolean;
+}) {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [menu, setMenu] = useState<null | "notif" | "account">(null);
@@ -322,11 +337,14 @@ function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
       <div className="topbar-lead">
         {showTaskCrumb ? (
           <nav className="topbar-crumb topbar-crumb-task" aria-label="Breadcrumb">
+            {/* Arriving from the Tasks module, the trail starts there — going
+                "back" should return you where you came from, not to the
+                task's project board. */}
             <Link
-              href={`/?project=${taskCrumb!.projectId}`}
+              href={fromTasks ? "/tasks" : `/?project=${taskCrumb!.projectId}`}
               className="topbar-crumb-link"
             >
-              {taskCrumb!.project}
+              {fromTasks ? "Tasks" : taskCrumb!.project}
             </Link>
             <svg className="topbar-crumb-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="m9 18 6-6-6-6" />
@@ -336,9 +354,14 @@ function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
                 .slice(0, i)
                 .map((a) => `${a.id}~${a.task}`)
                 .join(",");
-              const href = upto
-                ? `/task/${anc.id}?crumb=${encodeURIComponent(upto)}`
-                : `/task/${anc.id}`;
+              const from = fromTasks ? "from=tasks" : "";
+              const qs = [
+                upto ? `crumb=${encodeURIComponent(upto)}` : "",
+                from,
+              ]
+                .filter(Boolean)
+                .join("&");
+              const href = qs ? `/task/${anc.id}?${qs}` : `/task/${anc.id}`;
               return (
                 <Fragment key={anc.id}>
                   <Link href={href} className="topbar-crumb-link">
@@ -514,6 +537,18 @@ export default function AppShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
 
+  // A task opened from the Tasks module carries ?from=tasks, so the shell can
+  // keep Tasks selected and start the breadcrumb there rather than at the
+  // task's project. Read from location rather than useSearchParams, matching
+  // the task page, which avoids forcing a Suspense boundary around the shell.
+  const [fromTasks, setFromTasks] = useState(false);
+  useEffect(() => {
+    setFromTasks(
+      pathname.startsWith("/task/") &&
+        new URLSearchParams(window.location.search).get("from") === "tasks"
+    );
+  }, [pathname]);
+
   useEffect(() => {
     setCollapsed(localStorage.getItem("tb-sidebar-collapsed") === "1");
   }, []);
@@ -541,6 +576,7 @@ export default function AppShell({
         collapsed={collapsed}
         onToggle={toggleSidebar}
         initialSuperAdmin={initialSuperAdmin}
+        fromTasks={fromTasks}
       />
       {mobileOpen && (
         <div
@@ -549,7 +585,7 @@ export default function AppShell({
         />
       )}
       <div className="app-body">
-        <Topbar onMenuClick={() => setMobileOpen(true)} />
+        <Topbar onMenuClick={() => setMobileOpen(true)} fromTasks={fromTasks} />
         <main className="app-main">{children}</main>
       </div>
     </div>
