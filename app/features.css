@@ -86,6 +86,26 @@
   gap: 8px;
   padding: 0 14px;
 }
+/* The Tasks module has no .tl-foot bar under the list, so the card closes on
+   its own rather than leaving the bottom edge open. */
+.tasks-page .task-list {
+  border-bottom: 1px solid var(--canvas-border);
+  border-radius: 8px;
+}
+
+/* Cross-project lists (the Tasks module) gain a Project column between Title
+   and Assignee. Same track sizes otherwise, so rows line up with the project
+   List view. */
+.task-list.with-project .tl-head,
+.task-list.with-project .tl-row {
+  grid-template-columns: 34px minmax(160px, 1fr) 120px 70px repeat(5, 105px) 32px;
+}
+.tl-project {
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .tl-row {
   position: relative;
 }

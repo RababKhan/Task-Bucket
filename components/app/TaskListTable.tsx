@@ -19,7 +19,9 @@ import MemberPicker from "@/components/app/MemberPicker";
 import DatePicker from "@/components/app/DatePicker";
 import LabelsField from "@/components/app/LabelsField";
 
-export type ListTask = Task & { assignees?: string[] };
+// `project_name` is only present in cross-project views (the Tasks module),
+// where it drives the optional Project column.
+export type ListTask = Task & { assignees?: string[]; project_name?: string };
 
 export type RowMenuItem = {
   label: string;
@@ -55,11 +57,14 @@ export default function TaskListTable({
   menuItems,
   emptyText = "No tasks.",
   showHeader = true,
+  showProject = false,
 }: {
   tasks: ListTask[];
   members: Member[];
   labelSuggestions: string[];
-  projectPrefix: string;
+  // A plain string within one project; a function when rows span projects, so
+  // each task's id badge carries its own project's prefix.
+  projectPrefix: string | ((task: ListTask) => string);
   onUpdate: (id: number, patch: Record<string, unknown>) => void;
   onOpen: (id: number) => void;
   onDelete?: (ids: number[]) => void;
@@ -68,6 +73,9 @@ export default function TaskListTable({
   menuItems?: (task: ListTask) => RowMenuItem[];
   emptyText?: string;
   showHeader?: boolean;
+  // Adds a Project column. For cross-project lists, where the row alone does
+  // not say which project a task belongs to.
+  showProject?: boolean;
 }) {
   const router = useRouter();
   const [menuId, setMenuId] = useState<number | null>(null);
@@ -93,6 +101,9 @@ export default function TaskListTable({
         : next;
     });
   }, [tasks]);
+
+  const prefixFor = (task: ListTask) =>
+    typeof projectPrefix === "function" ? projectPrefix(task) : projectPrefix;
 
   const byId = new Map(tasks.map((t) => [t.id, t]));
   const orderedTasks = order
@@ -149,7 +160,7 @@ export default function TaskListTable({
   }
 
   return (
-    <div className="task-list">
+    <div className={`task-list${showProject ? " with-project" : ""}`}>
       {selected.size > 0 && (
         <div className="pv-selbar">
           <span className="pv-selcount">{selected.size}</span>
@@ -185,6 +196,7 @@ export default function TaskListTable({
         <div className="tl-head">
           <span />
           <span>Title</span>
+          {showProject && <span>Project</span>}
           <span>Assignee</span>
           <span>Status</span>
           <span>Priority</span>
@@ -242,11 +254,19 @@ export default function TaskListTable({
               <TaskTypeIcon type={task.type} size={15} />
               {task.seq != null && (
                 <span className="tl-task-id">
-                  {projectPrefix}-{String(task.seq).padStart(3, "0")}
+                  {prefixFor(task)}-{String(task.seq).padStart(3, "0")}
                 </span>
               )}
               <span className="tl-title-text">{task.title}</span>
             </span>
+            {showProject && (
+              <span
+                className="tl-cell tl-project"
+                title={task.project_name ?? ""}
+              >
+                {task.project_name ?? "—"}
+              </span>
+            )}
             <span className="tl-cell">
               <MemberPicker
                 inline

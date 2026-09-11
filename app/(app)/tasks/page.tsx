@@ -1,55 +1,42 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
 import { useMembers } from "@/lib/queries";
-import { prefetchTaskDetail } from "@/lib/task-cache";
-import type { TaskStatus, TaskPriority, TaskType } from "@/lib/types";
-import { STATUS_LABELS, STATUS_ORDER, PRIORITY_LABELS } from "@/lib/types";
+import { STATUS_LABELS, STATUS_ORDER } from "@/lib/types";
 import Spinner from "@/components/Spinner";
-import TaskStatusIcon from "@/components/app/TaskStatusIcon";
-import PriorityIcon from "@/components/app/PriorityIcon";
-import TaskTypeIcon from "@/components/app/TaskTypeIcon";
+import TaskListTable, { type ListTask } from "@/components/app/TaskListTable";
+import ConfirmModal from "@/components/app/team/ConfirmModal";
 
-type AllTask = {
-  id: number;
-  project_id: number;
-  project_name: string;
-  title: string;
-  type: TaskType;
-  status: TaskStatus;
-  priority: TaskPriority;
-  due_date: string | null;
-  assignees: string[];
-};
+// /api/tasks/all returns the full task row plus its project name, so the same
+// list table the project view uses can render it unchanged.
+type AllTask = ListTask & { project_name: string };
 
-const GRID = "1.7fr 150px 120px 150px 110px 110px";
-
-function initials(text: string) {
-  const p = text.trim().split(/\s+/).filter(Boolean);
-  if (!p.length) return "?";
-  return (p.length === 1 ? p[0].slice(0, 2) : p[0][0] + p[p.length - 1][0]).toUpperCase();
-}
+const TASKS_KEY = ["tasks", "all"] as const;
 
 export default function TasksPage() {
   const router = useRouter();
+  const qc = useQueryClient();
+
   const { data, isLoading } = useQuery({
-    queryKey: ["tasks", "all"],
+    queryKey: TASKS_KEY,
     queryFn: () => apiGet<AllTask[]>("/api/tasks/all"),
   });
   const { data: members } = useMembers();
+
+  // Mirror the query into local state so inline edits apply immediately,
+  // the same way the project List view does.
+  const [tasks, setTasks] = useState<AllTask[]>([]);
+  useEffect(() => {
+    if (data) setTasks(data);
+  }, [data]);
 
   const [q, setQ] = useState("");
   const [proj, setProj] = useState("");
   const [status, setStatus] = useState("");
 
-  const tasks = data ?? [];
-  const memberMap = useMemo(
-    () => new Map((members ?? []).map((m) => [m.user_id, m])),
-    [members]
-  );
   const projects = useMemo(() => {
     const seen = new Map<number, string>();
     tasks.forEach((t) => seen.set(t.project_id, t.project_name));
@@ -57,6 +44,14 @@ export default function TasksPage() {
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [tasks]);
+
+  const labelSuggestions = useMemo(
+    () =>
+      [...new Set(tasks.flatMap((t) => t.labels ?? []))].sort((a, b) =>
+        a.localeCompare(b)
+      ),
+    [tasks]
+  );
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -68,11 +63,39 @@ export default function TasksPage() {
     );
   }, [tasks, q, proj, status]);
 
-  const open = (id: number) => router.push(`/task/${id}`);
-  const warm = (id: number) => {
-    router.prefetch(`/task/${id}`);
-    prefetchTaskDetail(String(id));
-  };
+  // Each row shows its own project's id badge, since rows span projects.
+  const prefixFor = (t: ListTask) =>
+    (t.project_name ?? "")
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .slice(0, 3)
+      .toUpperCase() || "TSK";
+
+  async function updateTask(id: number, patch: Record<string, unknown>) {
+    setTasks((cur) =>
+      cur.map((t) => (t.id === id ? ({ ...t, ...patch } as AllTask) : t))
+    );
+    await fetch(`/api/tasks/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    qc.invalidateQueries({ queryKey: TASKS_KEY });
+  }
+
+  // Deleting is confirmed first, matching the project List view rather than
+  // removing rows on a single click.
+  const [pendingDelete, setPendingDelete] = useState<number[] | null>(null);
+
+  async function confirmDelete() {
+    const ids = pendingDelete ?? [];
+    setPendingDelete(null);
+    if (!ids.length) return;
+    setTasks((cur) => cur.filter((t) => !ids.includes(t.id)));
+    await Promise.all(
+      ids.map((id) => fetch(`/api/tasks/${id}`, { method: "DELETE" }))
+    );
+    qc.invalidateQueries({ queryKey: TASKS_KEY });
+  }
 
   if (isLoading) {
     return (
@@ -83,7 +106,7 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="pv">
+    <div className="pv tasks-page">
       <div className="pv-toolbar">
         <div className="pv-search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -134,73 +157,51 @@ export default function TasksPage() {
         </select>
       </div>
 
-      {filtered.length === 0 ? (
-        <div className="pv-empty-search">
-          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <circle cx="27" cy="27" r="18" />
-            <path d="M40 40l15 15" />
-          </svg>
-          <p>
-            {tasks.length === 0
-              ? "No tasks across your projects yet."
-              : "No tasks match your filters."}
-          </p>
-        </div>
-      ) : (
-        <div className="pv-table">
-          <div className="pv-head" style={{ gridTemplateColumns: GRID }}>
-            <span>Title</span>
-            <span>Project</span>
-            <span>Assignee</span>
-            <span>Status</span>
-            <span>Priority</span>
-            <span>Due Date</span>
-          </div>
-          {filtered.map((t) => (
-            <div
-              key={t.id}
-              className="pv-row"
-              style={{ gridTemplateColumns: GRID }}
-              onClick={() => open(t.id)}
-              onMouseEnter={() => warm(t.id)}
-            >
-              <span className="pv-cell pv-title-cell">
-                <TaskTypeIcon type={t.type} size={15} />
-                <span className="pv-title">{t.title}</span>
-              </span>
-              <span className="pv-cell">
-                <span className="tasks-proj">{t.project_name}</span>
-              </span>
-              <span className="pv-cell tasks-assignees">
-                {t.assignees.length === 0 ? (
-                  <span className="dir-muted">—</span>
-                ) : (
-                  t.assignees.slice(0, 3).map((id) => {
-                    const m = memberMap.get(id);
-                    const label = m?.name || m?.email || "?";
-                    return (
-                      <span key={id} className="pv-avatar" data-tip={label} aria-label={label}>
-                        {initials(label)}
-                      </span>
-                    );
-                  })
-                )}
-                {t.assignees.length > 3 && (
-                  <span className="tasks-more">+{t.assignees.length - 3}</span>
-                )}
-              </span>
-              <span className="pv-cell tasks-inline">
-                <TaskStatusIcon status={t.status} size={15} />
-                {STATUS_LABELS[t.status]}
-              </span>
-              <span className="pv-cell tasks-inline">
-                <PriorityIcon priority={t.priority} size={14} />
-                {PRIORITY_LABELS[t.priority]}
-              </span>
-              <span className="pv-cell dir-muted">{t.due_date ?? "—"}</span>
-            </div>
-          ))}
-        </div>
+      <TaskListTable
+        showProject
+        tasks={filtered}
+        members={members ?? []}
+        labelSuggestions={labelSuggestions}
+        projectPrefix={prefixFor}
+        onUpdate={updateTask}
+        onDelete={(ids) => setPendingDelete(ids)}
+        onOpen={(id) => router.push(`/task/${id}`)}
+        menuItems={(t) => [
+          {
+            label: "Delete",
+            danger: true,
+            onClick: () => setPendingDelete([t.id]),
+          },
+        ]}
+        emptyText={
+          tasks.length === 0
+            ? "No tasks across your projects yet."
+            : "No tasks match your filters."
+        }
+      />
+
+      {pendingDelete && (
+        <ConfirmModal
+          title={pendingDelete.length > 1 ? "Delete tasks?" : "Delete task?"}
+          body={
+            pendingDelete.length > 1 ? (
+              <>
+                <b>{pendingDelete.length} tasks</b> will be deleted. This can&apos;t
+                be undone.
+              </>
+            ) : (
+              <>
+                <b>
+                  {tasks.find((t) => t.id === pendingDelete[0])?.title ??
+                    "This task"}
+                </b>{" "}
+                will be deleted. This can&apos;t be undone.
+              </>
+            )
+          }
+          onConfirm={confirmDelete}
+          onClose={() => setPendingDelete(null)}
+        />
       )}
     </div>
   );
