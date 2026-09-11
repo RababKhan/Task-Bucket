@@ -31,10 +31,9 @@ const PAGE_SIZE = 20;
 
 // Sorting matches the Projects and Tasks modules. Role orders by seniority
 // (Owner, Admin, Manager, Assignee, then custom roles), not alphabetically.
-type SortKey = "role" | "name";
+type SortKey = "role";
 const SORT_FIELDS: { key: SortKey; label: string }[] = [
   { key: "role", label: "Role" },
-  { key: "name", label: "Member Name" },
 ];
 const SORT_PREF_KEY = "tb-directory-sort";
 

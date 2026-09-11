@@ -41,8 +41,7 @@ export async function GET(request: Request) {
   // sorting the page you happen to be looking at would order 20 rows out of
   // however many exist. Both values come from a whitelist and are never
   // interpolated from raw input.
-  const sortParam = searchParams.get("sort");
-  const sort = sortParam === "name" || sortParam === "role" ? sortParam : null;
+  const sort = searchParams.get("sort") === "role" ? "role" : null;
   const dir = searchParams.get("dir") === "desc" ? "DESC" : "ASC";
 
   // Seniority, not alphabetical: Owner, Admin, Manager, Assignee, then any
@@ -53,11 +52,9 @@ export async function GET(request: Request) {
   // With no explicit sort, the long-standing default stands: most senior first,
   // then by name — which puts the Owner at the top.
   const orderBy =
-    sort === "name"
-      ? `${NAME} ${dir}, ${ROLE_RANK} ASC`
-      : sort === "role"
-        ? `${ROLE_RANK} ${dir}, ${NAME} ASC`
-        : `${ROLE_RANK} ASC, ${NAME} ASC`;
+    sort === "role"
+      ? `${ROLE_RANK} ${dir}, ${NAME} ASC`
+      : `${ROLE_RANK} ASC, ${NAME} ASC`;
 
   // Build the filtered WHERE clause + args incrementally.
   const where: string[] = ["wm.workspace_id = ?"];
