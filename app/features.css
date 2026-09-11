@@ -429,12 +429,13 @@
 }
 .tl-project {
   gap: 7px;
-  color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
 }
+/* Same grey as the row's other empty-state icons (calendar, tag, assignee). */
 .tl-project svg {
   flex: 0 0 14px;
+  color: var(--text-dim);
 }
 /* The name, not the cell, carries the ellipsis — so a long name truncates
    while the icon stays whole. */
