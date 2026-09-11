@@ -10,6 +10,7 @@ import {
 } from "@/lib/types";
 import TaskStatusIcon from "@/components/app/TaskStatusIcon";
 import PriorityIcon from "@/components/app/PriorityIcon";
+import { labelColor } from "@/lib/tasks";
 
 // Filtering is built one field at a time. The Filter button opens the list of
 // fields; choosing one opens its values. Each active field then shows as a chip
@@ -31,7 +32,27 @@ function initials(text: string) {
   return (p.length === 1 ? p[0].slice(0, 2) : p[0][0] + p[p.length - 1][0]).toUpperCase();
 }
 
-type Option = { value: string; label: string; icon?: React.ReactNode };
+// A value row is normally an icon plus its label. Labels instead render as the
+// same coloured chip the Labels column shows, so a label is recognisable here
+// by the colour you already associate with it.
+type Option = {
+  value: string;
+  label: string;
+  icon?: React.ReactNode;
+  chip?: boolean;
+};
+
+function LabelChip({ label }: { label: string }) {
+  const c = labelColor(label);
+  return (
+    <span
+      className="tl-label-chip"
+      style={{ background: c.bg, borderColor: c.border, color: c.color }}
+    >
+      {label}
+    </span>
+  );
+}
 
 type Shared = {
   value: TaskFilters;
@@ -64,7 +85,7 @@ function optionsFor(field: FilterField, members: Member[], labels: string[]): Op
         };
       });
     case "label":
-      return labels.map((l) => ({ value: l, label: l }));
+      return labels.map((l) => ({ value: l, label: l, chip: true }));
   }
 }
 
@@ -127,7 +148,7 @@ function ValueList({
                 onClick={() => toggleValue(shared, field, o.value)}
               >
                 {o.icon}
-                <span>{o.label}</span>
+                <span>{o.chip ? <LabelChip label={o.label} /> : o.label}</span>
                 {on && (
                   <svg className="pv-filter-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <path d="M5 12l4 4 10-10" />
