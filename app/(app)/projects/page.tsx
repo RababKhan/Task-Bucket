@@ -14,6 +14,18 @@ import MemberPicker from "@/components/app/MemberPicker";
 import DatePicker from "@/components/app/DatePicker";
 import EmptyProjects from "@/components/app/EmptyProjects";
 import CreateProjectModal from "@/components/app/CreateProjectModal";
+import {
+  FilterButton,
+  FilterChips,
+  PersonIcon,
+  matchesDateRange,
+  parseFilters,
+  countActiveFilters,
+  NO_FILTERS,
+  type Filters,
+  type FilterFieldDef,
+} from "@/components/app/FilterBar";
+import { usePersistedState } from "@/lib/usePersistedState";
 
 type Person = { user_id: string; name: string; email: string };
 type ProjectRow = Project & {
@@ -63,6 +75,25 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// ---- Filtering --------------------------------------------------------------
+const FILTER_KEYS = ["status", "manager", "member", "due"] as const;
+const parseProjectFilters = (raw: unknown) => parseFilters(raw, FILTER_KEYS);
+
+/** Fields combine with AND; the values within one field with OR. */
+function matchesProjectFilters(p: ProjectRow, f: Filters): boolean {
+  if (f.status?.length && !f.status.includes(p.status)) return false;
+  // Match on manager_id, not p.manager: the API sends the manager as
+  // { name, email } with no user_id, whatever the Person type claims.
+  if (f.manager?.length && !(p.manager_id && f.manager.includes(p.manager_id))) {
+    return false;
+  }
+  if (f.member?.length && !p.members.some((m) => f.member!.includes(m.user_id))) {
+    return false;
+  }
+  if (f.due?.length && !matchesDateRange(p.due_date, f.due)) return false;
+  return true;
+}
+
 export default function ProjectsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -79,14 +110,12 @@ export default function ProjectsPage() {
   // is disabled once the cap is reached.
   const [projectLimit, setProjectLimit] = useState<number | null>(null);
   const [query, setQuery] = useState("");
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<Set<ProjectStatus>>(
-    new Set()
+  // Same filter as the task lists, and like them it survives a reload.
+  const [filters, setFilters] = usePersistedState<Filters>(
+    "tb-projects-filters",
+    NO_FILTERS,
+    parseProjectFilters
   );
-  const [pendingStatus, setPendingStatus] = useState<Set<ProjectStatus>>(
-    new Set()
-  );
-  const [filterApplying, setFilterApplying] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -132,8 +161,16 @@ export default function ProjectsPage() {
       const raw = localStorage.getItem("tb-projects-filtersort");
       if (raw) {
         const v = JSON.parse(raw);
-        if (Array.isArray(v.status)) setStatusFilter(new Set(v.status));
         if (v.sortBy) setSortBy(v.sortBy);
+        // Status filters used to be saved here. Carry them over once, if the
+        // new filter store has nothing yet, so an upgrade doesn't lose them.
+        if (
+          Array.isArray(v.status) &&
+          v.status.length &&
+          localStorage.getItem("tb-projects-filters") == null
+        ) {
+          setFilters({ status: v.status.filter((x: unknown) => typeof x === "string") });
+        }
         if (v.sortDir === "asc" || v.sortDir === "desc") setSortDir(v.sortDir);
       }
     } catch {}
@@ -149,10 +186,10 @@ export default function ProjectsPage() {
     try {
       localStorage.setItem(
         "tb-projects-filtersort",
-        JSON.stringify({ status: [...statusFilter], sortBy, sortDir })
+        JSON.stringify({ sortBy, sortDir })
       );
     } catch {}
-  }, [statusFilter, sortBy, sortDir]);
+  }, [sortBy, sortDir]);
 
   function closeView() {
     if (viewClosing) return;
@@ -225,39 +262,37 @@ export default function ProjectsPage() {
     return () => window.removeEventListener("tb:create-project", open);
   }, [atProjectLimit]);
 
+  const filterFields = useMemo<FilterFieldDef[]>(() => {
+    const people = members.map((m) => {
+      const name = m.name || m.email || "Unknown";
+      return {
+        value: m.user_id,
+        label: name,
+        icon: <PersonIcon name={name} image={m.image} />,
+      };
+    });
+    return [
+      {
+        key: "status",
+        label: "Status",
+        options: PROJECT_STATUS_ORDER.map((st) => ({
+          value: st,
+          label: PROJECT_STATUS_LABELS[st],
+          icon: <StatusIcon status={st} size={16} />,
+        })),
+      },
+      { key: "manager", label: "Project Manager", emptyText: "Nobody to show.", options: people },
+      { key: "member", label: "Members", emptyText: "Nobody to show.", options: people },
+      { key: "due", label: "Due Date", kind: "date" },
+    ];
+  }, [members]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return projects.filter(
-      (p) =>
-        (!q || p.name.toLowerCase().includes(q)) &&
-        (statusFilter.size === 0 ||
-          statusFilter.has(p.status as ProjectStatus))
+      (p) => (!q || p.name.toLowerCase().includes(q)) && matchesProjectFilters(p, filters)
     );
-  }, [projects, query, statusFilter]);
-
-  function openFilter() {
-    setPendingStatus(new Set(statusFilter));
-    setFilterOpen(true);
-  }
-
-  function togglePending(s: ProjectStatus) {
-    setPendingStatus((cur) => {
-      const next = new Set(cur);
-      if (next.has(s)) next.delete(s);
-      else next.add(s);
-      return next;
-    });
-  }
-
-  function applyFilter() {
-    if (filterApplying) return;
-    setFilterApplying(true);
-    window.setTimeout(() => {
-      setStatusFilter(new Set(pendingStatus));
-      setFilterApplying(false);
-      setFilterOpen(false);
-    }, 550);
-  }
+  }, [projects, query, filters]);
 
   const sorted = useMemo(() => {
     if (!sortBy) return filtered;
@@ -298,10 +333,9 @@ export default function ProjectsPage() {
   }
 
   function clearAll() {
-    setStatusFilter(new Set());
+    setFilters({});
     setSortBy(null);
     setSortOpen(false);
-    setFilterOpen(false);
   }
 
   async function changeStatus(id: number, status: ProjectStatus) {
@@ -482,60 +516,7 @@ export default function ProjectsPage() {
             </button>
           )}
         </div>
-        <div className="pv-sort">
-          <button
-            className={`pv-tool-btn${statusFilter.size ? " active" : ""}`}
-            type="button"
-            onClick={() => (filterOpen ? setFilterOpen(false) : openFilter())}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M3 6h18M7 12h10M11 18h2" />
-            </svg>
-            Filter
-            {statusFilter.size > 0 && (
-              <span className="pv-sort-tag">{statusFilter.size}</span>
-            )}
-          </button>
-          {filterOpen && (
-            <>
-              <div className="pv-menu-backdrop" onClick={() => setFilterOpen(false)} />
-              <div className="pv-filter-pop">
-                <div className="pv-filter-list">
-                  {PROJECT_STATUS_ORDER.map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      className={`pv-filter-opt${pendingStatus.has(s) ? " sel" : ""}`}
-                      onClick={() => togglePending(s)}
-                    >
-                      <StatusIcon status={s} size={16} />
-                      <span>{PROJECT_STATUS_LABELS[s]}</span>
-                      {pendingStatus.has(s) && (
-                        <svg className="pv-filter-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                          <path d="M5 12l4 4 10-10" />
-                        </svg>
-                      )}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  className="pv-filter-apply"
-                  onClick={applyFilter}
-                  disabled={filterApplying}
-                >
-                  {filterApplying ? (
-                    <>
-                      Applying
-                      <Spinner />
-                    </>
-                  ) : (
-                    "Apply Filter"
-                  )}
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+        <FilterButton fields={filterFields} value={filters} onChange={setFilters} />
         <div className="pv-sort">
           <button
             className={`pv-tool-btn${sortBy ? " active" : ""}`}
@@ -591,7 +572,7 @@ export default function ProjectsPage() {
             </>
           )}
         </div>
-        {(statusFilter.size > 0 || sortBy) && (
+        {(countActiveFilters(filters) > 0 || sortBy) && (
           <button className="pv-tool-btn pv-clear-all" type="button" onClick={clearAll}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <circle cx="12" cy="12" r="9" />
@@ -611,6 +592,8 @@ export default function ProjectsPage() {
           View
         </button>
       </div>
+
+      <FilterChips fields={filterFields} value={filters} onChange={setFilters} />
 
       {/* Table */}
       {filtered.length === 0 ? (

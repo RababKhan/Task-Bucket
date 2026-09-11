@@ -14,6 +14,16 @@ import ConfirmModal from "@/components/app/team/ConfirmModal";
 import Toast, { type ToastState } from "@/components/app/Toast";
 import PendingInvites from "@/components/app/team/PendingInvites";
 import { type TeamMember } from "@/lib/types";
+import {
+  FilterButton,
+  FilterChips,
+  parseFilters,
+  countActiveFilters,
+  NO_FILTERS,
+  type Filters,
+  type FilterFieldDef,
+} from "@/components/app/FilterBar";
+import { usePersistedState } from "@/lib/usePersistedState";
 
 type RoleOption = { key: string; name: string };
 
@@ -28,6 +38,11 @@ function initials(text: string) {
 }
 
 const PAGE_SIZE = 20;
+
+// Filtering happens on the server (the list is paged), so these keys map
+// straight onto the API's query parameters.
+const FILTER_KEYS = ["role", "project"] as const;
+const parseDirectoryFilters = (raw: unknown) => parseFilters(raw, FILTER_KEYS);
 
 // Sorting matches the Projects and Tasks modules. Role orders by seniority
 // (Owner, Admin, Manager, Assignee, then custom roles), not alphabetically.
@@ -48,10 +63,12 @@ export default function DirectoryPage() {
   // Filters
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
-  const [roleFilter, setRoleFilter] = useState<Set<string>>(new Set());
-  const [pendingRoles, setPendingRoles] = useState<Set<string>>(new Set());
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [filterApplying, setFilterApplying] = useState(false);
+  // Same filter as the task and project tables, kept across reloads.
+  const [filters, setFilters] = usePersistedState<Filters>(
+    "tb-directory-filters",
+    NO_FILTERS,
+    parseDirectoryFilters
+  );
 
   const [sortOpen, setSortOpen] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey | null>(null);
@@ -112,12 +129,13 @@ export default function DirectoryPage() {
   // order means nothing in the new one.
   useEffect(() => {
     setPage(1);
-  }, [debouncedQ, roleFilter, sortBy, sortDir]);
+  }, [debouncedQ, filters, sortBy, sortDir]);
 
   const qs = useMemo(() => {
     const params = new URLSearchParams();
     if (debouncedQ) params.set("q", debouncedQ);
-    if (roleFilter.size) params.set("role", [...roleFilter].join(","));
+    if (filters.role?.length) params.set("role", filters.role.join(","));
+    if (filters.project?.length) params.set("project", filters.project.join(","));
     if (sortBy) {
       params.set("sort", sortBy);
       params.set("dir", sortDir);
@@ -125,7 +143,7 @@ export default function DirectoryPage() {
     params.set("page", String(page));
     params.set("pageSize", String(PAGE_SIZE));
     return params.toString();
-  }, [debouncedQ, roleFilter, page, sortBy, sortDir]);
+  }, [debouncedQ, filters, page, sortBy, sortDir]);
 
   // One cache entry per filter/page combination; keepPreviousData holds the old
   // rows visible while the next page/filter loads (no spinner flash).
@@ -135,6 +153,7 @@ export default function DirectoryPage() {
       apiGet<{
         members?: TeamMember[];
         roles?: RoleOption[];
+        projects?: { id: number; name: string }[];
         total?: number;
         can_invite?: boolean;
         can_update_role?: boolean;
@@ -147,6 +166,30 @@ export default function DirectoryPage() {
   const load = refetch;
   const members = data?.members ?? [];
   const roles = data?.roles ?? [];
+  const projectList = data?.projects;
+
+  const filterFields = useMemo<FilterFieldDef[]>(
+    () => [
+      {
+        key: "role",
+        label: "Role",
+        // The roles endpoint leaves Owner out — it feeds the role pickers, and
+        // Owner cannot be assigned — but Owner is a perfectly good thing to
+        // filter by.
+        options: [
+          { value: "owner", label: "Owner" },
+          ...roles.map((r) => ({ value: r.key, label: r.name })),
+        ],
+      },
+      {
+        key: "project",
+        label: "Project",
+        emptyText: "No projects yet.",
+        options: (projectList ?? []).map((p) => ({ value: String(p.id), label: p.name })),
+      },
+    ],
+    [roles, projectList]
+  );
   const total = data?.total ?? 0;
   const canInvite = !!data?.can_invite;
   const canUpdateRole = !!data?.can_update_role;
@@ -188,38 +231,12 @@ export default function DirectoryPage() {
   // The Owner is bound to the workspace creator, so their role is fixed.
   const roleLocked = (m: TeamMember) => m.role === "owner";
 
-  function openFilter() {
-    setPendingRoles(new Set(roleFilter));
-    setFilterOpen(true);
-  }
-
-  function togglePendingRole(key: string) {
-    setPendingRoles((cur) => {
-      const next = new Set(cur);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }
-
   // "Clear all" resets the sort as well as the filters, matching the Projects
   // module — it is the one control that puts the table back to its default.
   function clearFilter() {
-    setRoleFilter(new Set());
-    setPendingRoles(new Set());
-    setFilterOpen(false);
+    setFilters({});
     setSortBy(null);
     setSortOpen(false);
-  }
-
-  function applyFilter() {
-    if (filterApplying) return;
-    setFilterApplying(true);
-    window.setTimeout(() => {
-      setRoleFilter(new Set(pendingRoles));
-      setFilterApplying(false);
-      setFilterOpen(false);
-    }, 150);
   }
 
   function toggleSelect(uid: string) {
@@ -278,7 +295,7 @@ export default function DirectoryPage() {
   }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const hasFilters = !!q || roleFilter.size > 0;
+  const hasFilters = !!q || countActiveFilters(filters) > 0;
 
   return (
     <div className="pv dir-pv">
@@ -308,59 +325,7 @@ export default function DirectoryPage() {
           )}
         </div>
 
-        <div className="pv-sort">
-          <button
-            className={`pv-tool-btn${roleFilter.size ? " active" : ""}`}
-            type="button"
-            onClick={() => (filterOpen ? setFilterOpen(false) : openFilter())}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M3 6h18M7 12h10M11 18h2" />
-            </svg>
-            Filter
-            {roleFilter.size > 0 && (
-              <span className="pv-sort-tag">{roleFilter.size}</span>
-            )}
-          </button>
-          {filterOpen && (
-            <>
-              <div className="pv-menu-backdrop" onClick={() => setFilterOpen(false)} />
-              <div className="pv-filter-pop">
-                <div className="pv-filter-list">
-                  {roles.map((r) => (
-                    <button
-                      key={r.key}
-                      type="button"
-                      className={`pv-filter-opt${pendingRoles.has(r.key) ? " sel" : ""}`}
-                      onClick={() => togglePendingRole(r.key)}
-                    >
-                      <span>{r.name}</span>
-                      {pendingRoles.has(r.key) && (
-                        <svg className="pv-filter-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                          <path d="M5 12l4 4 10-10" />
-                        </svg>
-                      )}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  className="pv-filter-apply"
-                  onClick={applyFilter}
-                  disabled={filterApplying}
-                >
-                  {filterApplying ? (
-                    <>
-                      Applying
-                      <Spinner />
-                    </>
-                  ) : (
-                    "Apply Filter"
-                  )}
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+        <FilterButton fields={filterFields} value={filters} onChange={setFilters} />
 
         <div className="pv-sort">
           <button
@@ -425,7 +390,7 @@ export default function DirectoryPage() {
           )}
         </div>
 
-        {(roleFilter.size > 0 || sortBy) && (
+        {(countActiveFilters(filters) > 0 || sortBy) && (
           <button className="pv-tool-btn pv-clear-all" type="button" onClick={clearFilter}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <circle cx="12" cy="12" r="9" />
@@ -465,6 +430,8 @@ export default function DirectoryPage() {
           )}
         </div>
       </div>
+
+      <FilterChips fields={filterFields} value={filters} onChange={setFilters} />
 
       {/* Table */}
       {loading ? (

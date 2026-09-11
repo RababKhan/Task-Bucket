@@ -76,10 +76,18 @@ export async function GET(request: Request) {
   if (status === "active") where.push("wm.active = 1");
   if (status === "inactive") where.push("wm.active = 0");
   if (project) {
-    where.push(
-      "EXISTS (SELECT 1 FROM project_members pm WHERE pm.project_id = ? AND pm.user_id = wm.user_id)"
-    );
-    args.push(Number(project));
+    // A comma-separated list: a member matches if they belong to any of the
+    // chosen projects. Non-numeric ids are dropped rather than passed through.
+    const projectIds = project
+      .split(",")
+      .map((p) => Number(p.trim()))
+      .filter((n) => Number.isInteger(n) && n > 0);
+    if (projectIds.length) {
+      where.push(
+        `EXISTS (SELECT 1 FROM project_members pm WHERE pm.user_id = wm.user_id AND pm.project_id IN (${projectIds.map(() => "?").join(", ")}))`
+      );
+      args.push(...projectIds);
+    }
   }
   const whereSql = where.join(" AND ");
 
