@@ -6,7 +6,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
 import { useMembers } from "@/lib/queries";
 import {
-  STATUS_LABELS,
   STATUS_ORDER,
   PRIORITY_ORDER,
   type TaskStatus,
@@ -15,6 +14,13 @@ import {
 import Spinner from "@/components/Spinner";
 import TaskListTable, { type ListTask } from "@/components/app/TaskListTable";
 import ConfirmModal from "@/components/app/team/ConfirmModal";
+import {
+  TaskFilterButton,
+  TaskFilterChips,
+  matchesTaskFilters,
+  countActiveFilters,
+  type TaskFilters,
+} from "@/components/app/TaskFilterBar";
 import TaskModal, { type TaskDraft } from "@/app/TaskModal";
 
 const EDIT_ICON = (
@@ -70,8 +76,7 @@ export default function TasksPage() {
   }, [data]);
 
   const [q, setQ] = useState("");
-  const [proj, setProj] = useState("");
-  const [status, setStatus] = useState("");
+  const [taskFilters, setTaskFilters] = useState<TaskFilters>({});
 
   const [sortOpen, setSortOpen] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey | null>(null);
@@ -114,13 +119,12 @@ export default function TasksPage() {
     setSortOpen(false);
   }
 
-  // Resets the dropdown filters and the sort, the same as in the Directory and
-  // Projects modules. The search box keeps its own inline ✕ and is left alone.
-  const hasFilters = !!proj || !!status || !!sortBy;
+  // Resets every filter and the sort. The search box keeps its own inline ✕
+  // and is left alone, as in the Directory and Projects modules.
+  const hasFilters = countActiveFilters(taskFilters) > 0 || !!sortBy;
 
   function clearAll() {
-    setProj("");
-    setStatus("");
+    setTaskFilters({});
     setSortBy(null);
     setSortOpen(false);
   }
@@ -146,10 +150,9 @@ export default function TasksPage() {
     return tasks.filter(
       (t) =>
         (!term || t.title.toLowerCase().includes(term)) &&
-        (!proj || t.project_id === Number(proj)) &&
-        (!status || t.status === status)
+        matchesTaskFilters(t, taskFilters)
     );
-  }, [tasks, q, proj, status]);
+  }, [tasks, q, taskFilters]);
 
   const sorted = useMemo(() => {
     if (!sortBy) return filtered;
@@ -263,30 +266,13 @@ export default function TasksPage() {
             </button>
           )}
         </div>
-        <select
-          className="pv-tool-select"
-          value={proj}
-          onChange={(e) => setProj(e.target.value)}
-        >
-          <option value="">All projects</option>
-          {projects.map((p) => (
-            <option key={p.id} value={String(p.id)}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-        <select
-          className="pv-tool-select"
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-        >
-          <option value="">All statuses</option>
-          {STATUS_ORDER.map((s) => (
-            <option key={s} value={s}>
-              {STATUS_LABELS[s]}
-            </option>
-          ))}
-        </select>
+        <TaskFilterButton
+          value={taskFilters}
+          onChange={setTaskFilters}
+          members={members ?? []}
+          labels={labelSuggestions}
+          projects={projects}
+        />
 
         <div className="pv-sort">
           <button
@@ -365,6 +351,14 @@ export default function TasksPage() {
           </button>
         )}
       </div>
+
+      <TaskFilterChips
+        value={taskFilters}
+        onChange={setTaskFilters}
+        members={members ?? []}
+        labels={labelSuggestions}
+        projects={projects}
+      />
 
       <TaskListTable
         showProject

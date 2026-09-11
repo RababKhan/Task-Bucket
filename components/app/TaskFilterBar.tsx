@@ -17,6 +17,7 @@ import { labelColor } from "@/lib/tasks";
 // below the toolbar, which reopens to change the selection or drops entirely.
 
 export type FilterField =
+  | "project"
   | "status"
   | "priority"
   | "assignee"
@@ -25,7 +26,10 @@ export type FilterField =
   | "due";
 export type TaskFilters = Partial<Record<FilterField, string[]>>;
 
+export type ProjectOption = { id: number; name: string };
+
 const FIELDS: { key: FilterField; label: string }[] = [
+  { key: "project", label: "Project" },
   { key: "status", label: "Status" },
   { key: "priority", label: "Priority" },
   { key: "assignee", label: "Assignee" },
@@ -33,6 +37,12 @@ const FIELDS: { key: FilterField; label: string }[] = [
   { key: "start", label: "Start Date" },
   { key: "due", label: "End Date" },
 ];
+
+// Project only makes sense in a cross-project list; inside one project every
+// task shares it. Callers opt in by passing `projects`.
+function fieldsFor(projects?: ProjectOption[]) {
+  return projects?.length ? FIELDS : FIELDS.filter((f) => f.key !== "project");
+}
 
 // Date fields hold [from, to]. Either end may be empty:
 //   ["2026-09-12"]           a single day
@@ -105,10 +115,19 @@ type Shared = {
   onChange: (next: TaskFilters) => void;
   members: Member[];
   labels: string[];
+  // Present only in cross-project lists; enables the Project field.
+  projects?: ProjectOption[];
 };
 
-function optionsFor(field: FilterField, members: Member[], labels: string[]): Option[] {
+function optionsFor(
+  field: FilterField,
+  members: Member[],
+  labels: string[],
+  projects: ProjectOption[] = []
+): Option[] {
   switch (field) {
+    case "project":
+      return projects.map((p) => ({ value: String(p.id), label: p.name }));
     case "status":
       return STATUS_ORDER.map((s) => ({
         value: s,
@@ -307,7 +326,7 @@ function ValueList({
   shared: Shared;
   onBack?: () => void;
 }) {
-  const opts = optionsFor(field, shared.members, shared.labels);
+  const opts = optionsFor(field, shared.members, shared.labels, shared.projects);
   return (
     <>
       <div className="tf-menu-head">
@@ -388,7 +407,7 @@ export function TaskFilterButton(shared: Shared) {
             }
           >
             {menu === "fields" ? (
-              FIELDS.map((f) => {
+              fieldsFor(shared.projects).map((f) => {
                 const n = (shared.value[f.key] ?? []).length;
                 return (
                   <button
@@ -425,12 +444,14 @@ export function TaskFilterButton(shared: Shared) {
 /** The row of active filter chips, shown under the toolbar. */
 export function TaskFilterChips(shared: Shared) {
   const [open, setOpen] = useState<FilterField | null>(null);
-  const active = FIELDS.filter((f) => (shared.value[f.key] ?? []).length > 0);
+  const active = fieldsFor(shared.projects).filter(
+    (f) => (shared.value[f.key] ?? []).length > 0
+  );
   if (active.length === 0) return null;
 
   function labelFor(field: FilterField, v: string) {
     return (
-      optionsFor(field, shared.members, shared.labels).find((o) => o.value === v)
+      optionsFor(field, shared.members, shared.labels, shared.projects).find((o) => o.value === v)
         ?.label ?? v
     );
   }
@@ -496,6 +517,7 @@ export function TaskFilterChips(shared: Shared) {
  *  values within one field combine with OR. */
 export function matchesTaskFilters(
   task: {
+    project_id?: number | string | null;
     status: string;
     priority: string;
     labels?: string[] | null;
@@ -505,7 +527,10 @@ export function matchesTaskFilters(
   },
   filters: TaskFilters
 ): boolean {
-  const { status, priority, assignee, label, start, due } = filters;
+  const { project, status, priority, assignee, label, start, due } = filters;
+  if (project?.length && !project.includes(String(task.project_id ?? ""))) {
+    return false;
+  }
   if (status?.length && !status.includes(task.status)) return false;
   if (priority?.length && !priority.includes(task.priority)) return false;
   if (assignee?.length) {
