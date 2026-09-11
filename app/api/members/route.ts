@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { avatarRef } from "@/lib/avatar";
 import { hasFullAccess } from "@/lib/permissions";
 import { randomBytes, createHash } from "node:crypto";
 import { dbAll, dbGet, dbRun, type Member, type PendingInvite } from "@/lib/db";
@@ -75,8 +76,8 @@ export async function GET(request: Request) {
   // These three reads are independent — run them in parallel (one DB round-trip
   // window instead of three).
   const [members, invites, roles] = await Promise.all([
-    dbAll<Member>(
-      `SELECT m.user_id, u.name, u.email, m.role, m.active, m.created_at
+    dbAll<Member & { image: string | null }>(
+      `SELECT m.user_id, u.name, u.email, u.image, m.role, m.active, m.created_at
        FROM workspace_members m
        JOIN users u ON u.id = m.user_id
        WHERE m.workspace_id = ?
@@ -101,7 +102,9 @@ export async function GET(request: Request) {
     hasFullAccess(myRole) || (await can(userId, "roles", "manage_roles"));
 
   return NextResponse.json({
-    members,
+    // Send a reference rather than the stored data URL: an uploaded avatar is
+    // tens of kilobytes, and this list is fetched on most screens.
+    members: members.map((m) => ({ ...m, image: avatarRef(m.user_id, m.image) })),
     invites,
     roles,
     my_role: myRole,

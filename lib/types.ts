@@ -81,6 +81,8 @@ export type Member = {
   user_id: string;
   name: string | null;
   email: string | null;
+  // A reference, not the image itself — see lib/avatar.ts.
+  image: string | null;
   role: string; // a role key (system or custom)
   active: number; // 0 | 1
   created_at: string;

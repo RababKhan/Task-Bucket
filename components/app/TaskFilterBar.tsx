@@ -81,7 +81,16 @@ function optionsFor(field: FilterField, members: Member[], labels: string[]): Op
         return {
           value: m.user_id,
           label: name,
-          icon: <span className="tf-ava">{initials(name)}</span>,
+          icon: (
+            <span className="tf-ava">
+              {m.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={m.image} alt="" />
+              ) : (
+                initials(name)
+              )}
+            </span>
+          ),
         };
       });
     case "label":

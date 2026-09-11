@@ -13,15 +13,7 @@ import { verifyTotp } from "@/lib/totp";
 import { consumeBackupCode } from "@/lib/security-db";
 import { isSuperAdminEmail } from "@/lib/owner";
 import { isRateLimited, recordFailure, clientIp } from "@/lib/rate-limit";
-
-// Keep the session cookie small: uploaded avatars are stored as data URLs in
-// the DB, so reference them by endpoint (versioned by length to bust the cache
-// on change) instead of embedding the bytes. Remote OAuth URLs pass through.
-function avatarRef(uid: string, image: string | null | undefined): string | null {
-  if (!image) return null;
-  if (image.startsWith("data:")) return `/api/avatar/${uid}?v=${image.length}`;
-  return image;
-}
+import { avatarRef } from "@/lib/avatar";
 
 // Sign-in throttling. Generous enough that a person fumbling their password
 // never notices, tight enough that guessing is pointless: scrypt already makes

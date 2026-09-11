@@ -269,6 +269,14 @@
   color: var(--text-dim);
   font-size: 8.5px;
   font-weight: 600;
+  overflow: hidden;
+}
+/* A profile photo fills the circle; initials show when there is none. */
+.tf-ava img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 /* `.pv-filter-opt span { flex: 1 }` applies to every span in the row, which
    stretched the avatar into an oval and squeezed the name into wrapping.
