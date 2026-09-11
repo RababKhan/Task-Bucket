@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Fragment,
   Suspense,
   useCallback,
   useEffect,
@@ -68,6 +69,24 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// List toolbar: sort fields and grouping options.
+type TaskSortKey = "title" | "status" | "priority" | "start" | "end";
+const TASK_SORT_FIELDS: { key: TaskSortKey; label: string }[] = [
+  { key: "title", label: "Title" },
+  { key: "status", label: "Status" },
+  { key: "priority", label: "Priority" },
+  { key: "start", label: "Start Date" },
+  { key: "end", label: "End Date" },
+];
+type GroupKey = "none" | "status" | "priority";
+const GROUP_FIELDS: { key: GroupKey; label: string }[] = [
+  { key: "none", label: "None" },
+  { key: "status", label: "Status" },
+  { key: "priority", label: "Priority" },
+];
+// Undated rows sort last ascending rather than first.
+const NO_DATE = "9999-99-99";
+
 const STATUS_OPTS: SelectOption[] = STATUS_ORDER.map((s) => ({
   value: s,
   label: STATUS_LABELS[s],
@@ -131,6 +150,62 @@ function BoardPage() {
   const loading = projectsQuery.isLoading;
   const [createOpen, setCreateOpen] = useState(false);
   const [query, setQuery] = useState("");
+
+  // List toolbar: filter by status, sort, and group — same controls as the
+  // Projects table.
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterApplying, setFilterApplying] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<Set<TaskStatus>>(new Set());
+  const [pendingStatus, setPendingStatus] = useState<Set<TaskStatus>>(new Set());
+  const [sortOpen, setSortOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<TaskSortKey | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [groupOpen, setGroupOpen] = useState(false);
+  const [groupBy, setGroupBy] = useState<GroupKey>("none");
+
+  function openFilter() {
+    setPendingStatus(new Set(statusFilter));
+    setFilterOpen(true);
+  }
+  function togglePendingStatus(s: TaskStatus) {
+    setPendingStatus((cur) => {
+      const next = new Set(cur);
+      if (next.has(s)) next.delete(s);
+      else next.add(s);
+      return next;
+    });
+  }
+  function applyFilter() {
+    if (filterApplying) return;
+    setFilterApplying(true);
+    window.setTimeout(() => {
+      setStatusFilter(new Set(pendingStatus));
+      setFilterApplying(false);
+      setFilterOpen(false);
+    }, 250);
+  }
+  function applySort(key: TaskSortKey) {
+    if (sortBy === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSortBy(key);
+      setSortDir("asc");
+    }
+  }
+  function clearSort() {
+    setSortBy(null);
+    setSortOpen(false);
+  }
+  function clearAllTools() {
+    setStatusFilter(new Set());
+    setPendingStatus(new Set());
+    setSortBy(null);
+    setGroupBy("none");
+    setFilterOpen(false);
+    setSortOpen(false);
+    setGroupOpen(false);
+  }
+  const toolsActive =
+    statusFilter.size > 0 || sortBy !== null || groupBy !== "none";
 
   const [editing, setEditing] = useState<BoardTask | null>(null);
   const [creatingStatus, setCreatingStatus] = useState<TaskStatus | null>(null);
@@ -496,22 +571,80 @@ function BoardPage() {
     }
   }
 
-  const tasksByStatus = useMemo(() => {
+  // Search + status filter. Shared by both views, so the Board columns show the
+  // same set of tasks the List does.
+  const visibleTasks = useMemo(() => {
     const q = query.trim().toLowerCase();
+    return tasks.filter(
+      (t) =>
+        (!q || t.title.toLowerCase().includes(q)) &&
+        (statusFilter.size === 0 || statusFilter.has(t.status))
+    );
+  }, [tasks, query, statusFilter]);
+
+  const sortedTasks = useMemo(() => {
+    if (!sortBy) return visibleTasks;
+    const dir = sortDir === "asc" ? 1 : -1;
+    const val = (t: BoardTask): string | number => {
+      switch (sortBy) {
+        case "title":
+          return t.title.toLowerCase();
+        case "status":
+          return STATUS_ORDER.indexOf(t.status);
+        case "priority":
+          return PRIORITY_ORDER.indexOf(t.priority);
+        case "start":
+          return t.start_date || NO_DATE;
+        case "end":
+          return t.due_date || NO_DATE;
+      }
+    };
+    return [...visibleTasks].sort((a, b) => {
+      const av = val(a);
+      const bv = val(b);
+      if (av < bv) return -dir;
+      if (av > bv) return dir;
+      return 0;
+    });
+  }, [visibleTasks, sortBy, sortDir]);
+
+  const tasksByStatus = useMemo(() => {
     const map = Object.fromEntries(
       STATUS_ORDER.map((s) => [s, [] as BoardTask[]])
     ) as Record<TaskStatus, BoardTask[]>;
-    for (const t of tasks) {
-      if (q && !t.title.toLowerCase().includes(q)) continue;
+    for (const t of sortedTasks) {
       (map[t.status] ?? map.backlog).push(t);
     }
     return map;
-  }, [tasks, query]);
+  }, [sortedTasks]);
 
+  // Without an explicit sort the list keeps its status-ordered default.
   const listTasks = useMemo(
-    () => STATUS_ORDER.flatMap((s) => tasksByStatus[s]),
-    [tasksByStatus]
+    () =>
+      sortBy ? sortedTasks : STATUS_ORDER.flatMap((s) => tasksByStatus[s]),
+    [sortBy, sortedTasks, tasksByStatus]
   );
+
+  // Rows are rendered group by group; with no grouping that is one unlabelled
+  // group holding everything, so the render path stays the same either way.
+  const listGroups = useMemo(() => {
+    if (groupBy === "none") {
+      return [{ key: "all", label: null as string | null, tasks: listTasks }];
+    }
+    const order: string[] =
+      groupBy === "status" ? [...STATUS_ORDER] : [...PRIORITY_ORDER];
+    const labels: Record<string, string> =
+      groupBy === "status" ? STATUS_LABELS : PRIORITY_LABELS;
+    const buckets = new Map<string, BoardTask[]>(order.map((k) => [k, []]));
+    for (const t of listTasks) {
+      const k = groupBy === "status" ? t.status : t.priority;
+      (buckets.get(k) ?? buckets.get(order[0])!).push(t);
+    }
+    // Empty groups are noise, not information.
+    return order
+      .filter((k) => (buckets.get(k) ?? []).length > 0)
+      .map((k) => ({ key: k, label: labels[k] ?? k, tasks: buckets.get(k)! }));
+  }, [groupBy, listTasks]);
 
   // Per-project task cap reached (Free plan) — blocks adding more items.
   const atTaskLimit = taskLimit != null && tasks.length >= taskLimit;
@@ -722,24 +855,178 @@ function BoardPage() {
               </button>
             )}
           </div>
-          <button type="button" className="proj-tool-btn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M3 7h18M3 12h12M3 17h6" />
-            </svg>
-            Group By
-          </button>
-          <button type="button" className="proj-tool-btn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M3 5h18l-7 8v6l-4 2v-8z" />
-            </svg>
-            Filter
-          </button>
-          <button type="button" className="proj-tool-btn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M3 6h12M3 12h9M3 18h6M17 6v12M17 18l3-3M17 18l-3-3" />
-            </svg>
-            Sort
-          </button>
+          {view === "list" && (
+            <div className="pv-sort">
+              <button
+                className={`pv-tool-btn${groupBy !== "none" ? " active" : ""}`}
+                type="button"
+                onClick={() => setGroupOpen((o) => !o)}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M3 7h18M3 12h12M3 17h6" />
+                </svg>
+                Group By
+                {groupBy !== "none" && (
+                  <span className="pv-sort-tag">
+                    {GROUP_FIELDS.find((f) => f.key === groupBy)?.label}
+                  </span>
+                )}
+              </button>
+              {groupOpen && (
+                <>
+                  <div className="pv-menu-backdrop" onClick={() => setGroupOpen(false)} />
+                  <div className="pv-sort-menu">
+                    {GROUP_FIELDS.map((f) => (
+                      <button
+                        key={f.key}
+                        className={`pv-sort-item${groupBy === f.key ? " active" : ""}`}
+                        onClick={() => {
+                          setGroupBy(f.key);
+                          setGroupOpen(false);
+                        }}
+                      >
+                        {f.label}
+                        {groupBy === f.key && (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                            <path d="M5 12l4 4 10-10" />
+                          </svg>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          <div className="pv-sort">
+            <button
+              className={`pv-tool-btn${statusFilter.size ? " active" : ""}`}
+              type="button"
+              onClick={() => (filterOpen ? setFilterOpen(false) : openFilter())}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M3 6h18M7 12h10M11 18h2" />
+              </svg>
+              Filter
+              {statusFilter.size > 0 && (
+                <span className="pv-sort-tag">{statusFilter.size}</span>
+              )}
+            </button>
+            {filterOpen && (
+              <>
+                <div className="pv-menu-backdrop" onClick={() => setFilterOpen(false)} />
+                <div className="pv-filter-pop">
+                  <div className="pv-filter-list">
+                    {STATUS_ORDER.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        className={`pv-filter-opt${pendingStatus.has(s) ? " sel" : ""}`}
+                        onClick={() => togglePendingStatus(s)}
+                      >
+                        <TaskStatusIcon status={s} size={15} />
+                        <span>{STATUS_LABELS[s]}</span>
+                        {pendingStatus.has(s) && (
+                          <svg className="pv-filter-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                            <path d="M5 12l4 4 10-10" />
+                          </svg>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    className="pv-filter-apply"
+                    onClick={applyFilter}
+                    disabled={filterApplying}
+                  >
+                    {filterApplying ? (
+                      <>
+                        Applying
+                        <Spinner />
+                      </>
+                    ) : (
+                      "Apply Filter"
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="pv-sort">
+            <button
+              className={`pv-tool-btn${sortBy ? " active" : ""}`}
+              type="button"
+              onClick={() => setSortOpen((o) => !o)}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                {sortBy ? (
+                  sortDir === "asc" ? (
+                    <path d="M4 6h10M4 12h7M4 18h4M18 19V5M18 5l-3 3M18 5l3 3" />
+                  ) : (
+                    <path d="M4 6h10M4 12h7M4 18h4M18 5v14M18 19l-3-3M18 19l3-3" />
+                  )
+                ) : (
+                  <path d="M3 7h12M3 12h8M3 17h4M17 5v14M17 19l3-3M17 19l-3-3" />
+                )}
+              </svg>
+              Sort
+              {sortBy && (
+                <span className="pv-sort-tag">
+                  {TASK_SORT_FIELDS.find((f) => f.key === sortBy)?.label}
+                </span>
+              )}
+            </button>
+            {sortOpen && (
+              <>
+                <div className="pv-menu-backdrop" onClick={() => setSortOpen(false)} />
+                <div className="pv-sort-menu">
+                  {TASK_SORT_FIELDS.map((f) => (
+                    <button
+                      key={f.key}
+                      className={`pv-sort-item${sortBy === f.key ? " active" : ""}`}
+                      onClick={() => applySort(f.key)}
+                    >
+                      {f.label}
+                      {sortBy === f.key && (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          {sortDir === "asc" ? (
+                            <path d="m6 15 6-6 6 6" />
+                          ) : (
+                            <path d="m6 9 6 6 6-6" />
+                          )}
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                  {sortBy && (
+                    <button className="pv-sort-clear" onClick={clearSort}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <circle cx="12" cy="12" r="9" />
+                        <path d="M15 9l-6 6M9 9l6 6" />
+                      </svg>
+                      Clear sort
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          {toolsActive && (
+            <button
+              className="pv-tool-btn pv-clear-all"
+              type="button"
+              onClick={clearAllTools}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <circle cx="12" cy="12" r="9" />
+                <path d="M15 9l-6 6M9 9l6 6" />
+              </svg>
+              Clear all
+            </button>
+          )}
         </div>
         <button type="button" className="pv-tool-btn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -901,7 +1188,15 @@ function BoardPage() {
             <span>Labels</span>
             <span />
           </div>
-          {listTasks.map((task) => (
+          {listGroups.map((group) => (
+          <Fragment key={group.key}>
+          {group.label && (
+            <div className="tl-group">
+              <span className="tl-group-label">{group.label}</span>
+              <span className="tl-group-count">{group.tasks.length}</span>
+            </div>
+          )}
+          {group.tasks.map((task) => (
             <div
               key={task.id}
               className={`tl-row${dragOverTaskId === task.id ? " dragover" : ""}${
@@ -1050,6 +1345,8 @@ function BoardPage() {
                 </>
               )}
             </div>
+          ))}
+          </Fragment>
           ))}
           {listTasks.length === 0 && !addingTask && (
             <div className="tl-empty">No tasks match your search.</div>

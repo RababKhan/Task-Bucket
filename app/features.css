@@ -93,6 +93,31 @@
   border-radius: 8px;
 }
 
+/* Group By header row. Sits between rows rather than inside the grid, so it
+   spans the full width regardless of how many columns the table has. */
+.tl-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 14px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-dim);
+  position: sticky;
+  /* Below .tl-head, which is also sticky at the top of the scroll container. */
+  top: 38px;
+  z-index: 10;
+}
+.tl-group-count {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
 /* Cross-project lists (the Tasks module) gain a Project column between Title
    and Assignee. Same track sizes otherwise, so rows line up with the project
    List view. */
