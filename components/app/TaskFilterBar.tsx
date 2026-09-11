@@ -16,7 +16,13 @@ import { labelColor } from "@/lib/tasks";
 // fields; choosing one opens its values. Each active field then shows as a chip
 // below the toolbar, which reopens to change the selection or drops entirely.
 
-export type FilterField = "status" | "priority" | "assignee" | "label";
+export type FilterField =
+  | "status"
+  | "priority"
+  | "assignee"
+  | "label"
+  | "start"
+  | "due";
 export type TaskFilters = Partial<Record<FilterField, string[]>>;
 
 const FIELDS: { key: FilterField; label: string }[] = [
@@ -24,7 +30,59 @@ const FIELDS: { key: FilterField; label: string }[] = [
   { key: "priority", label: "Priority" },
   { key: "assignee", label: "Assignee" },
   { key: "label", label: "Label" },
+  { key: "start", label: "Start Date" },
+  { key: "due", label: "End Date" },
 ];
+
+// Dates filter by range rather than by value — nobody wants to pick from a
+// list of every date in use. The keys are shared between the two date fields;
+// only the wording differs, because a start date in the past means "already
+// started" while an end date in the past means "overdue".
+type DatePreset = "past" | "today" | "next7" | "month" | "none";
+const DATE_PRESETS: {
+  key: DatePreset;
+  start: string;
+  due: string;
+}[] = [
+  { key: "past", start: "Already started", due: "Overdue" },
+  { key: "today", start: "Starts today", due: "Due today" },
+  { key: "next7", start: "Starts in 7 days", due: "Due in 7 days" },
+  { key: "month", start: "Starts this month", due: "Due this month" },
+  { key: "none", start: "No start date", due: "No end date" },
+];
+
+function isoDay(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/** Does a stored YYYY-MM-DD (or empty) date satisfy one preset? */
+function matchesDatePreset(date: string | null | undefined, preset: string) {
+  const d = (date ?? "").slice(0, 10);
+  if (preset === "none") return !d;
+  if (!d) return false;
+
+  const now = new Date();
+  const today = isoDay(now);
+  switch (preset) {
+    case "past":
+      return d < today;
+    case "today":
+      return d === today;
+    case "next7": {
+      const week = new Date(now);
+      week.setDate(week.getDate() + 7);
+      return d >= today && d <= isoDay(week);
+    }
+    case "month": {
+      const first = isoDay(new Date(now.getFullYear(), now.getMonth(), 1));
+      const last = isoDay(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+      return d >= first && d <= last;
+    }
+    default:
+      return false;
+  }
+}
 
 function initials(text: string) {
   const p = text.trim().split(/\s+/).filter(Boolean);
@@ -95,6 +153,9 @@ function optionsFor(field: FilterField, members: Member[], labels: string[]): Op
       });
     case "label":
       return labels.map((l) => ({ value: l, label: l, chip: true }));
+    case "start":
+    case "due":
+      return DATE_PRESETS.map((p) => ({ value: p.key, label: p[field] }));
   }
 }
 
@@ -312,10 +373,12 @@ export function matchesTaskFilters(
     priority: string;
     labels?: string[] | null;
     assignees?: string[] | null;
+    start_date?: string | null;
+    due_date?: string | null;
   },
   filters: TaskFilters
 ): boolean {
-  const { status, priority, assignee, label } = filters;
+  const { status, priority, assignee, label, start, due } = filters;
   if (status?.length && !status.includes(task.status)) return false;
   if (priority?.length && !priority.includes(task.priority)) return false;
   if (assignee?.length) {
@@ -325,6 +388,12 @@ export function matchesTaskFilters(
   if (label?.length) {
     const ls = task.labels ?? [];
     if (!label.some((l) => ls.includes(l))) return false;
+  }
+  if (start?.length && !start.some((p) => matchesDatePreset(task.start_date, p))) {
+    return false;
+  }
+  if (due?.length && !due.some((p) => matchesDatePreset(task.due_date, p))) {
+    return false;
   }
   return true;
 }
