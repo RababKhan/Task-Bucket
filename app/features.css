@@ -6086,19 +6086,31 @@ textarea::placeholder {
   height: 14px;
   color: var(--accent);
 }
+/* Clearing is destructive-ish and sits apart from the field list, so it takes
+   the same red + icon treatment as the danger items in a row menu. */
 .pv-sort-clear {
   width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   text-align: left;
   height: 30px;
   padding: 0 10px;
   margin-top: 2px;
   border-top: 1px solid var(--border);
   border-radius: 0 0 6px 6px;
-  color: var(--text-dim);
+  color: var(--danger);
   font-size: 11.375px;
 }
+.pv-sort-clear svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--danger);
+}
 .pv-sort-clear:hover {
-  color: var(--text);
+  background: var(--surface-2);
+  color: var(--danger);
 }
 
 /* Filter dropdown */
