@@ -101,7 +101,18 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  padding: 0 0 12px;
+  /* The row owns its spacing rather than borrowing the toolbar's: the project
+     toolbar has no bottom margin and the Tasks toolbar has 6px, so the chips
+     sat flush against one and loose under the other. Vertical margins collapse
+     with the neighbours', so this lands at 10px either way. */
+  margin: 10px 0;
+  padding: 0;
+}
+/* In the project view the row closes the header block, which already leaves
+   10px before the table; margin cannot collapse out of it, so the two would
+   stack to 20px. */
+.tf-bar:last-child {
+  margin-bottom: 0;
 }
 .tf-add,
 .tf-chip {
