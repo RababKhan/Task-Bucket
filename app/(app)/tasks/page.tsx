@@ -19,8 +19,11 @@ import {
   TaskFilterChips,
   matchesTaskFilters,
   countActiveFilters,
+  parseTaskFilters,
+  NO_FILTERS,
   type TaskFilters,
 } from "@/components/app/TaskFilterBar";
+import { usePersistedState } from "@/lib/usePersistedState";
 import TaskModal, { type TaskDraft } from "@/app/TaskModal";
 
 const EDIT_ICON = (
@@ -76,7 +79,13 @@ export default function TasksPage() {
   }, [data]);
 
   const [q, setQ] = useState("");
-  const [taskFilters, setTaskFilters] = useState<TaskFilters>({});
+  // Survives a reload, like the sort below. One key for the whole list — it
+  // spans projects, so there is no project to scope it to.
+  const [taskFilters, setTaskFilters] = usePersistedState<TaskFilters>(
+    "tb-tasks-filters",
+    NO_FILTERS,
+    parseTaskFilters
+  );
 
   const [sortOpen, setSortOpen] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey | null>(null);

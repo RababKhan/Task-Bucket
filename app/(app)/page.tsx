@@ -37,8 +37,11 @@ import {
   TaskFilterChips,
   matchesTaskFilters,
   countActiveFilters,
+  parseTaskFilters,
+  NO_FILTERS,
   type TaskFilters,
 } from "@/components/app/TaskFilterBar";
+import { usePersistedState } from "@/lib/usePersistedState";
 import SprintView from "@/components/app/SprintView";
 import { prefetchTaskDetail } from "@/lib/task-cache";
 import { useQueryClient } from "@tanstack/react-query";
@@ -93,6 +96,15 @@ const GROUP_FIELDS: { key: GroupKey; label: string }[] = [
 ];
 // Undated rows sort last ascending rather than first.
 const NO_DATE = "9999-99-99";
+
+// Validate toolbar settings read back from storage; null falls back to the
+// default. Stored values can outlive the options that produced them.
+const parseSortKey = (v: unknown): TaskSortKey | null =>
+  TASK_SORT_FIELDS.some((f) => f.key === v) ? (v as TaskSortKey) : null;
+const parseSortDir = (v: unknown): "asc" | "desc" | null =>
+  v === "asc" || v === "desc" ? v : null;
+const parseGroupKey = (v: unknown): GroupKey | null =>
+  GROUP_FIELDS.some((f) => f.key === v) ? (v as GroupKey) : null;
 
 const STATUS_OPTS: SelectOption[] = STATUS_ORDER.map((s) => ({
   value: s,
@@ -158,16 +170,33 @@ function BoardPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [query, setQuery] = useState("");
 
-  // List toolbar: filter by status, sort, and group — same controls as the
-  // Projects table.
-  // The Filter button opens the field list directly; active fields then show as
-  // chips under the toolbar.
-  const [taskFilters, setTaskFilters] = useState<TaskFilters>({});
+  // List toolbar: filter, sort and group — same controls as the Projects
+  // table. All three survive a reload and are remembered per project: Label
+  // and Assignee values belong to one project, so carrying them into another
+  // would usually filter everything out.
+  const viewKey = activeId != null ? `tb-list:${activeId}` : null;
+  const [taskFilters, setTaskFilters] = usePersistedState<TaskFilters>(
+    viewKey && `${viewKey}:filters`,
+    NO_FILTERS,
+    parseTaskFilters
+  );
   const [sortOpen, setSortOpen] = useState(false);
-  const [sortBy, setSortBy] = useState<TaskSortKey | null>(null);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [sortBy, setSortBy] = usePersistedState<TaskSortKey | null>(
+    viewKey && `${viewKey}:sortBy`,
+    null,
+    parseSortKey
+  );
+  const [sortDir, setSortDir] = usePersistedState<"asc" | "desc">(
+    viewKey && `${viewKey}:sortDir`,
+    "asc",
+    parseSortDir
+  );
   const [groupOpen, setGroupOpen] = useState(false);
-  const [groupBy, setGroupBy] = useState<GroupKey>("none");
+  const [groupBy, setGroupBy] = usePersistedState<GroupKey>(
+    viewKey && `${viewKey}:groupBy`,
+    "none",
+    parseGroupKey
+  );
 
   function applySort(key: TaskSortKey) {
     if (sortBy === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));

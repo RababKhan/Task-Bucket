@@ -546,6 +546,28 @@ export function matchesTaskFilters(
   return true;
 }
 
+/** A stable empty value — a fresh `{}` each render would invalidate memos. */
+export const NO_FILTERS: TaskFilters = Object.freeze({}) as TaskFilters;
+
+/**
+ * Validate filters read back from storage. Keeps only known fields whose value
+ * is a non-empty list of strings; anything else is dropped rather than trusted,
+ * since what is stored may predate the current field list.
+ */
+export function parseTaskFilters(raw: unknown): TaskFilters | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const known = new Set<string>(FIELDS.map((f) => f.key));
+  const out: TaskFilters = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (!known.has(k) || !Array.isArray(v)) continue;
+    const vals = v.filter((x): x is string => typeof x === "string");
+    // A date field may legitimately hold ["", "to"]; it still has to have a
+    // real value somewhere to count.
+    if (vals.some((x) => x !== "")) out[k as FilterField] = vals;
+  }
+  return out;
+}
+
 export function countActiveFilters(filters: TaskFilters): number {
   return FIELDS.reduce(
     (n, f) => n + ((filters[f.key] ?? []).length > 0 ? 1 : 0),
