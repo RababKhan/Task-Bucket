@@ -94,18 +94,24 @@ export default function TaskListTable({
   // incoming tasks change (new ids appended, removed ids dropped).
   const [order, setOrder] = useState<number[]>(() => tasks.map((t) => t.id));
 
+  // Without onReorder the table owns no ordering of its own, so it follows the
+  // incoming order instead of defending a local one — otherwise a caller that
+  // sorts or reorders `tasks` would see no change at all.
+  const reorderable = !!onReorder;
+
   useEffect(() => {
     const ids = tasks.map((t) => t.id);
     setOrder((prev) => {
+      const same = (next: number[]) =>
+        next.length === prev.length && next.every((v, i) => v === prev[i]);
+      if (!reorderable) return same(ids) ? prev : ids;
       const kept = prev.filter((id) => ids.includes(id));
       const added = ids.filter((id) => !kept.includes(id));
       const next = [...kept, ...added];
       // Avoid a state churn if nothing actually changed.
-      return next.length === prev.length && next.every((v, i) => v === prev[i])
-        ? prev
-        : next;
+      return same(next) ? prev : next;
     });
-  }, [tasks]);
+  }, [tasks, reorderable]);
 
   const prefixFor = (task: ListTask) =>
     typeof projectPrefix === "function" ? projectPrefix(task) : projectPrefix;
@@ -220,19 +226,29 @@ export default function TaskListTable({
             className={`tl-row${dragOverId === task.id ? " dragover" : ""}${
               dragId === task.id ? " dragging" : ""
             }${selected.has(task.id) ? " selected" : ""}`}
-            draggable
-            onDragStart={() => setDragId(task.id)}
-            onDragOver={(e) => {
-              e.preventDefault();
-              if (dragOverId !== task.id) setDragOverId(task.id);
-            }}
-            onDrop={() => drop(task.id)}
-            onDragEnd={() => {
-              setDragId(null);
-              setDragOverId(null);
-            }}
+            draggable={reorderable}
+            onDragStart={reorderable ? () => setDragId(task.id) : undefined}
+            onDragOver={
+              reorderable
+                ? (e) => {
+                    e.preventDefault();
+                    if (dragOverId !== task.id) setDragOverId(task.id);
+                  }
+                : undefined
+            }
+            onDrop={reorderable ? () => drop(task.id) : undefined}
+            onDragEnd={
+              reorderable
+                ? () => {
+                    setDragId(null);
+                    setDragOverId(null);
+                  }
+                : undefined
+            }
           >
             <span className="pv-ctrl">
+              {/* No handle where a drag could not be saved. */}
+              {reorderable && (
               <span className="pv-drag-handle" aria-hidden>
                 <svg viewBox="0 0 24 24" fill="currentColor">
                   <circle cx="9" cy="6" r="1.5" /><circle cx="15" cy="6" r="1.5" />
@@ -240,6 +256,7 @@ export default function TaskListTable({
                   <circle cx="9" cy="18" r="1.5" /><circle cx="15" cy="18" r="1.5" />
                 </svg>
               </span>
+              )}
               <input
                 type="checkbox"
                 className="pv-check"

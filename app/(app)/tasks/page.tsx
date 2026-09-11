@@ -5,7 +5,13 @@ import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
 import { useMembers } from "@/lib/queries";
-import { STATUS_LABELS, STATUS_ORDER } from "@/lib/types";
+import {
+  STATUS_LABELS,
+  STATUS_ORDER,
+  PRIORITY_ORDER,
+  type TaskStatus,
+  type TaskPriority,
+} from "@/lib/types";
 import Spinner from "@/components/Spinner";
 import TaskListTable, { type ListTask } from "@/components/app/TaskListTable";
 import ConfirmModal from "@/components/app/team/ConfirmModal";
@@ -31,6 +37,21 @@ type AllTask = ListTask & { project_name: string };
 
 const TASKS_KEY = ["tasks", "all"] as const;
 
+// Sorting mirrors the Projects module: a dropdown, clicking the active field
+// flips direction, and the choice is remembered.
+type SortKey = "title" | "project" | "status" | "priority" | "start" | "end";
+const SORT_FIELDS: { key: SortKey; label: string }[] = [
+  { key: "title", label: "Title" },
+  { key: "project", label: "Project" },
+  { key: "status", label: "Status" },
+  { key: "priority", label: "Priority" },
+  { key: "start", label: "Start Date" },
+  { key: "end", label: "End Date" },
+];
+const SORT_PREF_KEY = "tb-tasks-sort";
+// Undated rows sort last in ascending order rather than first.
+const NO_DATE = "9999-99-99";
+
 export default function TasksPage() {
   const router = useRouter();
   const qc = useQueryClient();
@@ -51,6 +72,47 @@ export default function TasksPage() {
   const [q, setQ] = useState("");
   const [proj, setProj] = useState("");
   const [status, setStatus] = useState("");
+
+  const [sortOpen, setSortOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  // Restore the last sort, then keep it in step.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SORT_PREF_KEY);
+      if (!raw) return;
+      const v = JSON.parse(raw) as { sortBy?: SortKey; sortDir?: string };
+      if (v.sortBy && SORT_FIELDS.some((f) => f.key === v.sortBy)) {
+        setSortBy(v.sortBy);
+      }
+      if (v.sortDir === "asc" || v.sortDir === "desc") setSortDir(v.sortDir);
+    } catch {
+      // A malformed preference is not worth failing the page over.
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SORT_PREF_KEY, JSON.stringify({ sortBy, sortDir }));
+    } catch {
+      // Private browsing and the like — sorting still works, it just won't stick.
+    }
+  }, [sortBy, sortDir]);
+
+  function applySort(key: SortKey) {
+    if (sortBy === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortDir("asc");
+    }
+  }
+
+  function clearSort() {
+    setSortBy(null);
+    setSortOpen(false);
+  }
 
   const projects = useMemo(() => {
     const seen = new Map<number, string>();
@@ -77,6 +139,34 @@ export default function TasksPage() {
         (!status || t.status === status)
     );
   }, [tasks, q, proj, status]);
+
+  const sorted = useMemo(() => {
+    if (!sortBy) return filtered;
+    const dir = sortDir === "asc" ? 1 : -1;
+    const val = (t: AllTask): string | number => {
+      switch (sortBy) {
+        case "title":
+          return t.title.toLowerCase();
+        case "project":
+          return (t.project_name ?? "").toLowerCase();
+        case "status":
+          return STATUS_ORDER.indexOf(t.status as TaskStatus);
+        case "priority":
+          return PRIORITY_ORDER.indexOf(t.priority as TaskPriority);
+        case "start":
+          return t.start_date || NO_DATE;
+        case "end":
+          return t.due_date || NO_DATE;
+      }
+    };
+    return [...filtered].sort((a, b) => {
+      const av = val(a);
+      const bv = val(b);
+      if (av < bv) return -dir;
+      if (av > bv) return dir;
+      return 0;
+    });
+  }, [filtered, sortBy, sortDir]);
 
   // Each row shows its own project's id badge, since rows span projects.
   const prefixFor = (t: ListTask) =>
@@ -186,11 +276,70 @@ export default function TasksPage() {
             </option>
           ))}
         </select>
+
+        <div className="pv-sort">
+          <button
+            className={`pv-tool-btn${sortBy ? " active" : ""}`}
+            type="button"
+            onClick={() => setSortOpen((o) => !o)}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              {sortBy ? (
+                sortDir === "asc" ? (
+                  <path d="M4 6h10M4 12h7M4 18h4M18 19V5M18 5l-3 3M18 5l3 3" />
+                ) : (
+                  <path d="M4 6h10M4 12h7M4 18h4M18 5v14M18 19l-3-3M18 19l3-3" />
+                )
+              ) : (
+                <path d="M3 7h12M3 12h8M3 17h4M17 5v14M17 19l3-3M17 19l-3-3" />
+              )}
+            </svg>
+            Sort
+            {sortBy && (
+              <span className="pv-sort-tag">
+                {SORT_FIELDS.find((f) => f.key === sortBy)?.label}
+              </span>
+            )}
+          </button>
+          {sortOpen && (
+            <>
+              <div
+                className="pv-menu-backdrop"
+                onClick={() => setSortOpen(false)}
+              />
+              <div className="pv-sort-menu">
+                {SORT_FIELDS.map((f) => (
+                  <button
+                    key={f.key}
+                    className={`pv-sort-item${sortBy === f.key ? " active" : ""}`}
+                    onClick={() => applySort(f.key)}
+                  >
+                    {f.label}
+                    {sortBy === f.key && (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        {sortDir === "asc" ? (
+                          <path d="m6 15 6-6 6 6" />
+                        ) : (
+                          <path d="m6 9 6 6 6-6" />
+                        )}
+                      </svg>
+                    )}
+                  </button>
+                ))}
+                {sortBy && (
+                  <button className="pv-sort-clear" onClick={clearSort}>
+                    Clear sort
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <TaskListTable
         showProject
-        tasks={filtered}
+        tasks={sorted}
         members={members ?? []}
         labelSuggestions={labelSuggestions}
         projectPrefix={prefixFor}
