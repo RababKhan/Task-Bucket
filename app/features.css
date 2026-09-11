@@ -264,14 +264,35 @@
 .tf-ava {
   display: inline-grid;
   place-items: center;
-  width: 18px;
-  height: 18px;
   border-radius: 50%;
   background: var(--surface-2);
   color: var(--text-dim);
   font-size: 8.5px;
   font-weight: 600;
-  flex: none;
+}
+/* `.pv-filter-opt span { flex: 1 }` applies to every span in the row, which
+   stretched the avatar into an oval and squeezed the name into wrapping.
+   Pin the avatar and let only the name take the remaining space. */
+.pv-filter-opt .tf-ava {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+}
+/* Rows are a fixed 28px tall, so a long name has to ellipsize rather than
+   wrap out of the row. min-width:0 is what lets a flex child shrink enough
+   for the ellipsis to appear at all. */
+.tf-values .pv-filter-opt > span:not(.tf-ava) {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Wide enough for a real name plus its avatar and tick, capped so one very
+   long name cannot stretch the menu across the table. Past the cap the name
+   ellipsizes instead. */
+.tf-values {
+  min-width: 215px;
+  max-width: 280px;
 }
 
 /* Group By header row. Sits between rows rather than inside the grid, so it
