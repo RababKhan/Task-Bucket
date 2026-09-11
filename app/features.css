@@ -189,8 +189,23 @@
 .tf-chip-menu {
   top: calc(100% + 4px);
 }
+/* The count and the submenu chevron travel together on the right; the row is
+   already justify-content: space-between, so the label holds the left. */
+.tf-field-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.tf-field-caret {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  color: var(--text-dim);
+}
+.pv-sort-item.tf-field:hover .tf-field-caret {
+  color: var(--text);
+}
 .tf-field-count {
-  margin-left: auto;
   font-size: 10px;
   font-weight: 600;
   color: var(--accent);

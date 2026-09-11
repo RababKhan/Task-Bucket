@@ -181,7 +181,14 @@ export function TaskFilterButton(shared: Shared) {
                     onClick={() => setMenu(f.key)}
                   >
                     {f.label}
-                    {n > 0 && <span className="tf-field-count">{n}</span>}
+                    <span className="tf-field-right">
+                      {n > 0 && <span className="tf-field-count">{n}</span>}
+                      {/* Signals that the row opens a further list rather than
+                          applying something on the spot. */}
+                      <svg className="tf-field-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="m9 18 6-6-6-6" />
+                      </svg>
+                    </span>
                   </button>
                 );
               })
