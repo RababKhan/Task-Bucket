@@ -29,6 +29,15 @@ function initials(text: string) {
 
 const PAGE_SIZE = 20;
 
+// Sorting matches the Projects and Tasks modules. Role orders by seniority
+// (Owner, Admin, Manager, Assignee, then custom roles), not alphabetically.
+type SortKey = "role" | "name";
+const SORT_FIELDS: { key: SortKey; label: string }[] = [
+  { key: "role", label: "Role" },
+  { key: "name", label: "Member Name" },
+];
+const SORT_PREF_KEY = "tb-directory-sort";
+
 export default function DirectoryPage() {
   const perms = usePerms();
   const router = useRouter();
@@ -45,6 +54,46 @@ export default function DirectoryPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterApplying, setFilterApplying] = useState(false);
 
+  const [sortOpen, setSortOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SORT_PREF_KEY);
+      if (!raw) return;
+      const v = JSON.parse(raw) as { sortBy?: SortKey; sortDir?: string };
+      if (v.sortBy && SORT_FIELDS.some((f) => f.key === v.sortBy)) {
+        setSortBy(v.sortBy);
+      }
+      if (v.sortDir === "asc" || v.sortDir === "desc") setSortDir(v.sortDir);
+    } catch {
+      // A malformed preference is not worth failing the page over.
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SORT_PREF_KEY, JSON.stringify({ sortBy, sortDir }));
+    } catch {
+      // Private browsing and the like — sorting works, it just won't stick.
+    }
+  }, [sortBy, sortDir]);
+
+  function applySort(key: SortKey) {
+    if (sortBy === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortDir("asc");
+    }
+  }
+
+  function clearSort() {
+    setSortBy(null);
+    setSortOpen(false);
+  }
+
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkDelete, setBulkDelete] = useState(false);
   const [menuUid, setMenuUid] = useState<string | null>(null);
@@ -60,19 +109,24 @@ export default function DirectoryPage() {
     return () => clearTimeout(t);
   }, [q]);
 
-  // Reset to page 1 whenever a filter changes.
+  // Reset to page 1 whenever a filter or the sort changes — page 3 of the old
+  // order means nothing in the new one.
   useEffect(() => {
     setPage(1);
-  }, [debouncedQ, roleFilter]);
+  }, [debouncedQ, roleFilter, sortBy, sortDir]);
 
   const qs = useMemo(() => {
     const params = new URLSearchParams();
     if (debouncedQ) params.set("q", debouncedQ);
     if (roleFilter.size) params.set("role", [...roleFilter].join(","));
+    if (sortBy) {
+      params.set("sort", sortBy);
+      params.set("dir", sortDir);
+    }
     params.set("page", String(page));
     params.set("pageSize", String(PAGE_SIZE));
     return params.toString();
-  }, [debouncedQ, roleFilter, page]);
+  }, [debouncedQ, roleFilter, page, sortBy, sortDir]);
 
   // One cache entry per filter/page combination; keepPreviousData holds the old
   // rows visible while the next page/filter loads (no spinner flash).
@@ -149,10 +203,14 @@ export default function DirectoryPage() {
     });
   }
 
+  // "Clear all" resets the sort as well as the filters, matching the Projects
+  // module — it is the one control that puts the table back to its default.
   function clearFilter() {
     setRoleFilter(new Set());
     setPendingRoles(new Set());
     setFilterOpen(false);
+    setSortBy(null);
+    setSortOpen(false);
   }
 
   function applyFilter() {
@@ -305,7 +363,70 @@ export default function DirectoryPage() {
           )}
         </div>
 
-        {roleFilter.size > 0 && (
+        <div className="pv-sort">
+          <button
+            className={`pv-tool-btn${sortBy ? " active" : ""}`}
+            type="button"
+            onClick={() => setSortOpen((o) => !o)}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              {sortBy ? (
+                sortDir === "asc" ? (
+                  <path d="M4 6h10M4 12h7M4 18h4M18 19V5M18 5l-3 3M18 5l3 3" />
+                ) : (
+                  <path d="M4 6h10M4 12h7M4 18h4M18 5v14M18 19l-3-3M18 19l3-3" />
+                )
+              ) : (
+                <path d="M3 7h12M3 12h8M3 17h4M17 5v14M17 19l3-3M17 19l-3-3" />
+              )}
+            </svg>
+            Sort
+            {sortBy && (
+              <span className="pv-sort-tag">
+                {SORT_FIELDS.find((f) => f.key === sortBy)?.label}
+              </span>
+            )}
+          </button>
+          {sortOpen && (
+            <>
+              <div
+                className="pv-menu-backdrop"
+                onClick={() => setSortOpen(false)}
+              />
+              <div className="pv-sort-menu">
+                {SORT_FIELDS.map((f) => (
+                  <button
+                    key={f.key}
+                    className={`pv-sort-item${sortBy === f.key ? " active" : ""}`}
+                    onClick={() => applySort(f.key)}
+                  >
+                    {f.label}
+                    {sortBy === f.key && (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        {sortDir === "asc" ? (
+                          <path d="m6 15 6-6 6 6" />
+                        ) : (
+                          <path d="m6 9 6 6 6-6" />
+                        )}
+                      </svg>
+                    )}
+                  </button>
+                ))}
+                {sortBy && (
+                  <button className="pv-sort-clear" onClick={clearSort}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="M15 9l-6 6M9 9l6 6" />
+                    </svg>
+                    Clear sort
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {(roleFilter.size > 0 || sortBy) && (
           <button className="pv-tool-btn pv-clear-all" type="button" onClick={clearFilter}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <circle cx="12" cy="12" r="9" />

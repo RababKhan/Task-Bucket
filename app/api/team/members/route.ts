@@ -37,6 +37,28 @@ export async function GET(request: Request) {
     Math.max(5, Number(searchParams.get("pageSize") ?? 20) || 20)
   );
 
+  // Sorting has to happen here rather than in the client: results are paged, so
+  // sorting the page you happen to be looking at would order 20 rows out of
+  // however many exist. Both values come from a whitelist and are never
+  // interpolated from raw input.
+  const sortParam = searchParams.get("sort");
+  const sort = sortParam === "name" || sortParam === "role" ? sortParam : null;
+  const dir = searchParams.get("dir") === "desc" ? "DESC" : "ASC";
+
+  // Seniority, not alphabetical: Owner, Admin, Manager, Assignee, then any
+  // custom role.
+  const ROLE_RANK =
+    "CASE wm.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'manager' THEN 2 WHEN 'assignee' THEN 3 ELSE 4 END";
+  const NAME = "u.name COLLATE NOCASE";
+  // With no explicit sort, the long-standing default stands: most senior first,
+  // then by name — which puts the Owner at the top.
+  const orderBy =
+    sort === "name"
+      ? `${NAME} ${dir}, ${ROLE_RANK} ASC`
+      : sort === "role"
+        ? `${ROLE_RANK} ${dir}, ${NAME} ASC`
+        : `${ROLE_RANK} ASC, ${NAME} ASC`;
+
   // Build the filtered WHERE clause + args incrementally.
   const where: string[] = ["wm.workspace_id = ?"];
   const args: (string | number)[] = [wsId];
@@ -82,8 +104,7 @@ export async function GET(request: Request) {
        JOIN users u ON u.id = wm.user_id
        LEFT JOIN roles r ON r.workspace_id = wm.workspace_id AND r.key = wm.role
        WHERE ${whereSql}
-       ORDER BY CASE wm.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'manager' THEN 2 WHEN 'assignee' THEN 3 ELSE 4 END,
-                u.name COLLATE NOCASE ASC
+       ORDER BY ${orderBy}
        LIMIT ? OFFSET ?`,
       [...args, pageSize, (page - 1) * pageSize]
     ),
