@@ -51,3 +51,21 @@ export async function seedInvite(opts: {
     )
   );
 }
+
+// Move a workspace between plans. Plan limits are enforced server-side from
+// the subscriptions row, and the seed puts both test workspaces on Pro, so a
+// spec that needs the free caps flips this and flips it back.
+export async function setWorkspacePlan(
+  wsId: string,
+  plan: "free" | "pro"
+): Promise<void> {
+  await withDb((c) =>
+    c.query(
+      `INSERT INTO subscriptions (workspace_id, plan, status)
+       VALUES ($1, $2, 'active')
+       ON CONFLICT (workspace_id)
+       DO UPDATE SET plan = $2, status = 'active', current_period_end = NULL`,
+      [wsId, plan]
+    )
+  );
+}
