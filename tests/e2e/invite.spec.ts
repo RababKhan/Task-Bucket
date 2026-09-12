@@ -26,7 +26,8 @@ test.describe("invite acceptance", () => {
     await expect(page.getByText(/Join Acme Inc/i)).toBeVisible();
 
     await page.getByPlaceholder("Jane Doe").fill("New Bie");
-    await page.getByPlaceholder(/chars/).fill("Password123!");
+    await page.getByPlaceholder("Create a password").fill("Password123!");
+    await page.getByPlaceholder("Re-enter your password").fill("Password123!");
     await page.getByRole("button", { name: "Accept invite" }).click();
 
     // Lands in the app, signed in as the new member.

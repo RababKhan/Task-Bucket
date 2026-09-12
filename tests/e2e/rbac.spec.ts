@@ -15,10 +15,15 @@ test.describe("RBAC", () => {
     const roleName = `QA ${Date.now()}`;
     await page.goto("/settings/roles");
     await page.getByRole("button", { name: "Create role" }).click();
-    await expect(page).toHaveURL(/\/settings\/roles\/new/);
-    await page.getByPlaceholder("e.g. QA Reviewer").fill(roleName);
-    await page.getByRole("button", { name: "Create role" }).click();
-    await expect(page).toHaveURL(/\/settings\/roles$/);
+    // The role is created at once as a new "Employee" column, with its name
+    // open for editing in the header.
+    const rename = page.getByRole("textbox", { name: /^Rename / });
+    await expect(rename).toHaveValue("Employee");
+    await rename.fill(roleName);
+    await rename.press("Enter");
+    await expect(page.getByText(roleName)).toBeVisible();
+    // Saved, not just shown: the new name survives a reload.
+    await page.reload();
     await expect(page.getByText(roleName)).toBeVisible();
   });
 
