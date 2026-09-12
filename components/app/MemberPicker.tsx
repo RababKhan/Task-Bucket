@@ -18,6 +18,21 @@ const EmptyPersonSVG = (
   </svg>
 );
 
+/** A member circle: their photo when there is one, their initials when not. */
+function MemberAvatar({ member, stacked }: { member: Member; stacked?: boolean }) {
+  const name = member.name || member.email || "?";
+  return (
+    <span className={`mp-avatar${stacked ? " stacked" : ""}`} title={name}>
+      {member.image ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={member.image} alt="" />
+      ) : (
+        initials(name)
+      )}
+    </span>
+  );
+}
+
 export default function MemberPicker({
   members,
   value,
@@ -104,7 +119,7 @@ export default function MemberPicker({
       if (!m) return <span className="mp-placeholder">{placeholder}</span>;
       return (
         <span className="mp-trigger-mem">
-          <span className="mp-avatar">{initials(m.name || m.email || "?")}</span>
+          <MemberAvatar member={m} />
           {m.name || m.email}
         </span>
       );
@@ -126,9 +141,7 @@ export default function MemberPicker({
     return (
       <span className="mp-inline-avatars">
         {shown.map((m) => (
-          <span key={m.user_id} className="mp-avatar stacked">
-            {initials(m.name || m.email || "?")}
-          </span>
+          <MemberAvatar key={m.user_id} member={m} stacked />
         ))}
         {extra > 0 && <span className="mp-avatar more stacked">+{extra}</span>}
       </span>
@@ -181,9 +194,7 @@ export default function MemberPicker({
                   className={`mp-item${selected.has(m.user_id) ? " sel" : ""}`}
                   onClick={() => pick(m.user_id)}
                 >
-                  <span className="mp-avatar">
-                    {initials(m.name || m.email || "?")}
-                  </span>
+                  <MemberAvatar member={m} />
                   <span className="mp-name">{m.name || m.email}</span>
                   {selected.has(m.user_id) && (
                     <svg className="mp-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
