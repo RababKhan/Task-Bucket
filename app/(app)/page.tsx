@@ -98,6 +98,28 @@ const GROUP_FIELDS: { key: GroupKey; label: string }[] = [
   { key: "assignee", label: "Assignee" },
 ];
 const UNASSIGNED = "__unassigned__";
+
+// Columns the View drawer can hide. Title is always on, as the projects
+// table keeps its Project Name. Widths mirror the grid in features.css.
+type ListColKey = "assignee" | "status" | "priority" | "start" | "end" | "labels";
+const LIST_COLUMNS: { key: ListColKey; label: string; width: string }[] = [
+  { key: "assignee", label: "Assignee", width: "70px" },
+  { key: "status", label: "Status", width: "105px" },
+  { key: "priority", label: "Priority", width: "105px" },
+  { key: "start", label: "Start Date", width: "105px" },
+  { key: "end", label: "End Date", width: "105px" },
+  { key: "labels", label: "Labels", width: "105px" },
+];
+const DEFAULT_LIST_VISIBLE: Record<ListColKey, boolean> = {
+  assignee: true,
+  status: true,
+  priority: true,
+  start: true,
+  end: true,
+  labels: true,
+};
+const LIST_PAGE_SIZES = [10, 25, 50, 100];
+const DEFAULT_LIST_PAGE_SIZE = 50;
 // Undated rows sort last ascending rather than first.
 const NO_DATE = "9999-99-99";
 
@@ -201,6 +223,16 @@ function BoardPage() {
     "none",
     parseGroupKey
   );
+  // View settings: page size + which columns show. Held as a draft while the
+  // drawer is open and written only when Save is pressed, as in the projects
+  // table.
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewClosing, setViewClosing] = useState(false);
+  const [viewSaving, setViewSaving] = useState(false);
+  const [pageSize, setPageSize] = useState(DEFAULT_LIST_PAGE_SIZE);
+  const [visibleCols, setVisibleCols] =
+    useState<Record<ListColKey, boolean>>(DEFAULT_LIST_VISIBLE);
+
   // Collapsed groups, remembered per project like the rest of the toolbar.
   // Keyed "<grouping>:<group>", so one grouping's collapses do not leak into
   // another's.
@@ -209,6 +241,58 @@ function BoardPage() {
     [],
     (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string") : null)
   );
+  // Read this project's saved view settings whenever the project changes.
+  useEffect(() => {
+    if (!viewKey) return;
+    let next = { pageSize: DEFAULT_LIST_PAGE_SIZE, visible: DEFAULT_LIST_VISIBLE };
+    try {
+      const raw = localStorage.getItem(`${viewKey}:view`);
+      if (raw) {
+        const v = JSON.parse(raw);
+        if (typeof v.pageSize === "number") next.pageSize = v.pageSize;
+        if (v.visible) next.visible = { ...DEFAULT_LIST_VISIBLE, ...v.visible };
+      }
+    } catch {}
+    setPageSize(next.pageSize);
+    setVisibleCols(next.visible);
+  }, [viewKey]);
+
+  function closeView() {
+    if (viewClosing) return;
+    setViewClosing(true);
+    window.setTimeout(() => {
+      setViewOpen(false);
+      setViewClosing(false);
+    }, 220);
+  }
+
+  function saveView() {
+    if (viewSaving || !viewKey) return;
+    setViewSaving(true);
+    window.setTimeout(() => {
+      try {
+        localStorage.setItem(
+          `${viewKey}:view`,
+          JSON.stringify({ pageSize, visible: visibleCols })
+        );
+      } catch {}
+      setViewSaving(false);
+      closeView();
+    }, 550);
+  }
+
+  function resetView() {
+    setPageSize(DEFAULT_LIST_PAGE_SIZE);
+    setVisibleCols(DEFAULT_LIST_VISIBLE);
+  }
+
+  // The grid every row follows: control column, title, whichever columns are
+  // on, then the row menu.
+  const visibleListCols = LIST_COLUMNS.filter((c) => visibleCols[c.key]);
+  const listGridCols = `34px minmax(160px, 1fr) ${visibleListCols
+    .map((c) => c.width)
+    .join(" ")} 32px`;
+
   const isCollapsed = (groupKey: string) =>
     collapsed.includes(`${groupBy}:${groupKey}`);
   const toggleGroup = (groupKey: string) => {
@@ -654,8 +738,11 @@ function BoardPage() {
   // Without an explicit sort the list keeps its status-ordered default.
   const listTasks = useMemo(
     () =>
-      sortBy ? sortedTasks : STATUS_ORDER.flatMap((s) => tasksByStatus[s]),
-    [sortBy, sortedTasks, tasksByStatus]
+      (sortBy ? sortedTasks : STATUS_ORDER.flatMap((s) => tasksByStatus[s])).slice(
+        0,
+        pageSize
+      ),
+    [sortBy, sortedTasks, tasksByStatus, pageSize]
   );
 
   // Rows are rendered group by group; with no grouping that is one unlabelled
@@ -752,7 +839,7 @@ function BoardPage() {
     const all = scope.length > 0 && scope.every((t) => selectedTasks.has(t.id));
     const some = scope.some((t) => selectedTasks.has(t.id));
     return (
-      <div className="tl-head">
+      <div className="tl-head" style={{ gridTemplateColumns: listGridCols }}>
         <span className="tl-head-check">
           {selectedTasks.size > 0 && (
             <input
@@ -768,12 +855,9 @@ function BoardPage() {
           )}
         </span>
         <span>Title</span>
-        <span>Assignee</span>
-        <span>Status</span>
-        <span>Priority</span>
-        <span>Start Date</span>
-        <span>End Date</span>
-        <span>Labels</span>
+        {visibleListCols.map((c) => (
+          <span key={c.key}>{c.label}</span>
+        ))}
         <span />
       </div>
     );
@@ -1100,7 +1184,11 @@ function BoardPage() {
             </button>
           )}
         </div>
-        <button type="button" className="pv-tool-btn">
+        <button
+          type="button"
+          className="pv-tool-btn"
+          onClick={() => setViewOpen(true)}
+        >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M21 4H14M10 4H3M21 12H12M8 12H3M21 20H16M12 20H3M14 2v4M8 10v4M16 18v4" />
           </svg>
@@ -1250,6 +1338,7 @@ function BoardPage() {
             <button
               type="button"
               className={`tl-group${isCollapsed(group.key) ? " collapsed" : ""}`}
+              style={{ gridTemplateColumns: listGridCols }}
               onClick={() => toggleGroup(group.key)}
               aria-expanded={!isCollapsed(group.key)}
             >
@@ -1271,6 +1360,7 @@ function BoardPage() {
               className={`tl-row${dragOverTaskId === task.id ? " dragover" : ""}${
                 dragTaskId === task.id ? " dragging" : ""
               }${selectedTasks.has(task.id) ? " selected" : ""}`}
+              style={{ gridTemplateColumns: listGridCols }}
               draggable
               onDragStart={() => setDragTaskId(task.id)}
               onDragOver={(e) => {
@@ -1312,57 +1402,69 @@ function BoardPage() {
                 )}
                 <span className="tl-title-text">{task.title}</span>
               </span>
-              <span className="tl-cell">
-                <MemberPicker
-                  inline
-                  multiple
-                  members={members}
-                  value={task.assignees ?? []}
-                  onChange={(ids) => updateTask(task.id, { assignees: ids })}
-                  placeholder="Assign"
-                />
-              </span>
-              <span className="tl-cell">
-                <SelectField
-                  inline
-                  value={task.status}
-                  options={STATUS_OPTS}
-                  onChange={(v) => updateTask(task.id, { status: v })}
-                />
-              </span>
-              <span className="tl-cell">
-                <SelectField
-                  inline
-                  value={task.priority}
-                  options={PRIORITY_OPTS}
-                  onChange={(v) => updateTask(task.id, { priority: v })}
-                />
-              </span>
-              <span className="tl-cell">
-                <DatePicker
-                  inline
-                  quick
-                  value={task.start_date ?? ""}
-                  max={task.due_date || undefined}
-                  onChange={(v) => updateTask(task.id, { start_date: v || null })}
-                />
-              </span>
-              <span className="tl-cell">
-                <DatePicker
-                  inline
-                  quick
-                  value={task.due_date ?? ""}
-                  min={task.start_date || undefined}
-                  onChange={(v) => updateTask(task.id, { due_date: v || null })}
-                />
-              </span>
-              <span className="tl-cell tl-labels-cell">
-                <LabelsField
-                  value={task.labels ?? []}
-                  suggestions={labelSuggestions}
-                  onChange={(labels) => updateTask(task.id, { labels })}
-                />
-              </span>
+              {visibleCols.assignee && (
+                <span className="tl-cell">
+                  <MemberPicker
+                    inline
+                    multiple
+                    members={members}
+                    value={task.assignees ?? []}
+                    onChange={(ids) => updateTask(task.id, { assignees: ids })}
+                    placeholder="Assign"
+                  />
+                </span>
+              )}
+              {visibleCols.status && (
+                <span className="tl-cell">
+                  <SelectField
+                    inline
+                    value={task.status}
+                    options={STATUS_OPTS}
+                    onChange={(v) => updateTask(task.id, { status: v })}
+                  />
+                </span>
+              )}
+              {visibleCols.priority && (
+                <span className="tl-cell">
+                  <SelectField
+                    inline
+                    value={task.priority}
+                    options={PRIORITY_OPTS}
+                    onChange={(v) => updateTask(task.id, { priority: v })}
+                  />
+                </span>
+              )}
+              {visibleCols.start && (
+                <span className="tl-cell">
+                  <DatePicker
+                    inline
+                    quick
+                    value={task.start_date ?? ""}
+                    max={task.due_date || undefined}
+                    onChange={(v) => updateTask(task.id, { start_date: v || null })}
+                  />
+                </span>
+              )}
+              {visibleCols.end && (
+                <span className="tl-cell">
+                  <DatePicker
+                    inline
+                    quick
+                    value={task.due_date ?? ""}
+                    min={task.start_date || undefined}
+                    onChange={(v) => updateTask(task.id, { due_date: v || null })}
+                  />
+                </span>
+              )}
+              {visibleCols.labels && (
+                <span className="tl-cell tl-labels-cell">
+                  <LabelsField
+                    value={task.labels ?? []}
+                    suggestions={labelSuggestions}
+                    onChange={(labels) => updateTask(task.id, { labels })}
+                  />
+                </span>
+              )}
 
               <button
                 className={`pv-kebab${taskMenuId === task.id ? " open" : ""}`}
@@ -1423,7 +1525,11 @@ function BoardPage() {
         </div>
         <div className="tl-foot">
           {addingTask && (
-            <div className="tl-row tl-addrow" ref={addRowRef}>
+            <div
+              className="tl-row tl-addrow"
+              ref={addRowRef}
+              style={{ gridTemplateColumns: listGridCols }}
+            >
               <span className="pv-ctrl" />
               <span className="tl-title">
                 <button
@@ -1487,69 +1593,81 @@ function BoardPage() {
                   </span>
                 )}
               </span>
-              <span className="tl-cell">
-                <MemberPicker
-                  inline
-                  multiple
-                  members={members}
-                  value={newTask.assignees}
-                  onChange={(ids) => setNewTask((n) => ({ ...n, assignees: ids }))}
-                  placeholder="Assign"
-                />
-              </span>
-              <span className="tl-cell">
-                <SelectField
-                  inline
-                  value={newTask.status}
-                  options={STATUS_OPTS}
-                  onChange={(v) => {
-                    setNewTask((n) => ({ ...n, status: v as TaskStatus }));
-                    requestAnimationFrame(() => addInputRef.current?.focus());
-                  }}
-                />
-              </span>
-              <span className="tl-cell">
-                <SelectField
-                  inline
-                  value={newTask.priority}
-                  options={PRIORITY_OPTS}
-                  onChange={(v) => {
-                    setNewTask((n) => ({ ...n, priority: v as TaskPriority }));
-                    requestAnimationFrame(() => addInputRef.current?.focus());
-                  }}
-                />
-              </span>
-              <span className="tl-cell">
-                <DatePicker
-                  inline
-                  quick
-                  value={newTask.start_date ?? ""}
-                  max={newTask.due_date || undefined}
-                  onChange={(v) => {
-                    setNewTask((n) => ({ ...n, start_date: v || null }));
-                    requestAnimationFrame(() => addInputRef.current?.focus());
-                  }}
-                />
-              </span>
-              <span className="tl-cell">
-                <DatePicker
-                  inline
-                  quick
-                  value={newTask.due_date ?? ""}
-                  min={newTask.start_date || undefined}
-                  onChange={(v) => {
-                    setNewTask((n) => ({ ...n, due_date: v || null }));
-                    requestAnimationFrame(() => addInputRef.current?.focus());
-                  }}
-                />
-              </span>
-              <span className="tl-cell tl-labels-cell">
-                <LabelsField
-                  value={newTask.labels}
-                  suggestions={labelSuggestions}
-                  onChange={(labels) => setNewTask((n) => ({ ...n, labels }))}
-                />
-              </span>
+              {visibleCols.assignee && (
+                <span className="tl-cell">
+                  <MemberPicker
+                    inline
+                    multiple
+                    members={members}
+                    value={newTask.assignees}
+                    onChange={(ids) => setNewTask((n) => ({ ...n, assignees: ids }))}
+                    placeholder="Assign"
+                  />
+                </span>
+              )}
+              {visibleCols.status && (
+                <span className="tl-cell">
+                  <SelectField
+                    inline
+                    value={newTask.status}
+                    options={STATUS_OPTS}
+                    onChange={(v) => {
+                      setNewTask((n) => ({ ...n, status: v as TaskStatus }));
+                      requestAnimationFrame(() => addInputRef.current?.focus());
+                    }}
+                  />
+                </span>
+              )}
+              {visibleCols.priority && (
+                <span className="tl-cell">
+                  <SelectField
+                    inline
+                    value={newTask.priority}
+                    options={PRIORITY_OPTS}
+                    onChange={(v) => {
+                      setNewTask((n) => ({ ...n, priority: v as TaskPriority }));
+                      requestAnimationFrame(() => addInputRef.current?.focus());
+                    }}
+                  />
+                </span>
+              )}
+              {visibleCols.start && (
+                <span className="tl-cell">
+                  <DatePicker
+                    inline
+                    quick
+                    value={newTask.start_date ?? ""}
+                    max={newTask.due_date || undefined}
+                    onChange={(v) => {
+                      setNewTask((n) => ({ ...n, start_date: v || null }));
+                      requestAnimationFrame(() => addInputRef.current?.focus());
+                    }}
+                  />
+                </span>
+              )}
+              {visibleCols.end && (
+                <span className="tl-cell">
+                  <DatePicker
+                    inline
+                    quick
+                    value={newTask.due_date ?? ""}
+                    min={newTask.start_date || undefined}
+                    onChange={(v) => {
+                      setNewTask((n) => ({ ...n, due_date: v || null }));
+                      requestAnimationFrame(() => addInputRef.current?.focus());
+                    }}
+                  />
+                </span>
+              )}
+              {visibleCols.labels && (
+                <span className="tl-cell tl-labels-cell">
+                  <LabelsField
+                    value={newTask.labels}
+                    suggestions={labelSuggestions}
+                    onChange={(labels) => setNewTask((n) => ({ ...n, labels }))}
+                  />
+                </span>
+              )}
               <span />
             </div>
           )}
@@ -1709,6 +1827,84 @@ function BoardPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {viewOpen && (
+        <div className="pv-drawer-overlay" onMouseDown={closeView}>
+          <aside
+            className={`pv-drawer${viewClosing ? " closing" : ""}`}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="pv-drawer-head">
+              <span className="pv-drawer-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M21 4H14M10 4H3M21 12H12M8 12H3M21 20H16M12 20H3M14 2v4M8 10v4M16 18v4" />
+                </svg>
+                View
+              </span>
+            </div>
+
+            <div className="pv-drawer-body">
+              <section className="pv-drawer-sec">
+                <h4>Selected Page Size</h4>
+                <div className="pv-pagesizes">
+                  {LIST_PAGE_SIZES.map((n) => (
+                    <label key={n} className="pv-radio">
+                      <input
+                        type="radio"
+                        name="tl-pagesize"
+                        checked={pageSize === n}
+                        onChange={() => setPageSize(n)}
+                      />
+                      <span>{n} items</span>
+                    </label>
+                  ))}
+                </div>
+              </section>
+
+              <section className="pv-drawer-sec">
+                <h4>Visible Columns</h4>
+                <div className="pv-collist">
+                  <div className="pv-collist-head">
+                    <span>Columns Name</span>
+                    <span>Show</span>
+                  </div>
+                  {/* Title always shows — a row with no name says nothing. */}
+                  <label className="pv-colrow">
+                    <span>Title</span>
+                    <input type="checkbox" className="pv-check" checked disabled readOnly />
+                  </label>
+                  {LIST_COLUMNS.map((c) => (
+                    <label key={c.key} className="pv-colrow">
+                      <span>{c.label}</span>
+                      <input
+                        type="checkbox"
+                        className="pv-check"
+                        checked={visibleCols[c.key]}
+                        onChange={() =>
+                          setVisibleCols((v) => ({ ...v, [c.key]: !v[c.key] }))
+                        }
+                      />
+                    </label>
+                  ))}
+                </div>
+              </section>
+            </div>
+
+            <div className="pv-drawer-foot">
+              <button className="btn" onClick={resetView}>
+                Reset
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={saveView}
+                disabled={viewSaving}
+              >
+                {viewSaving ? <Spinner /> : "Save"}
+              </button>
+            </div>
+          </aside>
         </div>
       )}
     </>
