@@ -401,8 +401,14 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
   height: 30px;
   padding: 0 14px;
+  border: 0;
+  border-radius: 0;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
   background: var(--surface-2);
   border-bottom: 1px solid var(--border);
   font-size: 11px;
@@ -423,6 +429,25 @@
 }
 .tl-group-ic svg {
   display: block;
+}
+.tl-group:hover {
+  background: var(--surface-3, var(--surface-2));
+}
+/* Points down while the group is open, right once it is collapsed. */
+.tl-group-chev {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+  opacity: 0.75;
+  transition: transform 0.15s ease;
+}
+.tl-group.collapsed .tl-group-chev {
+  transform: rotate(-90deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tl-group-chev {
+    transition: none;
+  }
 }
 .tl-group-count {
   font-weight: 500;

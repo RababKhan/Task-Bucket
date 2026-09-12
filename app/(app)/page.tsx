@@ -201,6 +201,22 @@ function BoardPage() {
     "none",
     parseGroupKey
   );
+  // Collapsed groups, remembered per project like the rest of the toolbar.
+  // Keyed "<grouping>:<group>", so one grouping's collapses do not leak into
+  // another's.
+  const [collapsed, setCollapsed] = usePersistedState<string[]>(
+    viewKey && `${viewKey}:collapsedGroups`,
+    [],
+    (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string") : null)
+  );
+  const isCollapsed = (groupKey: string) =>
+    collapsed.includes(`${groupBy}:${groupKey}`);
+  const toggleGroup = (groupKey: string) => {
+    const id = `${groupBy}:${groupKey}`;
+    setCollapsed((cur) =>
+      cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]
+    );
+  };
 
   function applySort(key: TaskSortKey) {
     if (sortBy === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -1215,13 +1231,22 @@ function BoardPage() {
           {listGroups.map((group) => (
           <Fragment key={group.key}>
           {group.label && (
-            <div className="tl-group">
+            <button
+              type="button"
+              className={`tl-group${isCollapsed(group.key) ? " collapsed" : ""}`}
+              onClick={() => toggleGroup(group.key)}
+              aria-expanded={!isCollapsed(group.key)}
+            >
+              <svg className="tl-group-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="m6 9 6 6 6-6" />
+              </svg>
               {group.icon && <span className="tl-group-ic">{group.icon}</span>}
               <span className="tl-group-label">{group.label}</span>
               <span className="tl-group-count">{group.tasks.length}</span>
-            </div>
+            </button>
           )}
-          {group.tasks.map((task) => (
+          {(!group.label || !isCollapsed(group.key)) &&
+            group.tasks.map((task) => (
             <div
               key={task.id}
               className={`tl-row${dragOverTaskId === task.id ? " dragover" : ""}${
