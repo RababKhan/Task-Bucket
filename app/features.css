@@ -44,6 +44,16 @@
 }
 
 /* ---- List view ---- */
+/* When the columns need more room than the card has, the card scrolls
+   sideways. Every row has to span that whole scrollable width, or its
+   background and borders stop at the fold and the group headers end
+   mid-table once you scroll. */
+.task-list > .tl-head,
+.task-list > .tl-row,
+.task-list > .tl-group {
+  width: fit-content;
+  min-width: 100%;
+}
 .task-list {
   border: 1px solid var(--canvas-border);
   /* Square bottom — the .tl-foot bar below continues the card. */
@@ -77,7 +87,8 @@
   background: transparent;
 }
 .tl-head,
-.tl-row {
+.tl-row,
+.tl-group {
   display: grid;
   /* Title, narrow Assignee (avatar only), then equal Status, Priority, Start,
      End, Labels. */
@@ -403,14 +414,7 @@
 /* Group By header row. Sits between rows rather than inside the grid, so it
    spans the full width regardless of how many columns the table has. */
 .tl-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
   height: 30px;
-  /* Indented so the chevron starts level with the Title column: the 34px
-     control column plus the title cell's own inset. */
-  padding: 0 14px 0 56px;
   border: 0;
   border-radius: 0;
   text-align: left;
@@ -442,6 +446,16 @@
   background: var(--surface-3, var(--surface-2));
 }
 /* Points down while the group is open, right once it is collapsed. */
+/* The header content is one line laid across every column, so the header
+   itself measures exactly as wide as the rows beneath it. The indent puts the
+   chevron level with the Title column. */
+.tl-group-inner {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 42px;
+}
 .tl-group-chev {
   width: 13px;
   height: 13px;

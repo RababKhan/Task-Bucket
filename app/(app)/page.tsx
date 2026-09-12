@@ -1253,12 +1253,14 @@ function BoardPage() {
               onClick={() => toggleGroup(group.key)}
               aria-expanded={!isCollapsed(group.key)}
             >
-              <svg className="tl-group-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-              {group.icon && <span className="tl-group-ic">{group.icon}</span>}
-              <span className="tl-group-label">{group.label}</span>
-              <span className="tl-group-count">{group.tasks.length}</span>
+              <span className="tl-group-inner">
+                <svg className="tl-group-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+                {group.icon && <span className="tl-group-ic">{group.icon}</span>}
+                <span className="tl-group-label">{group.label}</span>
+                <span className="tl-group-count">{group.tasks.length}</span>
+              </span>
             </button>
           )}
           {group.label && !isCollapsed(group.key) && listHead(group.tasks)}
