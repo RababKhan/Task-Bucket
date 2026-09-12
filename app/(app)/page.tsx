@@ -229,7 +229,6 @@ function BoardPage() {
   // The drawer lines up with the table rather than the window, so measure the
   // card each time it opens (and on resize while it is open).
   const tableTopRef = useRef<HTMLDivElement>(null);
-  const tableBottomRef = useRef<HTMLDivElement>(null);
   const [drawerBox, setDrawerBox] = useState<{ top: number; bottom: number } | null>(null);
   const [viewClosing, setViewClosing] = useState(false);
   const [viewSaving, setViewSaving] = useState(false);
@@ -260,9 +259,8 @@ function BoardPage() {
 
   const measureDrawer = useCallback(() => {
     const top = tableTopRef.current?.getBoundingClientRect().top;
-    const tableBottom = tableBottomRef.current?.getBoundingClientRect().bottom;
-    if (top == null || tableBottom == null) return;
-    setDrawerBox(drawerBoxFor(top, tableBottom));
+    if (top == null) return;
+    setDrawerBox(drawerBoxFor(top));
   }, []);
 
   useEffect(() => {
@@ -1538,7 +1536,7 @@ function BoardPage() {
             <div className="tl-empty">No tasks match your search.</div>
           )}
         </div>
-        <div className="tl-foot" ref={tableBottomRef}>
+        <div className="tl-foot">
           {addingTask && (
             <div
               className="tl-row tl-addrow"

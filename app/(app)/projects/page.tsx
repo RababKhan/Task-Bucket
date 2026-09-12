@@ -196,7 +196,7 @@ export default function ProjectsPage() {
   const measureDrawer = useCallback(() => {
     const r = tableRef.current?.getBoundingClientRect();
     if (!r) return;
-    setDrawerBox(drawerBoxFor(r.top, r.bottom));
+    setDrawerBox(drawerBoxFor(r.top));
   }, []);
 
   useEffect(() => {

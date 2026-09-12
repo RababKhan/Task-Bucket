@@ -1,21 +1,11 @@
-// The View drawer stands beside its table: same top, same bottom. A very short
-// table would squeeze the drawer's own controls out of sight, so it never
-// shrinks below MIN_HEIGHT and simply hangs lower than the table instead.
-const MIN_HEIGHT = 380;
+// The View drawer opens beside its table: it starts at the top of the table
+// and runs to the bottom of the page. In a view whose table already fills the
+// page that is the table's own height; in one with a short table the drawer
+// still has room for its controls.
 const EDGE_GAP = 16;
 
 export type DrawerBox = { top: number; bottom: number };
 
-export function drawerBoxFor(
-  tableTop: number,
-  tableBottom: number,
-  viewportHeight: number = typeof window === "undefined" ? 0 : window.innerHeight
-): DrawerBox {
-  const top = Math.max(0, tableTop);
-  let bottom = Math.max(0, viewportHeight - tableBottom);
-  const height = viewportHeight - top - bottom;
-  if (height < MIN_HEIGHT) {
-    bottom = Math.max(EDGE_GAP, viewportHeight - top - MIN_HEIGHT);
-  }
-  return { top, bottom };
+export function drawerBoxFor(tableTop: number): DrawerBox {
+  return { top: Math.max(0, tableTop), bottom: EDGE_GAP };
 }
