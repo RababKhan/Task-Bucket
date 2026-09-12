@@ -420,7 +420,7 @@
   text-align: left;
   font: inherit;
   cursor: pointer;
-  background: var(--surface);
+  background: var(--surface-2);
   border-bottom: 1px solid var(--border);
   font-size: 11px;
   font-weight: 600;
@@ -443,7 +443,7 @@
   display: block;
 }
 .tl-group:hover {
-  background: var(--surface-2);
+  background: var(--surface-3, var(--surface-2));
 }
 /* Points down while the group is open, right once it is collapsed. */
 /* The header content is one line laid across every column, so the header
