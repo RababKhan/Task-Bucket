@@ -596,8 +596,9 @@ export default function ProjectsPage() {
           </button>
         )}
         <button
-          className="pv-tool-btn pv-view"
+          className={`pv-tool-btn pv-view${viewOpen ? " active" : ""}`}
           type="button"
+          aria-expanded={viewOpen}
           onClick={() => setViewOpen(true)}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -929,13 +930,20 @@ export default function ProjectsPage() {
       )}
 
       {viewOpen && (
-        <div
-          className="pv-drawer-overlay"
-          style={drawerBox ?? undefined}
-          onMouseDown={closeView}
-        >
+        <div className="pv-drawer-overlay" onMouseDown={closeView}>
           <aside
             className={`pv-drawer${viewClosing ? " closing" : ""}`}
+            style={
+              drawerBox
+                ? {
+                    position: "fixed",
+                    right: 16,
+                    height: "auto",
+                    top: drawerBox.top,
+                    bottom: drawerBox.bottom,
+                  }
+                : undefined
+            }
             onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="pv-drawer-head">
