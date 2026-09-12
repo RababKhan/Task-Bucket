@@ -328,6 +328,9 @@ select:focus {
 
 .card {
   background: var(--surface);
+  /* Says it can be picked up; the pointer still means "opens the task". */
+  -webkit-user-select: none;
+  user-select: none;
   border: 1px solid var(--canvas-border);
   border-radius: 8px;
   padding: 10px 12px;
@@ -375,28 +378,14 @@ select:focus {
   color: var(--danger);
 }
 
-.card-move {
-  display: flex;
-  gap: 6px;
-  margin-top: 9px;
+/* A card is carried to another column rather than stepped along by buttons:
+   it fades while in hand, and the column under it lights up. */
+.card.dragging {
+  opacity: 0.45;
 }
-.card-move button {
-  flex: 1;
-  font-size: 10.5px;
-  padding: 4px;
-  border-radius: 8px;
-  background: var(--surface-2);
-  border: 1px solid var(--canvas-border);
-  color: var(--text-dim);
-  transition: color 0.12s, border-color 0.12s;
-}
-.card-move button:hover:not(:disabled) {
-  color: var(--text);
+.column.dragover {
   border-color: var(--accent);
-}
-.card-move button:disabled {
-  opacity: 0.3;
-  cursor: default;
+  background: color-mix(in srgb, var(--accent) 7%, var(--canvas-bg));
 }
 
 .add-task {

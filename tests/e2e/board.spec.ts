@@ -26,12 +26,8 @@ test.describe("board", () => {
     const col1 = board.locator(".column").nth(1); // next status
     await expect(col0.getByText(title)).toBeVisible();
 
-    // "Move →" is the second button in the card's move controls.
-    await board
-      .locator(".card", { hasText: title })
-      .locator(".card-move button")
-      .nth(1)
-      .click();
+    // Carry the card into the next column.
+    await board.locator(".card", { hasText: title }).dragTo(col1);
 
     await expect(col1.getByText(title)).toBeVisible();
     await expect(col0.getByText(title)).toHaveCount(0);

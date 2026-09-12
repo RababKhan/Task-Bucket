@@ -340,6 +340,9 @@ function BoardPage() {
   const [creatingStatus, setCreatingStatus] = useState<TaskStatus | null>(null);
   const [deletingProject, setDeletingProject] = useState(false);
   const [movingId, setMovingId] = useState<number | null>(null);
+  // Board drag: the card being carried, and the column it is over.
+  const [dragCardId, setDragCardId] = useState<number | null>(null);
+  const [dragOverStatus, setDragOverStatus] = useState<TaskStatus | null>(null);
 
   // List-table row controls (selection, drag-reorder, kebab, delete).
   const [selectedTasks, setSelectedTasks] = useState<Set<number>>(new Set());
@@ -680,10 +683,8 @@ function BoardPage() {
     if ("status" in patch) await loadProjects(); // refresh progress
   }
 
-  async function moveTask(task: Task, dir: -1 | 1) {
-    const idx = STATUS_ORDER.indexOf(task.status);
-    const next = STATUS_ORDER[idx + dir];
-    if (!next || movingId === task.id) return;
+  async function moveTaskTo(task: Task, next: TaskStatus) {
+    if (task.status === next || movingId === task.id) return;
     setMovingId(task.id);
     setTasks((ts) =>
       ts.map((t) => (t.id === task.id ? { ...t, status: next } : t))
@@ -1224,7 +1225,27 @@ function BoardPage() {
       ) : view === "board" ? (
         <div className="board">
           {STATUS_ORDER.map((status) => (
-            <section className="column" key={status}>
+            <section
+              key={status}
+              className={`column${dragOverStatus === status ? " dragover" : ""}`}
+              onDragOver={(e) => {
+                if (dragCardId == null) return;
+                // Without this the browser refuses the drop.
+                e.preventDefault();
+                if (dragOverStatus !== status) setDragOverStatus(status);
+              }}
+              onDragLeave={(e) => {
+                // Ignore the moves between a column's own children.
+                if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                setDragOverStatus((cur) => (cur === status ? null : cur));
+              }}
+              onDrop={() => {
+                const task = tasks.find((t) => t.id === dragCardId);
+                setDragCardId(null);
+                setDragOverStatus(null);
+                if (task) moveTaskTo(task, status);
+              }}
+            >
               <div className="column-header">
                 <span className="dot" style={{ background: STATUS_COLORS[status] }} />
                 <h3>{STATUS_LABELS[status]}</h3>
@@ -1232,7 +1253,6 @@ function BoardPage() {
               </div>
 
               {tasksByStatus[status].map((task) => {
-                const idx = STATUS_ORDER.indexOf(task.status);
                 const overdue =
                   task.due_date &&
                   task.status !== "done" &&
@@ -1240,7 +1260,18 @@ function BoardPage() {
                 return (
                   <article
                     key={task.id}
-                    className="card"
+                    className={`card${dragCardId === task.id ? " dragging" : ""}`}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.effectAllowed = "move";
+                      // Firefox needs the transfer to carry something.
+                      e.dataTransfer.setData("text/plain", String(task.id));
+                      setDragCardId(task.id);
+                    }}
+                    onDragEnd={() => {
+                      setDragCardId(null);
+                      setDragOverStatus(null);
+                    }}
                     onClick={() => router.push(`/task/${task.id}`)}
                     onMouseEnter={() => prefetchTask(task.id)}
                   >
@@ -1268,20 +1299,6 @@ function BoardPage() {
                           {task.subtask_done}/{task.subtask_total}
                         </span>
                       )}
-                    </div>
-                    <div className="card-move" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        disabled={idx === 0 || movingId === task.id}
-                        onClick={() => moveTask(task, -1)}
-                      >
-                        ← Move
-                      </button>
-                      <button
-                        disabled={idx === STATUS_ORDER.length - 1 || movingId === task.id}
-                        onClick={() => moveTask(task, 1)}
-                      >
-                        Move →
-                      </button>
                     </div>
                   </article>
                 );
