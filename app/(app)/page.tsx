@@ -729,12 +729,53 @@ function BoardPage() {
   const atTaskLimit = taskLimit != null && tasks.length >= taskLimit;
   const taskLimitTip = `Upgrade to Pro — ${taskLimit} tasks per project limit reached`;
 
-  // Header select-all: toggles every visible list item.
+  // Header select-all: toggles every row beneath that heading row — the whole
+  // list ungrouped, or just the group it heads.
   const allListSelected =
     listTasks.length > 0 && listTasks.every((t) => selectedTasks.has(t.id));
-  function toggleSelectAll() {
-    setSelectedTasks(
-      allListSelected ? new Set() : new Set(listTasks.map((t) => t.id))
+  function toggleScope(scope: BoardTask[]) {
+    const all = scope.length > 0 && scope.every((t) => selectedTasks.has(t.id));
+    setSelectedTasks((cur) => {
+      const next = new Set(cur);
+      for (const t of scope) {
+        if (all) next.delete(t.id);
+        else next.add(t.id);
+      }
+      return next;
+    });
+  }
+
+  // The column heading row. Rendered once above an ungrouped list, and again
+  // under each group header when the list is grouped, so the columns stay
+  // named as you read down the page.
+  function listHead(scope: BoardTask[]) {
+    const all = scope.length > 0 && scope.every((t) => selectedTasks.has(t.id));
+    const some = scope.some((t) => selectedTasks.has(t.id));
+    return (
+      <div className="tl-head">
+        <span className="tl-head-check">
+          {selectedTasks.size > 0 && (
+            <input
+              type="checkbox"
+              className="pv-check"
+              checked={all}
+              ref={(el) => {
+                if (el) el.indeterminate = some && !all;
+              }}
+              onChange={() => toggleScope(scope)}
+              aria-label={all ? "Deselect all" : "Select all"}
+            />
+          )}
+        </span>
+        <span>Title</span>
+        <span>Assignee</span>
+        <span>Status</span>
+        <span>Priority</span>
+        <span>Start Date</span>
+        <span>End Date</span>
+        <span>Labels</span>
+        <span />
+      </div>
     );
   }
 
@@ -1202,32 +1243,7 @@ function BoardPage() {
               </button>
             </div>
           )}
-          <div className="tl-head">
-            <span className="tl-head-check">
-              {selectedTasks.size > 0 && (
-                <input
-                  type="checkbox"
-                  className="pv-check"
-                  checked={allListSelected}
-                  ref={(el) => {
-                    if (el)
-                      el.indeterminate =
-                        selectedTasks.size > 0 && !allListSelected;
-                  }}
-                  onChange={toggleSelectAll}
-                  aria-label={allListSelected ? "Deselect all" : "Select all"}
-                />
-              )}
-            </span>
-            <span>Title</span>
-            <span>Assignee</span>
-            <span>Status</span>
-            <span>Priority</span>
-            <span>Start Date</span>
-            <span>End Date</span>
-            <span>Labels</span>
-            <span />
-          </div>
+          {groupBy === "none" && listHead(listTasks)}
           {listGroups.map((group) => (
           <Fragment key={group.key}>
           {group.label && (
@@ -1245,6 +1261,7 @@ function BoardPage() {
               <span className="tl-group-count">{group.tasks.length}</span>
             </button>
           )}
+          {group.label && !isCollapsed(group.key) && listHead(group.tasks)}
           {(!group.label || !isCollapsed(group.key)) &&
             group.tasks.map((task) => (
             <div

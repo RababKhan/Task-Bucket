@@ -423,8 +423,9 @@
   letter-spacing: 0.02em;
   color: var(--text-dim);
   position: sticky;
-  /* Below .tl-head, which is also sticky at the top of the scroll container. */
-  top: 38px;
+  /* A grouped list has no heading row above the first group, so the group
+     header itself sticks to the top of the scroll container. */
+  top: 0;
   z-index: 10;
 }
 /* The grouping icon — the status or priority icon, or the person avatar —
@@ -455,6 +456,12 @@
   .tl-group-chev {
     transition: none;
   }
+}
+/* A group's own heading row scrolls with its rows: only the group header
+   stays pinned, or the two would fight for the same spot. */
+.tl-group + .tl-head {
+  position: static;
+  border-radius: 0;
 }
 .tl-group-count {
   font-weight: 500;
