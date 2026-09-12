@@ -347,6 +347,11 @@
 .tf-ava {
   display: inline-grid;
   place-items: center;
+  /* A default size, so the circle holds its shape wherever it is used. A
+     photo with no size of its own would otherwise render at full resolution. */
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
   border-radius: 50%;
   background: var(--surface-2);
   color: var(--text-dim);
