@@ -88,12 +88,14 @@ const TASK_SORT_FIELDS: { key: TaskSortKey; label: string }[] = [
   { key: "start", label: "Start Date" },
   { key: "end", label: "End Date" },
 ];
-type GroupKey = "none" | "status" | "priority";
+type GroupKey = "none" | "status" | "priority" | "assignee";
 const GROUP_FIELDS: { key: GroupKey; label: string }[] = [
   { key: "none", label: "None" },
   { key: "status", label: "Status" },
   { key: "priority", label: "Priority" },
+  { key: "assignee", label: "Assignee" },
 ];
+const UNASSIGNED = "__unassigned__";
 // Undated rows sort last ascending rather than first.
 const NO_DATE = "9999-99-99";
 
@@ -644,6 +646,27 @@ function BoardPage() {
     if (groupBy === "none") {
       return [{ key: "all", label: null as string | null, tasks: listTasks }];
     }
+    if (groupBy === "assignee") {
+      // A task with several assignees belongs under each of them, so it shows
+      // up in every list it is actually on. Unassigned work goes last.
+      const order = [...members.map((m) => m.user_id), UNASSIGNED];
+      const labels = new Map(
+        members.map((m) => [m.user_id, m.name || m.email || "Unknown"])
+      );
+      const buckets = new Map<string, BoardTask[]>(order.map((k) => [k, []]));
+      for (const t of listTasks) {
+        const ids = (t.assignees ?? []).filter((id) => buckets.has(id));
+        if (ids.length === 0) buckets.get(UNASSIGNED)!.push(t);
+        else for (const id of ids) buckets.get(id)!.push(t);
+      }
+      return order
+        .filter((k) => (buckets.get(k) ?? []).length > 0)
+        .map((k) => ({
+          key: k,
+          label: k === UNASSIGNED ? "Unassigned" : labels.get(k) ?? k,
+          tasks: buckets.get(k)!,
+        }));
+    }
     const order: string[] =
       groupBy === "status" ? [...STATUS_ORDER] : [...PRIORITY_ORDER];
     const labels: Record<string, string> =
@@ -657,7 +680,7 @@ function BoardPage() {
     return order
       .filter((k) => (buckets.get(k) ?? []).length > 0)
       .map((k) => ({ key: k, label: labels[k] ?? k, tasks: buckets.get(k)! }));
-  }, [groupBy, listTasks]);
+  }, [groupBy, listTasks, members]);
 
   // Per-project task cap reached (Free plan) — blocks adding more items.
   const atTaskLimit = taskLimit != null && tasks.length >= taskLimit;
