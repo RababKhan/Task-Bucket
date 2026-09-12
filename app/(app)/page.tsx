@@ -938,7 +938,7 @@ function BoardPage() {
           >
             <button
               type="button"
-              className="pv-tool-btn"
+              className="pv-tool-btn pv-primary"
               disabled={atTaskLimit}
               onClick={() => {
                 if (atTaskLimit) return;
@@ -1560,7 +1560,7 @@ function BoardPage() {
           >
             <button
               type="button"
-              className="pv-tool-btn tl-add"
+              className="pv-tool-btn tl-add pv-primary"
               disabled={atTaskLimit}
               onClick={() => {
                 if (atTaskLimit) return;

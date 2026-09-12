@@ -5529,6 +5529,23 @@ textarea::placeholder {
   cursor: not-allowed;
   transition: none;
 }
+/* The primary action in a toolbar — the same accent fill the Invite and
+   Create Role buttons use. */
+.pv-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.pv-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: #fff;
+}
+.pv-primary:disabled:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
 .tl-add-lock {
   display: inline-flex;
 }
