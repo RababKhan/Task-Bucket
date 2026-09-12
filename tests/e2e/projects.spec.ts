@@ -379,14 +379,13 @@ test.describe("projects", () => {
   test("PROJ-14: reset the view settings", async ({ page }) => {
     await page.goto("/projects");
 
-    // Change the view: hide a column and shrink the page size.
+    // Change the view: hide a column.
     await page.getByRole("button", { name: "View" }).click();
     let drawer = page.locator(".pv-drawer");
     await drawer
       .locator(".pv-colrow", { hasText: "Members" })
       .locator("input.pv-check")
       .uncheck();
-    await drawer.locator(".pv-radio", { hasText: "10 items" }).locator("input").check();
     await drawer.getByRole("button", { name: "Save" }).click();
     await expect(drawer).toHaveCount(0);
     await expect(page.locator(".pv-head")).not.toContainText("Member");
@@ -395,9 +394,6 @@ test.describe("projects", () => {
     await page.getByRole("button", { name: "View" }).click();
     drawer = page.locator(".pv-drawer");
     await drawer.getByRole("button", { name: "Reset" }).click();
-    await expect(
-      drawer.locator(".pv-radio", { hasText: "50 items" }).locator("input")
-    ).toBeChecked();
     await expect(
       drawer.locator(".pv-colrow", { hasText: "Members" }).locator("input.pv-check")
     ).toBeChecked();

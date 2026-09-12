@@ -118,8 +118,6 @@ const DEFAULT_LIST_VISIBLE: Record<ListColKey, boolean> = {
   end: true,
   labels: true,
 };
-const LIST_PAGE_SIZES = [10, 25, 50, 100];
-const DEFAULT_LIST_PAGE_SIZE = 50;
 // Undated rows sort last ascending rather than first.
 const NO_DATE = "9999-99-99";
 
@@ -229,7 +227,6 @@ function BoardPage() {
   const [viewOpen, setViewOpen] = useState(false);
   const [viewClosing, setViewClosing] = useState(false);
   const [viewSaving, setViewSaving] = useState(false);
-  const [pageSize, setPageSize] = useState(DEFAULT_LIST_PAGE_SIZE);
   const [visibleCols, setVisibleCols] =
     useState<Record<ListColKey, boolean>>(DEFAULT_LIST_VISIBLE);
 
@@ -244,17 +241,15 @@ function BoardPage() {
   // Read this project's saved view settings whenever the project changes.
   useEffect(() => {
     if (!viewKey) return;
-    let next = { pageSize: DEFAULT_LIST_PAGE_SIZE, visible: DEFAULT_LIST_VISIBLE };
+    let next = DEFAULT_LIST_VISIBLE;
     try {
       const raw = localStorage.getItem(`${viewKey}:view`);
       if (raw) {
         const v = JSON.parse(raw);
-        if (typeof v.pageSize === "number") next.pageSize = v.pageSize;
-        if (v.visible) next.visible = { ...DEFAULT_LIST_VISIBLE, ...v.visible };
+        if (v.visible) next = { ...DEFAULT_LIST_VISIBLE, ...v.visible };
       }
     } catch {}
-    setPageSize(next.pageSize);
-    setVisibleCols(next.visible);
+    setVisibleCols(next);
   }, [viewKey]);
 
   function closeView() {
@@ -273,7 +268,7 @@ function BoardPage() {
       try {
         localStorage.setItem(
           `${viewKey}:view`,
-          JSON.stringify({ pageSize, visible: visibleCols })
+          JSON.stringify({ visible: visibleCols })
         );
       } catch {}
       setViewSaving(false);
@@ -282,7 +277,6 @@ function BoardPage() {
   }
 
   function resetView() {
-    setPageSize(DEFAULT_LIST_PAGE_SIZE);
     setVisibleCols(DEFAULT_LIST_VISIBLE);
   }
 
@@ -738,11 +732,8 @@ function BoardPage() {
   // Without an explicit sort the list keeps its status-ordered default.
   const listTasks = useMemo(
     () =>
-      (sortBy ? sortedTasks : STATUS_ORDER.flatMap((s) => tasksByStatus[s])).slice(
-        0,
-        pageSize
-      ),
-    [sortBy, sortedTasks, tasksByStatus, pageSize]
+      sortBy ? sortedTasks : STATUS_ORDER.flatMap((s) => tasksByStatus[s]),
+    [sortBy, sortedTasks, tasksByStatus]
   );
 
   // Rows are rendered group by group; with no grouping that is one unlabelled
@@ -1846,23 +1837,6 @@ function BoardPage() {
             </div>
 
             <div className="pv-drawer-body">
-              <section className="pv-drawer-sec">
-                <h4>Selected Page Size</h4>
-                <div className="pv-pagesizes">
-                  {LIST_PAGE_SIZES.map((n) => (
-                    <label key={n} className="pv-radio">
-                      <input
-                        type="radio"
-                        name="tl-pagesize"
-                        checked={pageSize === n}
-                        onChange={() => setPageSize(n)}
-                      />
-                      <span>{n} items</span>
-                    </label>
-                  ))}
-                </div>
-              </section>
-
               <section className="pv-drawer-sec">
                 <h4>Visible Columns</h4>
                 <div className="pv-collist">

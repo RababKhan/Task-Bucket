@@ -54,7 +54,6 @@ const HEAD: Record<ColKey, string> = {
   member: "Member",
   progress: "Progress",
 };
-const PAGE_SIZES = [10, 25, 50, 100];
 type SortKey = "name" | "status" | "due" | "progress";
 const SORT_FIELDS: { key: SortKey; label: string }[] = [
   { key: "name", label: "Name" },
@@ -130,7 +129,6 @@ export default function ProjectsPage() {
   const [viewOpen, setViewOpen] = useState(false);
   const [viewClosing, setViewClosing] = useState(false);
   const [viewSaving, setViewSaving] = useState(false);
-  const [pageSize, setPageSize] = useState(50);
   const [visible, setVisible] = useState<Record<ColKey, boolean>>(DEFAULT_VISIBLE);
 
   const load = useCallback(
@@ -149,7 +147,6 @@ export default function ProjectsPage() {
       const raw = localStorage.getItem("tb-projects-view");
       if (raw) {
         const v = JSON.parse(raw);
-        if (typeof v.pageSize === "number") setPageSize(v.pageSize);
         if (v.visible) setVisible({ ...DEFAULT_VISIBLE, ...v.visible, name: true });
       }
     } catch {}
@@ -207,7 +204,7 @@ export default function ProjectsPage() {
       try {
         localStorage.setItem(
           "tb-projects-view",
-          JSON.stringify({ pageSize, visible })
+          JSON.stringify({ visible })
         );
       } catch {}
       setViewSaving(false);
@@ -216,7 +213,6 @@ export default function ProjectsPage() {
   }
 
   function resetView() {
-    setPageSize(50);
     setVisible(DEFAULT_VISIBLE);
   }
 
@@ -658,7 +654,7 @@ export default function ProjectsPage() {
           <span aria-hidden />
         </div>
 
-        {sorted.slice(0, pageSize).map((p) => {
+        {sorted.map((p) => {
           const overdue =
             p.due_date &&
             p.status !== "completed" &&
@@ -930,23 +926,6 @@ export default function ProjectsPage() {
             </div>
 
             <div className="pv-drawer-body">
-              <section className="pv-drawer-sec">
-                <h4>Selected Page Size</h4>
-                <div className="pv-pagesizes">
-                  {PAGE_SIZES.map((n) => (
-                    <label key={n} className="pv-radio">
-                      <input
-                        type="radio"
-                        name="pv-pagesize"
-                        checked={pageSize === n}
-                        onChange={() => setPageSize(n)}
-                      />
-                      <span>{n} items</span>
-                    </label>
-                  ))}
-                </div>
-              </section>
-
               <section className="pv-drawer-sec">
                 <h4>Visible Columns</h4>
                 <div className="pv-collist">
