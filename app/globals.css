@@ -332,9 +332,9 @@ select:focus {
   -webkit-user-select: none;
   user-select: none;
   border: 1px solid var(--canvas-border);
-  border-radius: 8px;
-  padding: 10px 12px;
-  margin-bottom: 8px;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
   cursor: pointer;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
   transition: box-shadow 0.15s ease, transform 0.15s ease,
@@ -349,32 +349,76 @@ select:focus {
   transform: translateY(0);
 }
 .card-title {
-  font-weight: 500;
-  font-size: 12.5px;
-  margin-bottom: 7px;
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.35;
 }
-.card-meta {
+/* Labels sit under the title, wrapping onto their own lines. */
+.card-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+/* One line across the foot: who is on it, how far along, how urgent, when. */
+.card-foot {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
 }
-.badge {
-  font-size: 10px;
-  font-weight: 500;
-  padding: 1px 8px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  text-transform: capitalize;
-}
-.due {
-  font-size: 10.5px;
-  color: var(--text-dim);
+.card-people {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
 }
-.due.overdue {
+/* Several faces overlap slightly, each ringed against the card. */
+.card-person .tf-ava {
+  width: 22px;
+  height: 22px;
+  font-size: 9px;
+  border: 2px solid var(--surface);
+}
+.card-person:not(:first-child) {
+  margin-left: -7px;
+}
+/* Progress takes the space, pushing the flag and date to the right. */
+.card-progress {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.card-progress strong {
+  font-weight: 600;
+  color: var(--text);
+}
+/* With no progress to show, the flag starts the right-hand group instead. */
+.card-progress + .card-prio,
+.card-people + .card-prio {
+  margin-left: auto;
+}
+.card-prio {
+  display: inline-flex;
+  align-items: center;
+}
+.card-prio svg {
+  display: block;
+}
+.card-due {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.card-due svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+/* A date already past reads in the danger colour, icon and all. */
+.card-due.overdue {
   color: var(--danger);
 }
 

@@ -54,6 +54,7 @@ import TaskStatusIcon from "@/components/app/TaskStatusIcon";
 import TaskTypeIcon from "@/components/app/TaskTypeIcon";
 import PriorityIcon from "@/components/app/PriorityIcon";
 import { PersonIcon } from "@/components/app/FilterBar";
+import { labelColor } from "@/lib/tasks";
 import SelectField, { type SelectOption } from "@/components/app/SelectField";
 import MemberPicker from "@/components/app/MemberPicker";
 import DatePicker from "@/components/app/DatePicker";
@@ -77,6 +78,15 @@ const PRIO_COLOR: Record<string, string> = {
   medium: "var(--prio-medium)",
   low: "var(--prio-low)",
 };
+
+// "Feb 18" — the card shows the day, not the year.
+function shortDate(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -1276,27 +1286,52 @@ function BoardPage() {
                     onMouseEnter={() => prefetchTask(task.id)}
                   >
                     <div className="card-title">{task.title}</div>
-                    <div className="card-meta">
-                      <span
-                        className="badge"
-                        style={{
-                          color: PRIO_COLOR[task.priority],
-                          borderColor: PRIO_COLOR[task.priority],
-                        }}
-                      >
-                        {task.priority}
+                    {!!task.labels?.length && (
+                      <div className="card-labels">
+                        {task.labels.map((label) => {
+                          const c = labelColor(label);
+                          return (
+                            <span
+                              key={label}
+                              className="tl-label-chip"
+                              style={{ background: c.bg, borderColor: c.border, color: c.color }}
+                            >
+                              {label}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <div className="card-foot">
+                      <span className="card-people">
+                        {(task.assignees ?? []).slice(0, 3).map((id) => {
+                          const m = members.find((x) => x.user_id === id);
+                          const name = m?.name || m?.email || "Unknown";
+                          return (
+                            <span key={id} className="card-person" data-tip={name}>
+                              <PersonIcon name={name} image={m?.image ?? null} />
+                            </span>
+                          );
+                        })}
                       </span>
-                      {task.due_date && (
-                        <span className={`due ${overdue ? "overdue" : ""}`}>
-                          📅 {task.due_date}
+                      {!!task.subtask_total && (
+                        <span className="card-progress">
+                          Progress:{" "}
+                          <strong>
+                            {Math.round((task.subtask_done ?? 0) / task.subtask_total * 100)}%
+                          </strong>
                         </span>
                       )}
-                      {!!task.subtask_total && (
-                        <span className="sub-badge">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                            <path d="M5 12l4 4 10-10" />
+                      <span className="card-prio" data-tip={`Priority: ${PRIORITY_LABELS[task.priority as TaskPriority]}`}>
+                        <PriorityIcon priority={task.priority as TaskPriority} size={14} />
+                      </span>
+                      {task.due_date && (
+                        <span className={`card-due${overdue ? " overdue" : ""}`}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                            <rect x="3" y="5" width="18" height="16" rx="2.5" />
+                            <path d="M3 10h18M8 3v4M16 3v4" />
                           </svg>
-                          {task.subtask_done}/{task.subtask_total}
+                          {shortDate(task.due_date)}
                         </span>
                       )}
                     </div>
