@@ -22,7 +22,6 @@ import type {
 import {
   STATUS_LABELS,
   STATUS_ORDER,
-  STATUS_COLORS,
   PRIORITY_LABELS,
   PRIORITY_ORDER,
   PROJECT_STATUS_LABELS,
@@ -353,6 +352,11 @@ function BoardPage() {
   const [movingId, setMovingId] = useState<number | null>(null);
   // Board drag: the card being carried, and the column it is over.
   const [dragCardId, setDragCardId] = useState<number | null>(null);
+  const [cardMenu, setCardMenu] = useState<{
+    id: number;
+    top: number;
+    right: number;
+  } | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<TaskStatus | null>(null);
 
   // List-table row controls (selection, drag-reorder, kebab, delete).
@@ -759,6 +763,18 @@ function BoardPage() {
     return map;
   }, [sortedTasks]);
 
+  // Newest first in each column, unless the toolbar sort says otherwise.
+  const boardByStatus = useMemo(() => {
+    if (sortBy) return tasksByStatus;
+    const out = {} as Record<TaskStatus, BoardTask[]>;
+    for (const s of STATUS_ORDER) {
+      out[s] = [...tasksByStatus[s]].sort((a, b) =>
+        (b.created_at ?? "").localeCompare(a.created_at ?? "") || b.id - a.id
+      );
+    }
+    return out;
+  }, [tasksByStatus, sortBy]);
+
   // Without an explicit sort the list keeps its status-ordered default.
   const listTasks = useMemo(
     () =>
@@ -893,6 +909,9 @@ function BoardPage() {
     [tasks]
   );
 
+  const cardMenuTask = cardMenu
+    ? tasks.find((t) => t.id === cardMenu.id) ?? null
+    : null;
   const modalOpen = editing !== null || creatingStatus !== null;
 
   const emptyState = (
@@ -1258,12 +1277,13 @@ function BoardPage() {
               }}
             >
               <div className="column-header">
-                <span className="dot" style={{ background: STATUS_COLORS[status] }} />
+                <TaskStatusIcon status={status} size={15} />
                 <h3>{STATUS_LABELS[status]}</h3>
-                <span className="count">{tasksByStatus[status].length}</span>
+                <span className="count">{boardByStatus[status].length}</span>
               </div>
 
-              {tasksByStatus[status].map((task) => {
+              <div className="column-cards">
+              {boardByStatus[status].map((task) => {
                 const overdue =
                   task.due_date &&
                   task.status !== "done" &&
@@ -1336,13 +1356,35 @@ function BoardPage() {
                         </span>
                       )}
                     </div>
+
+                    <button
+                      className={`pv-kebab card-kebab${cardMenu?.id === task.id ? " open" : ""}`}
+                      aria-label="Card actions"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (cardMenu?.id === task.id) {
+                          setCardMenu(null);
+                          return;
+                        }
+                        const r = e.currentTarget.getBoundingClientRect();
+                        setCardMenu({
+                          id: task.id,
+                          top: r.bottom + 4,
+                          right: window.innerWidth - r.right,
+                        });
+                      }}
+                    >
+                      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                        <circle cx="12" cy="5" r="1.8" />
+                        <circle cx="12" cy="12" r="1.8" />
+                        <circle cx="12" cy="19" r="1.8" />
+                      </svg>
+                    </button>
                   </article>
                 );
               })}
 
-              <button className="add-task" onClick={() => setCreatingStatus(status)}>
-                + Add task
-              </button>
+              </div>
             </section>
           ))}
         </div>
@@ -1510,7 +1552,13 @@ function BoardPage() {
                 </span>
               )}
               {visibleCols.end && (
-                <span className="tl-cell">
+                <span
+                  className={`tl-cell${
+                    task.due_date && task.status !== "done" && task.due_date < todayISO()
+                      ? " overdue"
+                      : ""
+                  }`}
+                >
                   <DatePicker
                     inline
                     quick
@@ -1761,6 +1809,43 @@ function BoardPage() {
         </>
       )}
       </div>
+
+      {cardMenuTask && cardMenu && (
+        <>
+          <div className="pv-menu-backdrop" onClick={() => setCardMenu(null)} />
+          <div
+            className="pv-menu card-menu"
+            style={{ top: cardMenu.top, right: cardMenu.right }}
+          >
+            <button
+              className="pv-menu-item"
+              onClick={() => {
+                setCardMenu(null);
+                setEditing(cardMenuTask);
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+              Edit
+            </button>
+            <button
+              className="pv-menu-item danger"
+              onClick={() => {
+                setCardMenu(null);
+                setDeleteTaskTarget(cardMenuTask);
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                <path d="M10 11v6M14 11v6" />
+              </svg>
+              Delete
+            </button>
+          </div>
+        </>
+      )}
 
       {modalOpen && (
         <TaskModal

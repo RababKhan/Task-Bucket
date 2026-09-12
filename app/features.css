@@ -662,6 +662,12 @@
 }
 /* Uniform height for every inline cell control (Assignee, Status, Priority,
    Start/End Date, Labels) so all columns line up at the same row height. */
+/* An end date already past reads in the danger colour, icon and all — the
+   same as the board cards. */
+.tl-cell.overdue .dp-inline-date,
+.tl-cell.overdue .dp-inline-trigger svg {
+  color: var(--danger);
+}
 .tl-cell .status-dd-inline,
 .tl-cell .mp-inline-trigger,
 .tl-cell .dp-inline-trigger,

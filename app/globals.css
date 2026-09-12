@@ -284,7 +284,11 @@ select:focus {
 .board {
   display: flex;
   gap: 14px;
-  align-items: start;
+  align-items: stretch;
+  /* Fills the view so each column can scroll its own cards under a header
+     that stays put. */
+  flex: 1;
+  min-height: 0;
   overflow-x: auto;
   padding-bottom: 6px;
   /* The same thin bar the task table scrolls with, rather than the browser's
@@ -310,15 +314,42 @@ select:focus {
    cards sit below it on the page rather than inside a panel. */
 .column {
   flex: 0 0 300px;
+  display: flex;
+  flex-direction: column;
   min-height: 120px;
+  min-width: 0;
   border-radius: 12px;
   padding: 2px;
   transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+/* The cards scroll, the header does not — each column on its own thin bar. */
+.column-cards {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--canvas-border) transparent;
+}
+.column-cards::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.column-cards::-webkit-scrollbar-thumb {
+  background: var(--canvas-border);
+  border-radius: 4px;
+}
+.column-cards::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
+}
+.column-cards::-webkit-scrollbar-track {
+  background: transparent;
 }
 .column-header {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
   margin-bottom: 12px;
   padding: 11px 13px;
   background: var(--surface);
@@ -326,10 +357,10 @@ select:focus {
   border-radius: 10px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
-.column-header .dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.column-header > svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
 }
 .column-header h3 {
   margin: 0;
@@ -353,6 +384,7 @@ select:focus {
 }
 
 .card {
+  position: relative;
   background: var(--surface);
   /* Says it can be picked up; the pointer still means "opens the task". */
   -webkit-user-select: none;
@@ -2313,4 +2345,29 @@ select,
   [data-tip]:not(.cm-action):not(.cm-tool):not(.cm-fbtn):not(.cm-box-send):not(.rte-tool):not(.topbar-crumb-copy)::after {
     transition: opacity 0.12s ease;
   }
+}
+
+/* The card's row menu: out of the way until the card is hovered, and always
+   there for keyboard users. */
+.card-kebab {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.card:hover .card-kebab,
+.card-kebab.open,
+.card-kebab:focus-visible {
+  opacity: 1;
+}
+/* Leave room for it so a long title does not run under the dots. */
+.card-title {
+  padding-right: 22px;
+}
+
+/* The card's menu is pinned to its dots in viewport coordinates: the column
+   scrolls, and a menu placed inside a card would be clipped by it. */
+.pv-menu.card-menu {
+  position: fixed;
 }
