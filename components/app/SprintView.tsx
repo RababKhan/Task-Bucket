@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import CollapseIcon from "@/components/app/CollapseIcon";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -359,10 +360,7 @@ export default function SprintView({ projectId }: { projectId: number }) {
                 onClick={() => toggleCollapse(s.id)}
                 aria-label={isCollapsed ? "Expand sprint" : "Collapse sprint"}
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="m8.5 10.5 3.5 3.5 3.5-3.5" />
-                </svg>
+                <CollapseIcon />
               </button>
               <div className="sprint-card-title">
                 <h3>{s.name}</h3>

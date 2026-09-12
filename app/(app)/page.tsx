@@ -55,6 +55,7 @@ import TaskTypeIcon from "@/components/app/TaskTypeIcon";
 import PriorityIcon from "@/components/app/PriorityIcon";
 import { PersonIcon } from "@/components/app/FilterBar";
 import { labelColor } from "@/lib/tasks";
+import CollapseIcon from "@/components/app/CollapseIcon";
 import SelectField, { type SelectOption } from "@/components/app/SelectField";
 import MemberPicker from "@/components/app/MemberPicker";
 import DatePicker from "@/components/app/DatePicker";
@@ -1408,9 +1409,7 @@ function BoardPage() {
               aria-expanded={!isCollapsed(group.key)}
             >
               <span className="tl-group-inner">
-                <svg className="tl-group-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
+                <CollapseIcon className="tl-group-chev" />
                 {group.icon && <span className="tl-group-ic">{group.icon}</span>}
                 <span className="tl-group-label">{group.label}</span>
                 <span className="tl-group-count">{group.tasks.length}</span>

@@ -456,15 +456,17 @@
   gap: 8px;
   margin-left: 42px;
 }
+/* Points down while the group is collapsed, up while it is open — the same
+   way round as the sprint cards. */
 .tl-group-chev {
-  width: 13px;
-  height: 13px;
-  flex: 0 0 13px;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
   opacity: 0.75;
   transition: transform 0.15s ease;
 }
-.tl-group.collapsed .tl-group-chev {
-  transform: rotate(-90deg);
+.tl-group:not(.collapsed) .tl-group-chev {
+  transform: rotate(180deg);
 }
 @media (prefers-reduced-motion: reduce) {
   .tl-group-chev {
@@ -1514,11 +1516,12 @@
 .td-caret {
   width: 15px;
   height: 15px;
+  flex-shrink: 0;
   color: var(--text-dim);
   transition: transform 0.15s ease;
 }
 .td-caret.open {
-  transform: rotate(90deg);
+  transform: rotate(180deg);
 }
 .td-section-count {
   display: grid;

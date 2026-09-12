@@ -34,6 +34,7 @@ import Spinner from "@/components/Spinner";
 import DatePicker from "@/components/app/DatePicker";
 import RichTextEditor from "@/components/app/RichTextEditor";
 import Comments from "@/components/app/Comments";
+import CollapseIcon from "@/components/app/CollapseIcon";
 import SelectField, { type SelectOption } from "@/components/app/SelectField";
 import MemberPicker from "@/components/app/MemberPicker";
 import LabelsField from "@/components/app/LabelsField";
@@ -803,9 +804,7 @@ export default function TaskDetailPage() {
               className="td-section-toggle"
               onClick={() => setOpenDesc((o) => !o)}
             >
-              <svg className={`td-caret${openDesc ? " open" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="m9 18 6-6-6-6" />
-              </svg>
+              <CollapseIcon className={`td-caret${openDesc ? " open" : ""}`} />
               Description
             </button>
           </div>
@@ -918,9 +917,7 @@ export default function TaskDetailPage() {
                   className="td-section-toggle"
                   onClick={() => setOpenTasks((o) => !o)}
                 >
-                  <svg className={`td-caret${openTasks ? " open" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <path d="m9 18 6-6-6-6" />
-                  </svg>
+                  <CollapseIcon className={`td-caret${openTasks ? " open" : ""}`} />
                   Task
                   <span className="td-section-count">
                     {detail.linked_tasks?.length ?? 0}
@@ -1200,9 +1197,7 @@ export default function TaskDetailPage() {
                   className="td-section-toggle"
                   onClick={() => setOpenBugs((o) => !o)}
                 >
-                  <svg className={`td-caret${openBugs ? " open" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <path d="m9 18 6-6-6-6" />
-                  </svg>
+                  <CollapseIcon className={`td-caret${openBugs ? " open" : ""}`} />
                   Bug
                   <span className="td-section-count">
                     {detail.linked_bugs?.length ?? 0}
@@ -1480,9 +1475,7 @@ export default function TaskDetailPage() {
               className="td-section-toggle"
               onClick={() => setOpenSub((o) => !o)}
             >
-              <svg className={`td-caret${openSub ? " open" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="m9 18 6-6-6-6" />
-              </svg>
+              <CollapseIcon className={`td-caret${openSub ? " open" : ""}`} />
               Sub Task
               <span className="td-section-count">{detail.subtasks.length}</span>
             </button>
@@ -1698,9 +1691,7 @@ export default function TaskDetailPage() {
               className="td-section-toggle"
               onClick={() => setOpenAtt((o) => !o)}
             >
-              <svg className={`td-caret${openAtt ? " open" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="m9 18 6-6-6-6" />
-              </svg>
+              <CollapseIcon className={`td-caret${openAtt ? " open" : ""}`} />
               Attachments
               <span className="td-section-count">0</span>
             </button>
