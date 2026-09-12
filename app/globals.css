@@ -287,6 +287,24 @@ select:focus {
   align-items: start;
   overflow-x: auto;
   padding-bottom: 6px;
+  /* The same thin bar the task table scrolls with, rather than the browser's
+     full-width one with its stepper arrows. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--canvas-border) transparent;
+}
+.board::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.board::-webkit-scrollbar-thumb {
+  background: var(--canvas-border);
+  border-radius: 4px;
+}
+.board::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
+}
+.board::-webkit-scrollbar-track {
+  background: transparent;
 }
 .column {
   flex: 0 0 288px;
