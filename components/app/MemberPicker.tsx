@@ -22,7 +22,7 @@ const EmptyPersonSVG = (
 function MemberAvatar({ member, stacked }: { member: Member; stacked?: boolean }) {
   const name = member.name || member.email || "?";
   return (
-    <span className={`mp-avatar${stacked ? " stacked" : ""}`} title={name}>
+    <span className={`mp-avatar${stacked ? " stacked" : ""}`} data-tip={name}>
       {member.image ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={member.image} alt="" />

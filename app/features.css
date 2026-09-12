@@ -5375,7 +5375,6 @@ select,
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  overflow: hidden;
   background: var(--accent);
   color: #fff;
   display: grid;
@@ -5390,6 +5389,9 @@ select,
   height: 100%;
   object-fit: cover;
   display: block;
+  /* Rounds itself rather than being clipped by the circle: the circle must
+     not hide overflow, or it would cut off its own tooltip. */
+  border-radius: 50%;
 }
 .mp-name {
   flex: 1;
