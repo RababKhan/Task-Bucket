@@ -414,6 +414,16 @@
   top: 38px;
   z-index: 10;
 }
+/* The grouping icon — the status or priority icon, or the person avatar —
+   ahead of the group name. */
+.tl-group-ic {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+.tl-group-ic svg {
+  display: block;
+}
 .tl-group-count {
   font-weight: 500;
   font-variant-numeric: tabular-nums;

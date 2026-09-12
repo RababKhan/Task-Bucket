@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type ReactNode,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type {
@@ -51,6 +52,7 @@ import StatusIcon from "@/components/app/StatusIcon";
 import TaskStatusIcon from "@/components/app/TaskStatusIcon";
 import TaskTypeIcon from "@/components/app/TaskTypeIcon";
 import PriorityIcon from "@/components/app/PriorityIcon";
+import { PersonIcon } from "@/components/app/FilterBar";
 import SelectField, { type SelectOption } from "@/components/app/SelectField";
 import MemberPicker from "@/components/app/MemberPicker";
 import DatePicker from "@/components/app/DatePicker";
@@ -644,7 +646,14 @@ function BoardPage() {
   // group holding everything, so the render path stays the same either way.
   const listGroups = useMemo(() => {
     if (groupBy === "none") {
-      return [{ key: "all", label: null as string | null, tasks: listTasks }];
+      return [
+        {
+          key: "all",
+          label: null as string | null,
+          icon: null as ReactNode,
+          tasks: listTasks,
+        },
+      ];
     }
     if (groupBy === "assignee") {
       // A task with several assignees belongs under each of them, so it shows
@@ -661,11 +670,19 @@ function BoardPage() {
       }
       return order
         .filter((k) => (buckets.get(k) ?? []).length > 0)
-        .map((k) => ({
-          key: k,
-          label: k === UNASSIGNED ? "Unassigned" : labels.get(k) ?? k,
-          tasks: buckets.get(k)!,
-        }));
+        .map((k) => {
+          const label = k === UNASSIGNED ? "Unassigned" : labels.get(k) ?? k;
+          const m = members.find((x) => x.user_id === k);
+          return {
+            key: k,
+            label,
+            icon:
+              k === UNASSIGNED ? null : (
+                <PersonIcon name={label} image={m?.image ?? null} />
+              ),
+            tasks: buckets.get(k)!,
+          };
+        });
     }
     const order: string[] =
       groupBy === "status" ? [...STATUS_ORDER] : [...PRIORITY_ORDER];
@@ -679,7 +696,17 @@ function BoardPage() {
     // Empty groups are noise, not information.
     return order
       .filter((k) => (buckets.get(k) ?? []).length > 0)
-      .map((k) => ({ key: k, label: labels[k] ?? k, tasks: buckets.get(k)! }));
+      .map((k) => ({
+        key: k,
+        label: labels[k] ?? k,
+        icon:
+          groupBy === "status" ? (
+            <TaskStatusIcon status={k as TaskStatus} size={16} />
+          ) : (
+            <PriorityIcon priority={k as TaskPriority} size={15} />
+          ),
+        tasks: buckets.get(k)!,
+      }));
   }, [groupBy, listTasks, members]);
 
   // Per-project task cap reached (Free plan) — blocks adding more items.
@@ -1189,6 +1216,7 @@ function BoardPage() {
           <Fragment key={group.key}>
           {group.label && (
             <div className="tl-group">
+              {group.icon && <span className="tl-group-ic">{group.icon}</span>}
               <span className="tl-group-label">{group.label}</span>
               <span className="tl-group-count">{group.tasks.length}</span>
             </div>
