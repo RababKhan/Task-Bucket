@@ -43,6 +43,7 @@ import {
   type TaskFilters,
 } from "@/components/app/TaskFilterBar";
 import { usePersistedState } from "@/lib/usePersistedState";
+import { drawerBoxFor } from "@/lib/drawer-box";
 import SprintView from "@/components/app/SprintView";
 import { prefetchTaskDetail } from "@/lib/task-cache";
 import { useQueryClient } from "@tanstack/react-query";
@@ -225,6 +226,11 @@ function BoardPage() {
   // drawer is open and written only when Save is pressed, as in the projects
   // table.
   const [viewOpen, setViewOpen] = useState(false);
+  // The drawer lines up with the table rather than the window, so measure the
+  // card each time it opens (and on resize while it is open).
+  const tableTopRef = useRef<HTMLDivElement>(null);
+  const tableBottomRef = useRef<HTMLDivElement>(null);
+  const [drawerBox, setDrawerBox] = useState<{ top: number; bottom: number } | null>(null);
   const [viewClosing, setViewClosing] = useState(false);
   const [viewSaving, setViewSaving] = useState(false);
   const [visibleCols, setVisibleCols] =
@@ -251,6 +257,20 @@ function BoardPage() {
     } catch {}
     setVisibleCols(next);
   }, [viewKey]);
+
+  const measureDrawer = useCallback(() => {
+    const top = tableTopRef.current?.getBoundingClientRect().top;
+    const tableBottom = tableBottomRef.current?.getBoundingClientRect().bottom;
+    if (top == null || tableBottom == null) return;
+    setDrawerBox(drawerBoxFor(top, tableBottom));
+  }, []);
+
+  useEffect(() => {
+    if (!viewOpen) return;
+    measureDrawer();
+    window.addEventListener("resize", measureDrawer);
+    return () => window.removeEventListener("resize", measureDrawer);
+  }, [viewOpen, measureDrawer]);
 
   function closeView() {
     if (viewClosing) return;
@@ -1276,7 +1296,10 @@ function BoardPage() {
         </div>
       ) : (
         <>
-        <div className={`task-list${selectedTasks.size > 0 ? " has-selbar" : ""}`}>
+        <div
+          ref={tableTopRef}
+          className={`task-list${selectedTasks.size > 0 ? " has-selbar" : ""}`}
+        >
           {selectedTasks.size > 0 && (
             <div className="pv-selbar">
               <span className="pv-selcount">{selectedTasks.size}</span>
@@ -1514,7 +1537,7 @@ function BoardPage() {
             <div className="tl-empty">No tasks match your search.</div>
           )}
         </div>
-        <div className="tl-foot">
+        <div className="tl-foot" ref={tableBottomRef}>
           {addingTask && (
             <div
               className="tl-row tl-addrow"
@@ -1822,7 +1845,11 @@ function BoardPage() {
       )}
 
       {viewOpen && (
-        <div className="pv-drawer-overlay" onMouseDown={closeView}>
+        <div
+          className="pv-drawer-overlay"
+          style={drawerBox ?? undefined}
+          onMouseDown={closeView}
+        >
           <aside
             className={`pv-drawer${viewClosing ? " closing" : ""}`}
             onMouseDown={(e) => e.stopPropagation()}

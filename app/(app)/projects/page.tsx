@@ -26,6 +26,7 @@ import {
   type FilterFieldDef,
 } from "@/components/app/FilterBar";
 import { usePersistedState } from "@/lib/usePersistedState";
+import { drawerBoxFor } from "@/lib/drawer-box";
 
 type Person = { user_id: string; name: string; email: string };
 type ProjectRow = Project & {
@@ -127,6 +128,10 @@ export default function ProjectsPage() {
   const [dragOverId, setDragOverId] = useState<number | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [viewOpen, setViewOpen] = useState(false);
+  // The drawer stands as tall as the table, not the window, so measure the
+  // card each time it opens (and on resize while it is open).
+  const tableRef = useRef<HTMLDivElement>(null);
+  const [drawerBox, setDrawerBox] = useState<{ top: number; bottom: number } | null>(null);
   const [viewClosing, setViewClosing] = useState(false);
   const [viewSaving, setViewSaving] = useState(false);
   const [visible, setVisible] = useState<Record<ColKey, boolean>>(DEFAULT_VISIBLE);
@@ -187,6 +192,19 @@ export default function ProjectsPage() {
       );
     } catch {}
   }, [sortBy, sortDir]);
+
+  const measureDrawer = useCallback(() => {
+    const r = tableRef.current?.getBoundingClientRect();
+    if (!r) return;
+    setDrawerBox(drawerBoxFor(r.top, r.bottom));
+  }, []);
+
+  useEffect(() => {
+    if (!viewOpen) return;
+    measureDrawer();
+    window.addEventListener("resize", measureDrawer);
+    return () => window.removeEventListener("resize", measureDrawer);
+  }, [viewOpen, measureDrawer]);
 
   function closeView() {
     if (viewClosing) return;
@@ -620,7 +638,7 @@ export default function ProjectsPage() {
           </div>
         )
       ) : (
-      <div className="pv-table">
+      <div className="pv-table" ref={tableRef}>
         {selected.size > 0 && (
           <div className="pv-selbar">
             <span className="pv-selcount">{selected.size}</span>
@@ -911,7 +929,11 @@ export default function ProjectsPage() {
       )}
 
       {viewOpen && (
-        <div className="pv-drawer-overlay" onMouseDown={closeView}>
+        <div
+          className="pv-drawer-overlay"
+          style={drawerBox ?? undefined}
+          onMouseDown={closeView}
+        >
           <aside
             className={`pv-drawer${viewClosing ? " closing" : ""}`}
             onMouseDown={(e) => e.stopPropagation()}
