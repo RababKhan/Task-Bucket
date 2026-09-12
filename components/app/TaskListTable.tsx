@@ -53,6 +53,7 @@ export default function TaskListTable({
   projectPrefix,
   onUpdate,
   onOpen,
+  onEdit,
   onDelete,
   onReorder,
   onAddItem,
@@ -70,6 +71,9 @@ export default function TaskListTable({
   projectPrefix: string | ((task: ListTask) => string);
   onUpdate: (id: number, patch: Record<string, unknown>) => void;
   onOpen: (id: number) => void;
+  // When given, the selection bar edits the selected task instead of opening
+  // it — for lists whose rows are edited in place rather than navigated to.
+  onEdit?: (task: ListTask) => void;
   onDelete?: (ids: number[]) => void;
   onReorder?: (orderedIds: number[]) => void;
   onAddItem?: (title: string) => Promise<void> | void;
@@ -176,18 +180,34 @@ export default function TaskListTable({
       {selected.size > 0 && (
         <div className="pv-selbar">
           <span className="pv-selcount">{selected.size}</span>
-          {selected.size === 1 && (
-            <button
-              type="button"
-              className="pv-selact"
-              onClick={() => onOpen([...selected][0])}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M15 3h6v6M10 14 21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" />
-              </svg>
-              Open
-            </button>
-          )}
+          {selected.size === 1 &&
+            (onEdit ? (
+              <button
+                type="button"
+                className="pv-selact"
+                onClick={() => {
+                  const task = tasks.find((t) => t.id === [...selected][0]);
+                  if (task) onEdit(task);
+                }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                </svg>
+                Edit
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="pv-selact"
+                onClick={() => onOpen([...selected][0])}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M15 3h6v6M10 14 21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" />
+                </svg>
+                Open
+              </button>
+            ))}
           {onDelete && (
             <button
               type="button"

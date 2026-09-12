@@ -381,6 +381,7 @@ export default function TasksPage() {
         // to start the breadcrumb at Tasks rather than at the task's project.
         onOpen={(id) => router.push(`/task/${id}?from=tasks`)}
         showOpenItem={false}
+        onEdit={(t) => setEditing(t as AllTask)}
         menuItems={(t) => [
           {
             label: "Edit",
