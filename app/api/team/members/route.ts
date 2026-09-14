@@ -3,6 +3,7 @@ import { dbAll, dbGet } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 import { getMembership } from "@/lib/membership";
 import { getEffectivePermissions, requirePermission } from "@/lib/rbac";
+import { hasFullAccess } from "@/lib/permissions";
 import type { TeamMember } from "@/lib/types";
 
 // GET /api/team/members — the workspace Team Members directory, with
@@ -128,7 +129,7 @@ export async function GET(request: Request) {
   const total = totalRow?.n ?? 0;
   const permSet = perms as Set<string>;
   const has = (a: string) =>
-    m.role === "admin" || permSet.has(`team_member:${a}`);
+    hasFullAccess(m.role) || permSet.has(`team_member:${a}`);
 
   return NextResponse.json({
     members: rows,

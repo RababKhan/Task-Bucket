@@ -5,11 +5,15 @@ import { useSession } from "next-auth/react";
 import Spinner from "@/components/Spinner";
 import FieldError from "@/components/FieldError";
 import BrandingCard from "@/components/app/settings/BrandingCard";
+import { usePerms } from "@/components/app/PermissionProvider";
 
 export default function WorkspaceSettingsPage() {
   const { data: session, status, update } = useSession();
   const ws = session?.workspace;
-  const isAdmin = ws?.role === "admin";
+  // hasFullAccess (Owner OR Admin), not a direct `role === "admin"` check —
+  // that used to hide this page's Edit button and the Branding card entirely
+  // from an Owner's own account.
+  const { isAdmin } = usePerms();
 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ workspaceName: "", subdomain: "" });

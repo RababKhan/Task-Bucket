@@ -146,13 +146,19 @@ export async function POST(request: Request) {
     "SELECT name FROM workspaces WHERE id = ?",
     [wsId]
   );
+  // The email should read "as Member", not "as assignee" — look up this
+  // workspace's display name for the role, same as the roles list does.
+  const roleNameRow = await dbGet<{ name: string }>(
+    "SELECT name FROM roles WHERE workspace_id = ? AND key = ?",
+    [wsId, role]
+  );
   const base =
     process.env.AUTH_URL?.replace(/\/$/, "") || new URL(request.url).origin;
   const inviteUrl = `${base}/invite/${token}`;
   try {
     const { subject, html, text } = inviteEmail(
       ws?.name ?? "the workspace",
-      role,
+      roleNameRow?.name ?? role,
       inviteUrl,
       message
     );
@@ -190,12 +196,14 @@ export async function GET() {
     accessibleProjectIds(userId),
   ]);
 
-  // Admins can grant any workspace project; others only the ones they can access.
+  // Admins (and Owner) can grant any workspace project; others only the ones
+  // they can access. hasFullAccess, not a direct `role === "admin"` check —
+  // this file already uses it correctly a few lines above, for the
+  // "only an Admin can invite an Admin" rule.
   const accessibleSet = new Set(accessible);
-  const projects =
-    m.role === "admin"
-      ? allProjects
-      : allProjects.filter((p) => accessibleSet.has(p.id));
+  const projects = hasFullAccess(m.role)
+    ? allProjects
+    : allProjects.filter((p) => accessibleSet.has(p.id));
 
-  return NextResponse.json({ roles, projects, is_admin: m.role === "admin" });
+  return NextResponse.json({ roles, projects, is_admin: hasFullAccess(m.role) });
 }

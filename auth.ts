@@ -9,6 +9,7 @@ import {
 } from "@/lib/auth-db";
 import { ensureWorkspaceForUser } from "@/lib/workspace";
 import { getMembership } from "@/lib/membership";
+import type { Role } from "@/lib/types";
 import { verifyTotp } from "@/lib/totp";
 import { consumeBackupCode } from "@/lib/security-db";
 import { isSuperAdminEmail } from "@/lib/owner";
@@ -148,7 +149,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.workspace = token.ws as {
           name: string;
           subdomain: string;
-          role: "admin" | "manager" | "assignee";
+          role: Role;
         };
       }
       session.is_superadmin = Boolean(token.super);

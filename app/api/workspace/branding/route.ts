@@ -3,6 +3,7 @@ import { dbGet, dbRun } from "@/lib/db";
 import { currentUserId } from "@/lib/session";
 import { getMembership } from "@/lib/membership";
 import { getEffectivePlan, resetBrandingIfLapsed } from "@/lib/billing";
+import { hasFullAccess } from "@/lib/permissions";
 
 type BrandRow = {
   id: string;
@@ -61,7 +62,7 @@ export async function PATCH(request: Request) {
   if (!cw?.w) {
     return NextResponse.json({ error: "No workspace." }, { status: 404 });
   }
-  if (cw.m.role !== "admin") {
+  if (!hasFullAccess(cw.m.role)) {
     return NextResponse.json(
       { error: "Only admins can change branding." },
       { status: 403 }

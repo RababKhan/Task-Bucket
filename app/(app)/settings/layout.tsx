@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
-import { useCan } from "@/components/app/PermissionProvider";
+import { usePerms, useCan } from "@/components/app/PermissionProvider";
 
 // Sub-navigation shared by all Settings pages (General, Profile, Billing,
 // Roles). Billing is admin-only; Roles needs roles:view.
@@ -13,10 +12,10 @@ export default function SettingsLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { data: session } = useSession();
-  const isAdmin =
-    (session as { workspace?: { role?: string } } | null)?.workspace?.role ===
-    "admin";
+  // isAdmin here comes from lib/permissions.ts's hasFullAccess (Owner OR
+  // Admin) — not a direct `role === "admin"` check, which used to leave an
+  // Owner's own account without Workspace settings or Billing.
+  const { isAdmin } = usePerms();
   const canRoles = useCan("roles", "view");
 
   const tabs = [

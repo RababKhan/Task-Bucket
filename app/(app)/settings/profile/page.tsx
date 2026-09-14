@@ -49,7 +49,12 @@ export default function ProfilePage() {
   const name = user?.name || "";
   const email = user?.email || "";
   const ws = session?.workspace;
-  const isAdmin = ws?.role === "admin";
+  // Deleting a workspace is Owner-only, not "any admin" — the server route
+  // (app/api/workspace/route.ts) checks workspaces.owner_id, not a role or
+  // permission, so this must match that exactly rather than using
+  // hasFullAccess (which would also cover a plain Admin, who the server
+  // would then just reject with a confusing dead-end button).
+  const isOwner = ws?.role === "owner";
 
   const [showDelete, setShowDelete] = useState(false);
   const [confirmText, setConfirmText] = useState("");
@@ -355,7 +360,7 @@ export default function ProfilePage() {
 
       <SecurityCard />
 
-      {isAdmin && ws && (
+      {isOwner && ws && (
         <div className="settings-card settings-danger">
           <div className="settings-card-title">
             <svg className="settings-danger-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

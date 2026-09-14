@@ -4,6 +4,7 @@ import { currentUserId } from "@/lib/session";
 import { getMembership, accessibleProjectIds } from "@/lib/membership";
 import { requirePermission, ERR } from "@/lib/rbac";
 import { diffProjectAccess } from "@/lib/invites";
+import { hasFullAccess } from "@/lib/permissions";
 
 type Ctx = { params: Promise<{ uid: string }> };
 
@@ -38,12 +39,11 @@ export async function GET(_request: Request, { params }: Ctx) {
   ]);
   const current = currentRows.map((r) => r.project_id);
 
-  // Which projects the acting user may grant/revoke (admin: all; else accessible).
+  // Which projects the acting user may grant/revoke (admin/owner: all; else accessible).
   const accessibleSet = new Set(accessible);
-  const grantable =
-    m.role === "admin"
-      ? allProjects
-      : allProjects.filter((p) => accessibleSet.has(p.id));
+  const grantable = hasFullAccess(m.role)
+    ? allProjects
+    : allProjects.filter((p) => accessibleSet.has(p.id));
 
   return NextResponse.json({ current, grantable });
 }
