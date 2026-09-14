@@ -407,9 +407,21 @@ select:focus {
   transform: translateY(0);
 }
 .card-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
   font-weight: 600;
   font-size: 13px;
   line-height: 1.35;
+}
+/* Sits against the title's first line; a title long enough to wrap still
+   wraps, same as before the icon was added. */
+.card-title svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.card-title-text {
+  min-width: 0;
 }
 /* Labels sit under the title, wrapping onto their own lines. */
 .card-labels {
@@ -621,6 +633,36 @@ select:focus {
   color: var(--text-dim);
   margin: 0 0 22px;
 }
+/* An invite the page can't offer to accept (expired/cancelled/already used/not
+   found) — a reason-specific icon, heading, and next step, inside the same
+   .auth-card as the rest of this flow. */
+.invite-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.invite-status-icon {
+  display: inline-flex;
+  font-size: 40px;
+  margin-bottom: 14px;
+}
+.invite-status-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 8px;
+}
+.invite-status-msg {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-dim);
+  margin: 0;
+  max-width: 32ch;
+}
+.invite-status-cta {
+  margin-top: 22px;
+}
 .auth-form .field {
   margin-bottom: 14px;
 }
@@ -775,6 +817,12 @@ select:focus {
 }
 .status-ic-cross {
   color: var(--danger);
+}
+.status-ic-clock {
+  color: var(--in_progress);
+}
+.status-ic-help {
+  color: var(--text-dim);
 }
 /* Error-message cross pops in, then shakes for emphasis. */
 .form-error .status-ic-cross {
@@ -2281,21 +2329,27 @@ select,
    data-tip="Label" to any element; optionally set the side with
    data-tip-pos="top|bottom|left|right" (default: bottom). Dark pill,
    matching the app's bespoke tooltips.
+
+   Drawn by <TooltipLayer> into one fixed-position node at the end of the body
+   rather than as a ::after on the element, because a pseudo-element cannot
+   leave a scroll container. `.column-cards` is one: `overflow-y: auto`
+   computes `overflow-x` to `auto` as well, so a board card's tooltip had its
+   sides cut off by the column it sat in. Same reasoning as `.pv-menu.card-menu`.
+
    The composer/editor/topbar tooltips have their own styling on the same
-   `data-tip` attribute, so they're excluded here to avoid double-styling. */
-/* .pw-toggle is excluded here only: it positions itself absolutely
-   inside .password-input, and an absolutely-positioned element is still a
-   containing block, so its tooltip stays anchored correctly. */
+   `data-tip` attribute; TooltipLayer skips those so they aren't drawn twice. */
+
+/* Retained from the pseudo-element version: these elements no longer anchor
+   their own tooltip, but some anchor other absolutely-positioned children, so
+   the containing block stays.
+   .pw-toggle is excluded here only: it positions itself absolutely inside
+   .password-input, and is already a containing block of its own. */
 [data-tip]:not(.cm-action):not(.cm-tool):not(.cm-fbtn):not(.cm-box-send):not(.rte-tool):not(.topbar-crumb-copy):not(.pw-toggle) {
   position: relative;
 }
-[data-tip]:not(.cm-action):not(.cm-tool):not(.cm-fbtn):not(.cm-box-send):not(.rte-tool):not(.topbar-crumb-copy)::after {
-  content: attr(data-tip);
-  position: absolute;
+.tip-pop {
+  position: fixed;
   z-index: 200;
-  top: calc(100% + 7px);
-  left: 50%;
-  transform: translateX(-50%) translateY(-3px);
   padding: 4px 8px;
   border-radius: 6px;
   background: var(--text);
@@ -2306,44 +2360,19 @@ select,
   letter-spacing: 0;
   white-space: nowrap;
   pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.12s ease, transform 0.12s ease;
+  animation: tip-pop-in 0.12s ease both;
 }
-[data-tip]:not(.cm-action):not(.cm-tool):not(.cm-fbtn):not(.cm-box-send):not(.rte-tool):not(.topbar-crumb-copy):hover::after {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-/* Above the element */
-[data-tip][data-tip-pos="top"]:not(.cm-action):not(.cm-tool):not(.cm-fbtn):not(.cm-box-send):not(.rte-tool):not(.topbar-crumb-copy)::after {
-  top: auto;
-  bottom: calc(100% + 7px);
-  transform: translateX(-50%) translateY(3px);
-}
-[data-tip][data-tip-pos="top"]:not(.cm-action):not(.cm-tool):not(.cm-fbtn):not(.cm-box-send):not(.rte-tool):not(.topbar-crumb-copy):hover::after {
-  transform: translateX(-50%) translateY(0);
-}
-/* Left of the element */
-[data-tip][data-tip-pos="left"]:not(.cm-action):not(.cm-tool):not(.cm-fbtn):not(.cm-box-send):not(.rte-tool):not(.topbar-crumb-copy)::after {
-  top: 50%;
-  left: auto;
-  right: calc(100% + 7px);
-  transform: translateY(-50%) translateX(3px);
-}
-[data-tip][data-tip-pos="left"]:not(.cm-action):not(.cm-tool):not(.cm-fbtn):not(.cm-box-send):not(.rte-tool):not(.topbar-crumb-copy):hover::after {
-  transform: translateY(-50%) translateX(0);
-}
-/* Right of the element */
-[data-tip][data-tip-pos="right"]:not(.cm-action):not(.cm-tool):not(.cm-fbtn):not(.cm-box-send):not(.rte-tool):not(.topbar-crumb-copy)::after {
-  top: 50%;
-  left: calc(100% + 7px);
-  transform: translateY(-50%) translateX(-3px);
-}
-[data-tip][data-tip-pos="right"]:not(.cm-action):not(.cm-tool):not(.cm-fbtn):not(.cm-box-send):not(.rte-tool):not(.topbar-crumb-copy):hover::after {
-  transform: translateY(-50%) translateX(0);
+@keyframes tip-pop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  [data-tip]:not(.cm-action):not(.cm-tool):not(.cm-fbtn):not(.cm-box-send):not(.rte-tool):not(.topbar-crumb-copy)::after {
-    transition: opacity 0.12s ease;
+  .tip-pop {
+    animation-duration: 0.01ms;
   }
 }
 

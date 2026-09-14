@@ -24,6 +24,7 @@
   "dependencies": {
     "@emoji-mart/data": "^1.2.1",
     "@emoji-mart/react": "^1.1.1",
+    "@supabase/supabase-js": "^2.116.0",
     "@tanstack/react-query": "^5.101.2",
     "@tiptap/extension-code-block": "^3.26.1",
     "@tiptap/extension-highlight": "3.26.1",

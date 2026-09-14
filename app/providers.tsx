@@ -8,6 +8,7 @@ import BrandingProvider, {
   type Branding,
 } from "@/components/app/BrandingProvider";
 import DocumentTitle from "@/components/app/DocumentTitle";
+import TooltipLayer from "@/components/app/TooltipLayer";
 
 export default function Providers({
   children,
@@ -26,6 +27,9 @@ export default function Providers({
         <BrandingProvider initial={branding}>
           <DocumentTitle />
           {children}
+          {/* Draws every data-tip pill, above and outside the scroll
+              containers that would otherwise clip it. */}
+          <TooltipLayer />
         </BrandingProvider>
       </QueryClientProvider>
     </SessionProvider>

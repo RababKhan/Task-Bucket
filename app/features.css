@@ -643,6 +643,32 @@
     animation: none;
   }
 }
+
+/* The board card's type icon plays the same three animations as the List
+   view's, on the same keyframes, triggered by hovering the card instead of
+   the row. */
+.card:hover .card-title svg {
+  animation: tlTwinkle 0.6s ease-in-out;
+}
+.card:hover .card-title svg.tt-story {
+  animation: none;
+}
+.card:hover .card-title .tt-story-light {
+  animation: tlStoryLight 0.95s ease-in-out;
+}
+.card:hover .card-title svg.tt-bug {
+  animation: none;
+}
+.card:hover .card-title .tt-bug-legs {
+  animation: tlBugLegs 0.5s ease-in-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card:hover .card-title svg,
+  .card:hover .card-title .tt-bug-legs,
+  .card:hover .card-title .tt-story-light {
+    animation: none;
+  }
+}
 .tl-title-text {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1669,6 +1695,272 @@
 .td-att-empty svg {
   width: 16px;
   height: 16px;
+  flex-shrink: 0;
+}
+/* Attach-file modal's upload target — the whole box is a button (click) and a
+   drop target (drag from the desktop) at once. */
+.att-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 28px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.att-dropzone:hover,
+.att-dropzone:focus-visible {
+  border-color: var(--accent);
+}
+.att-dropzone.drag-over {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-color: var(--accent);
+  border-style: dashed;
+}
+.att-dropzone.uploading {
+  cursor: default;
+  opacity: 0.7;
+  pointer-events: none;
+}
+.att-dropzone-ic {
+  width: 26px;
+  height: 26px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.att-dropzone-text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.att-dropzone-cta {
+  color: var(--link);
+  font-weight: 600;
+}
+.att-dropzone:hover .att-dropzone-cta {
+  color: var(--link-hover);
+}
+.att-dropzone-sub {
+  font-size: 11.375px;
+  color: var(--text-dim);
+  opacity: 0.8;
+}
+.att-info-ic {
+  display: inline-flex;
+  vertical-align: -3px;
+  width: 14px;
+  height: 14px;
+  margin-left: 5px;
+  color: var(--text-dim);
+  cursor: default;
+}
+.att-info-ic svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* The upload queue — one row per file, appended below the drop zone as
+   files are added. Progress is real (from the browser's own upload byte
+   counts), not a simulated fill. */
+.att-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.att-q-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.att-q-item.att-q-error {
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--border));
+}
+.att-q-thumb {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  overflow: hidden;
+}
+.att-q-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.att-q-thumb svg {
+  width: 18px;
+  height: 18px;
+}
+.att-q-info {
+  flex: 1;
+  min-width: 0;
+}
+.att-q-toprow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.att-q-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+}
+.att-q-size {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.att-q-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-2);
+  margin-top: 8px;
+  overflow: hidden;
+}
+.att-q-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.15s ease;
+}
+.att-q-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.att-q-cancel {
+  color: var(--danger);
+  font-weight: 500;
+}
+.att-q-cancel:hover {
+  text-decoration: underline;
+}
+.att-q-status {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.att-q-status-ok {
+  color: var(--done, #2ea043);
+}
+.att-q-status-err {
+  color: var(--danger);
+}
+.td-att-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.td-att-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.td-att-thumb {
+  display: block;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.td-att-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.td-att-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+}
+.td-att-icon svg {
+  width: 18px;
+  height: 18px;
+}
+.td-att-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.td-att-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+}
+a.td-att-name:hover {
+  color: var(--link);
+}
+.td-att-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.td-att-remove {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: var(--text-dim);
+}
+.td-att-remove:hover {
+  background: var(--surface-2);
+  color: var(--danger);
+}
+.td-att-remove svg {
+  width: 14px;
+  height: 14px;
+}
+.td-att-err {
+  font-size: 11.375px;
+  color: var(--danger);
+  margin: 8px 0 0;
+}
+
+/* Attach-file modal (opened from the Attachments section's "+", same button
+   as "Bug" and "Sub Task" already use) — the drag/drop + browse block that
+   used to sit inline in the section now lives here instead. */
+.attach-modal {
+  max-width: 400px;
 }
 
 /* ---- Activity section (Activity / Comments / Time Entry tabs) ---- */
@@ -5776,16 +6068,16 @@ textarea::placeholder {
   background: var(--accent);
   border-color: var(--accent);
 }
+/* The same tick the permissions matrix draws, centred in the box. It used to
+   be two borders of a small box rotated 45deg, which no offset centres
+   reliably: the mitred corner puts the mark's middle about 1px below and right
+   of the box's, so it leaned into the bottom-right corner. */
 .pv-check:checked::after {
   content: "";
   position: absolute;
-  left: 4px;
-  top: 1px;
-  width: 3.5px;
-  height: 7px;
-  border: solid #fff;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
+  inset: 0;
+  background: center / 10px 10px no-repeat
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 5 5L20 6'/%3E%3C/svg%3E");
 }
 /* Don't keep the focus border/ring after toggling (revert to the base look) */
 .pv-check:focus {

@@ -81,7 +81,7 @@ export const ACTION_LABELS: Record<Action, string> = {
 export const VALID_ACTIONS: Record<Module, Action[]> = {
   dashboard: ["view"],
   projects: ["view", "create", "edit", "delete"],
-  tasks: ["view", "create", "edit", "delete", "assign", "comment"],
+  tasks: ["view", "create", "edit", "delete", "assign", "comment", "upload", "download"],
   subtasks: ["view", "create", "edit", "delete", "assign", "comment"],
   team_member: [
     "view",
@@ -135,6 +135,8 @@ export const DEFAULT_PERMISSIONS: Record<
     ["tasks", "edit"],
     ["tasks", "assign"],
     ["tasks", "comment"],
+    ["tasks", "upload"],
+    ["tasks", "download"],
     ["subtasks", "view"],
     ["subtasks", "create"],
     ["subtasks", "edit"],
@@ -153,6 +155,8 @@ export const DEFAULT_PERMISSIONS: Record<
     ["tasks", "view"],
     ["tasks", "edit"],
     ["tasks", "comment"],
+    ["tasks", "upload"],
+    ["tasks", "download"],
     ["subtasks", "view"],
     ["subtasks", "edit"],
   ],

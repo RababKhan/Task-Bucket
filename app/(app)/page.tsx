@@ -1306,7 +1306,15 @@ function BoardPage() {
                     onClick={() => router.push(`/task/${task.id}`)}
                     onMouseEnter={() => prefetchTask(task.id)}
                   >
-                    <div className="card-title">{task.title}</div>
+                    <div className="card-title">
+                      <TaskTypeIcon type={task.type} size={14} />
+                      {task.seq != null && (
+                        <span className="tl-task-id">
+                          {projectPrefix}-{String(task.seq).padStart(3, "0")}
+                        </span>
+                      )}
+                      <span className="card-title-text">{task.title}</span>
+                    </div>
                     {!!task.labels?.length && (
                       <div className="card-labels">
                         {task.labels.map((label) => {

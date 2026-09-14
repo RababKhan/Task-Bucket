@@ -329,8 +329,9 @@ export async function taskCountsByProject(
 }
 
 // Approximate bytes of stored assets for a workspace: member avatars, the
-// branding logo/favicon, and comment attachments — all data URLs kept as text,
-// so their character length ≈ bytes on disk.
+// branding logo/favicon, comment attachments (data URLs kept as text, so
+// their character length ≈ bytes on disk), and task attachments (real files
+// in Supabase Storage — their `size` column is the actual byte count).
 export async function storageBytesUsed(workspaceId: string): Promise<number> {
   const r = await dbGet<{ bytes: number }>(
     `SELECT
@@ -344,8 +345,13 @@ export async function storageBytesUsed(workspaceId: string): Promise<number> {
                    JOIN task_comments tc ON tc.id = ca.comment_id
                    JOIN tasks t ON t.id = tc.task_id
                    JOIN projects p ON p.id = t.project_id
+                  WHERE p.workspace_id = ?), 0)
+     + COALESCE((SELECT SUM(ta.size)
+                   FROM task_attachments ta
+                   JOIN tasks t ON t.id = ta.task_id
+                   JOIN projects p ON p.id = t.project_id
                   WHERE p.workspace_id = ?), 0) AS bytes`,
-    [workspaceId, workspaceId, workspaceId]
+    [workspaceId, workspaceId, workspaceId, workspaceId]
   );
   return Number(r?.bytes ?? 0);
 }

@@ -34,6 +34,8 @@ import Spinner from "@/components/Spinner";
 import DatePicker from "@/components/app/DatePicker";
 import RichTextEditor from "@/components/app/RichTextEditor";
 import Comments from "@/components/app/Comments";
+import TaskAttachments from "@/components/app/TaskAttachments";
+import TaskAttachmentModal from "@/components/app/TaskAttachmentModal";
 import CollapseIcon from "@/components/app/CollapseIcon";
 import SelectField, { type SelectOption } from "@/components/app/SelectField";
 import MemberPicker from "@/components/app/MemberPicker";
@@ -71,6 +73,7 @@ type Detail = Task & {
   custom_fields: CustomFieldWithValue[];
   activity?: ActivityItem[];
   parent?: { id: number; seq: number | null } | null;
+  attachment_count?: number;
 };
 
 type LinkedItem = Task & { assignees?: string[] };
@@ -291,6 +294,9 @@ export default function TaskDetailPage() {
   // Collapsible left-column sections — persisted so they survive a refresh.
   const [openSub, setOpenSub] = useState(() => readOpen("sub", true));
   const [openAtt, setOpenAtt] = useState(() => readOpen("att", true));
+  const [attachModalOpen, setAttachModalOpen] = useState(false);
+  // Bumped after a successful upload so <TaskAttachments> re-fetches its list.
+  const [attachRefresh, setAttachRefresh] = useState(0);
   // Linked-tasks section (only shown for Story items).
   const [openTasks, setOpenTasks] = useState(() => readOpen("tasks", true));
   const [linkTaskOpen, setLinkTaskOpen] = useState(false);
@@ -1693,16 +1699,41 @@ export default function TaskDetailPage() {
             >
               <CollapseIcon className={`td-caret${openAtt ? " open" : ""}`} />
               Attachments
-              <span className="td-section-count">0</span>
+              <span className="td-section-count">
+                {detail.attachment_count ?? 0}
+              </span>
+            </button>
+            <button
+              type="button"
+              className="td-section-add"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={() => {
+                setOpenAtt(true);
+                setAttachModalOpen(true);
+              }}
+              aria-label="Add attachment"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M12 5v14M5 12h14" />
+              </svg>
             </button>
           </div>
           {openAtt && (
-            <div className="td-att-empty">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-              </svg>
-              <span>Attachments — coming soon</span>
-            </div>
+            <TaskAttachments
+              taskId={id}
+              refreshSignal={attachRefresh}
+              onCountChange={(n) =>
+                setDetail((d) => (d ? { ...d, attachment_count: n } : d))
+              }
+            />
+          )}
+          {attachModalOpen && (
+            <TaskAttachmentModal
+              taskId={id}
+              existingCount={detail.attachment_count ?? 0}
+              onClose={() => setAttachModalOpen(false)}
+              onUploaded={() => setAttachRefresh((n) => n + 1)}
+            />
           )}
           </div>
 

@@ -408,6 +408,30 @@ export const commentAttachments = pgTable(
   (t) => [index("idx_comment_attachments_comment").on(t.commentId)]
 );
 
+// Files attached directly to a task (distinct from comment_attachments, which
+// are small data-URL blobs embedded in a comment). The actual file bytes live
+// in Supabase Storage — this row is only the metadata + a pointer to it
+// (storagePath), so a heavy attachment never bloats the Postgres database the
+// way an inlined comment attachment does.
+export const taskAttachments = pgTable(
+  "task_attachments",
+  {
+    id: serial("id").primaryKey(),
+    taskId: integer("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    type: text("type").notNull().default(""),
+    size: integer("size").notNull().default(0),
+    storagePath: text("storage_path").notNull(),
+    uploadedBy: text("uploaded_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: text("created_at").notNull().default(nowText),
+  },
+  (t) => [index("idx_task_attachments_task").on(t.taskId)]
+);
+
 // One row per workspace (1:1). Absence of a row is treated as the free plan.
 // Manual billing: the owner activates Pro after an offline bank transfer.
 export const subscriptions = pgTable("subscriptions", {

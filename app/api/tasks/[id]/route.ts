@@ -119,8 +119,15 @@ export async function GET(_request: Request, { params }: Ctx) {
   // subtasks, linked items, custom fields, activity, and parent in parallel
   // instead of one sequential round-trip after another.
   const parentId = task.story_id ?? task.linked_to ?? task.parent_id ?? null;
-  const [subtaskRows, linkedRows, bugRows, fieldRows, activity, parentRow] =
-    await Promise.all([
+  const [
+    subtaskRows,
+    linkedRows,
+    bugRows,
+    fieldRows,
+    activity,
+    parentRow,
+    attachmentCountRow,
+  ] = await Promise.all([
       dbAll<TaskRow>(
         `SELECT t.*,
            (SELECT group_concat(ta.user_id) FROM task_assignees ta WHERE ta.task_id = t.id) AS assignees_raw
@@ -167,6 +174,10 @@ export async function GET(_request: Request, { params }: Ctx) {
             [parentId]
           )
         : Promise.resolve(undefined),
+      dbGet<{ n: number }>(
+        "SELECT COUNT(*) AS n FROM task_attachments WHERE task_id = ?",
+        [id]
+      ),
     ]);
 
   const subtasks = subtaskRows.map(shapeTask);
@@ -192,6 +203,7 @@ export async function GET(_request: Request, { params }: Ctx) {
     custom_fields,
     activity,
     parent,
+    attachment_count: Number(attachmentCountRow?.n ?? 0),
   });
 }
 

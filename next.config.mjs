@@ -11,6 +11,18 @@ const nextConfig = {
   // VERCEL is set on every Vercel build, so this keeps both targets working
   // from one config.
   ...(process.env.VERCEL ? {} : { output: "standalone" }),
+
+  experimental: {
+    // The auth middleware (middleware.ts) runs on every request, including
+    // task-attachment uploads, and Next buffers the body to hand it through.
+    // The default cap here is 10MB — well under MAX_ATTACHMENT_BYTES
+    // (lib/attachments.ts, 20MB) — so a large upload was silently truncated
+    // into a broken multipart body before it ever reached the route handler,
+    // which then failed with a confusing "No file provided." rather than the
+    // real "Files must be 20MB or smaller." 25MB leaves headroom for
+    // multipart's own framing overhead on top of a genuine 20MB file.
+    middlewareClientMaxBodySize: "25mb",
+  },
 };
 
 export default nextConfig;
