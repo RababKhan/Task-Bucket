@@ -61,19 +61,33 @@ export async function GET(_request: Request, { params }: Ctx) {
   const { token } = await params;
   const invite = await loadInvite(token);
   if (!invite) {
-    return NextResponse.json({ error: "This invite is invalid." }, { status: 404 });
+    return NextResponse.json(
+      { error: "This invite is invalid.", reason: "invalid" },
+      { status: 404 }
+    );
   }
   const rejected = inviteAcceptError(invite);
   if (rejected) {
     // Reflect a lazily-expired pending invite in the DB.
-    if (rejected.message.includes("expired") && invite.status === "pending") {
+    if (rejected.reason === "expired" && invite.status === "pending") {
       await dbRun(
         "UPDATE workspace_invites SET status = 'expired', updated_at = datetime('now') WHERE id = ?",
         [invite.id]
       );
     }
+    // The invite row still identifies a real workspace even though it can no
+    // longer be accepted — worth showing, so the page can say what the invite
+    // to instead of a bare "this link doesn't work".
+    const ws = await dbGet<{ name: string }>(
+      "SELECT name FROM workspaces WHERE id = ?",
+      [invite.workspace_id]
+    );
     return NextResponse.json(
-      { error: rejected.message },
+      {
+        error: rejected.message,
+        reason: rejected.reason,
+        workspace_name: ws?.name ?? null,
+      },
       { status: rejected.status }
     );
   }
@@ -105,7 +119,7 @@ export async function POST(request: Request, { params }: Ctx) {
   }
   const rejected = inviteAcceptError(invite);
   if (rejected) {
-    if (rejected.message.includes("expired") && invite.status === "pending") {
+    if (rejected.reason === "expired" && invite.status === "pending") {
       await dbRun(
         "UPDATE workspace_invites SET status = 'expired', updated_at = datetime('now') WHERE id = ?",
         [invite.id]

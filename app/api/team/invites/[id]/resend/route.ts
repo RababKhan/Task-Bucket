@@ -55,13 +55,19 @@ export async function POST(request: Request, { params }: Ctx) {
     "SELECT name FROM workspaces WHERE id = ?",
     [m.workspace_id]
   );
+  // The email should read "as Member", not "as assignee" — look up this
+  // workspace's display name for the role, same as the roles list does.
+  const roleNameRow = await dbGet<{ name: string }>(
+    "SELECT name FROM roles WHERE workspace_id = ? AND key = ?",
+    [m.workspace_id, invite.role]
+  );
   const base =
     process.env.AUTH_URL?.replace(/\/$/, "") || new URL(request.url).origin;
   const inviteUrl = `${base}/invite/${token}`;
   try {
     const { subject, html, text } = inviteEmail(
       ws?.name ?? "the workspace",
-      invite.role,
+      roleNameRow?.name ?? invite.role,
       inviteUrl,
       invite.message
     );

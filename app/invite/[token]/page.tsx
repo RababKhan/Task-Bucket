@@ -12,8 +12,12 @@ import { CheckIcon, CrossIcon } from "@/components/StatusIcon";
 import PasswordInput from "@/app/(auth)/PasswordInput";
 import PasswordStrength from "@/app/(auth)/PasswordStrength";
 
+// `reason` is the stable key from INVITE_ERROR (lib/invites.ts); `workspace_name`
+// is set whenever the token matched a real invite, even one that can no longer
+// be accepted, so the page can say what it was an invite *to*.
+type InviteReason = "invalid" | "cancelled" | "accepted" | "expired";
 type Info =
-  | { error: string }
+  | { error: string; reason?: InviteReason; workspace_name?: string | null }
   | {
       email: string;
       role: string;
@@ -25,6 +29,86 @@ type Info =
 
 function roleLabel(role: string) {
   return ROLE_LABELS[role as Role] ?? role;
+}
+
+// Small icons for the "can't accept this invite" states, in the same
+// draw-themselves style as CheckIcon/CrossIcon (StatusIcon.tsx) — just two
+// colors those don't cover.
+function ClockIcon() {
+  return (
+    <svg
+      className="status-ic status-ic-clock"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <circle className="ic-ring" cx="12" cy="12" r="10" />
+      <path className="ic-stroke" d="M12 7v5l3 2" pathLength={26} />
+    </svg>
+  );
+}
+function HelpIcon() {
+  return (
+    <svg
+      className="status-ic status-ic-help"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <circle className="ic-ring" cx="12" cy="12" r="10" />
+      <path className="ic-stroke" d="M12 8v5" pathLength={26} />
+      <path className="ic-stroke ic-stroke-2" d="M12 16h.01" pathLength={4} />
+    </svg>
+  );
+}
+
+// One panel per reason an invite can't be accepted — an icon, what happened,
+// and what to do next, instead of a single bare "This invite is invalid."
+function inviteStatusContent(reason: InviteReason | undefined, ws: string | null | undefined) {
+  const workspace = ws ? <strong>{ws}</strong> : "this workspace";
+  switch (reason) {
+    case "expired":
+      return {
+        icon: <ClockIcon />,
+        title: "This invite has expired",
+        message: (
+          <>Invites to {workspace} are only valid for 7 days. Ask whoever invited you to send a new one.</>
+        ),
+      };
+    case "cancelled":
+      return {
+        icon: <CrossIcon />,
+        title: "This invite was cancelled",
+        message: (
+          <>Your invite to {workspace} was cancelled by an admin. Contact them if you still need access.</>
+        ),
+      };
+    case "accepted":
+      return {
+        icon: <CheckIcon />,
+        title: "You're already in",
+        message: (
+          <>This invite to {workspace} has already been accepted. Sign in to pick up where you left off.</>
+        ),
+      };
+    case "invalid":
+    default:
+      return {
+        icon: <HelpIcon />,
+        title: "Invite link not found",
+        message: (
+          <>This invite link isn&apos;t valid. Check that you copied the whole link, or ask whoever invited you to send a new one.</>
+        ),
+      };
+  }
 }
 
 export default function InvitePage() {
@@ -128,15 +212,22 @@ export default function InvitePage() {
             <Spinner />
           </div>
         ) : info && "error" in info ? (
-          <>
-            <p className="auth-title">Invite unavailable</p>
-            <p className="signup-sub" style={{ textAlign: "center" }}>{info.error}</p>
-            <p className="auth-alt">
-              <Link href="/login" className="auth-link">
-                Go to sign in
-              </Link>
-            </p>
-          </>
+          (() => {
+            const { icon, title, message } = inviteStatusContent(
+              info.reason,
+              info.workspace_name
+            );
+            return (
+              <div className="invite-status">
+                <span className="invite-status-icon">{icon}</span>
+                <h1 className="invite-status-title">{title}</h1>
+                <p className="invite-status-msg">{message}</p>
+                <Link href="/login" className="btn btn-primary invite-status-cta">
+                  Go to sign in
+                </Link>
+              </div>
+            );
+          })()
         ) : info && info.account_exists ? (
           <>
             <h1 className="signup-h" style={{ textAlign: "center" }}>

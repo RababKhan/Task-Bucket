@@ -36,20 +36,42 @@ export function parseProjectAccess(json: string | null | undefined): number[] {
   return [];
 }
 
-// Exact, user-facing rejection messages for the accept flow.
+// Exact, user-facing rejection messages for the accept flow. `reason` is a
+// stable key the invite page uses to pick an icon/heading/next-step — the
+// `message` string is the fallback for any caller that just wants text.
 export const INVITE_ERROR = {
-  invalid: { status: 404, message: "This invite is invalid." },
-  cancelled: { status: 410, message: "This invitation has been cancelled." },
-  accepted: { status: 409, message: "This invitation has already been accepted." },
-  expired: { status: 410, message: "This invitation has expired." },
+  invalid: {
+    status: 404,
+    message: "This invite is invalid.",
+    reason: "invalid",
+  },
+  cancelled: {
+    status: 410,
+    message: "This invitation has been cancelled.",
+    reason: "cancelled",
+  },
+  accepted: {
+    status: 409,
+    message: "This invitation has already been accepted.",
+    reason: "accepted",
+  },
+  expired: {
+    status: 410,
+    message: "This invitation has expired.",
+    reason: "expired",
+  },
 } as const;
 
+export type InviteRejectReason =
+  (typeof INVITE_ERROR)[keyof typeof INVITE_ERROR]["reason"];
+
 // Given an invite's status + expiry, return the rejection (status code +
-// message) if it can't be accepted, or null if it's a valid pending invite.
+// message + reason) if it can't be accepted, or null if it's a valid pending
+// invite.
 export function inviteAcceptError(
   row: { status: string; expires_at: string | null },
   now: number = Date.now()
-): { status: number; message: string } | null {
+): (typeof INVITE_ERROR)[keyof typeof INVITE_ERROR] | null {
   if (row.status === "cancelled") return INVITE_ERROR.cancelled;
   if (row.status === "accepted") return INVITE_ERROR.accepted;
   if (row.status === "expired" || isExpired(row.expires_at, now))
